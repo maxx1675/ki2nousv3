@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr" data-anim="light" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Undercover</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<style>
+.word{font-size:clamp(2rem,10vw,3.2rem);font-weight:800;text-align:center;margin:10px 0;word-break:break-word}
+.secret{background:var(--surface);border:3px solid var(--edge);border-radius:22px;padding:22px 16px;box-shadow:7px 7px 0 var(--teal);text-align:center;margin:14px 0}
+.tag{display:inline-block;background:var(--amber);color:#1b1340;border:2px solid var(--edge);border-radius:99px;padding:2px 10px;font-size:.82rem;font-weight:800;margin:2px}
+.ban{background:var(--pink);color:#fff;border:2.5px solid var(--edge);border-radius:14px;padding:10px 14px;font-weight:800;margin:10px 0;box-shadow:3px 3px 0 var(--sh)}
+.cur{box-shadow:3px 3px 0 var(--pink)!important;background:color-mix(in srgb,var(--pink) 18%,var(--surface))}
+.timer{font-size:2.4rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums}
+.sp{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:2px dashed var(--edge)}.sp:first-child{border-top:0}.sp span{flex:1}.sp small{display:block;color:var(--muted);font-weight:500}
+.tog{width:46px;height:26px;border-radius:99px;border:2.5px solid var(--edge);background:var(--surface);position:relative;cursor:pointer;flex:none}
+.tog::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:var(--ink);transition:left .15s}
+.tog.on{background:var(--teal)}.tog.on::after{left:22px}
+.mini{font-size:.82rem;padding:4px 8px;width:auto}
+.rl{font-weight:800}.rl.civil{color:var(--teal)}.rl.uc{color:var(--danger)}.rl.mw{color:var(--violet)}
+</style></head><body>
+<main class="wrap">
+<div class="top"><a href="/">← Hub</a><span id="who" class="hint"></span></div>
+<div id="app"></div>
+</main>
+<script src="/shared/net.js"></script>
+<script>
+"use strict";
+/* ===================== DONNÉES ===================== */
+const BASE_MIN=3,BASE_MAX=20;
+const SPECIALS={
+ goddess:{ico:"⚖️",n:"Déesse de la Justice",min:3,d:"Départage les égalités, même éliminée."},
+ lovers:{ico:"💕",n:"Les Amoureux",min:5,d:"2 joueurs liés : si l’un est éliminé, l’autre aussi."},
+ avenger:{ico:"🗡️",n:"Le Vengeur",min:5,d:"Éliminé, il emporte quelqu’un avec lui."},
+ duelists:{ico:"⚔️",n:"Les Duellistes",min:5,d:"Duel secret : le premier éliminé perd 2 pts, l’autre en gagne 2."},
+ ghost:{ico:"👻",n:"Le Fantôme",min:3,d:"Éliminé, il continue de discuter et de voter."},
+ falafel:{ico:"🥙",n:"Vendeur de falafels",min:4,d:"Chaque manche, donne un falafel : il protège ou sabote."},
+ boomerang:{ico:"🪃",n:"Le Boomerang",min:3,d:"1re fois visé par la majorité : les votes retombent sur leurs auteurs."},
+ fool:{ico:"🤪",n:"Le Fou joyeux",min:3,d:"S’il est le premier éliminé : +4 points."}
+};
+const RL={civil:"Civil",uc:"Undercover",mw:"Mr. White"};
+const BANK={
+"🍕 Nourriture":[["pizza","quiche"],["café","thé"],["croissant","pain au chocolat"],["Nutella","pâte à tartiner"],["sushi","maki"],["frites","chips"],["beurre","margarine"],["miel","confiture"],["Coca","Pepsi"],["burger","sandwich"],["crêpe","gaufre"],["camembert","brie"],["baguette","pain de mie"],["glace","sorbet"]],
+"🐾 Animaux":[["chat","tigre"],["chien","loup"],["dauphin","requin"],["lapin","lièvre"],["abeille","guêpe"],["crocodile","alligator"],["cheval","poney"],["corbeau","pigeon"],["escargot","limace"],["grenouille","crapaud"]],
+"🧰 Objets":[["stylo","crayon"],["canapé","fauteuil"],["lunettes","lentilles"],["couteau","ciseaux"],["valise","sac à dos"],["montre","réveil"],["tasse","verre"],["tapis","moquette"],["parapluie","imperméable"],["bougie","lampe"]],
+"📍 Lieux":[["plage","piscine"],["cinéma","théâtre"],["hôpital","clinique"],["musée","galerie"],["Paris","Lyon"],["montagne","colline"],["supermarché","épicerie"],["aéroport","gare"],["bibliothèque","librairie"],["hôtel","auberge"]],
+"👷 Métiers":[["médecin","infirmier"],["professeur","instituteur"],["pompier","policier"],["chanteur","rappeur"],["boulanger","pâtissier"],["avocat","juge"],["pilote","steward"],["cuisinier","serveur"]],
+"🎉 Loisirs":[["Netflix","YouTube"],["Harry Potter","Seigneur des Anneaux"],["guitare","violon"],["football","rugby"],["tennis","ping-pong"],["Instagram","TikTok"],["jeu vidéo","jeu de société"],["ski","snowboard"],["karaoké","concert"],["Noël","Nouvel An"],["vacances","week-end"],["mariage","anniversaire"]]
+};
+const DEF_CFG=()=>({assign:"auto",nu:1,nw:1,mwGuess:true,ghostAll:false,typed:false,meme:false,tDesc:0,tDisc:0,
+ pts:{civil:2,uc:10,mw:6},sp:{},cats:Object.keys(BANK),words:"random",custom:"",pick:"",manual:{}});
+/* ===================== ÉTAT ===================== */
+let R=null,S=null,H=null,isHost=false,code="",L={name:"",gate:false,priv:null,show:false,mode:"local",pub:[]};
+const local=()=>S&&S.mode==="local";
+const pl=id=>S.pl.find(p=>p.id===id);
+const nm=id=>(pl(id)||{n:"?"}).n;
+const aliveIds=()=>S.pl.filter(p=>p.alive).map(p=>p.id);
+const app=$("#app");
+const bc=()=>{if(R&&isHost)R.emit("st",S).catch(()=>{})};
+const send=d=>{d.p=local()?(S.pr?S.pr.who:ME):ME;if(isHost)act(d);else R&&R.emit("act",d,"host")};
+const uid=()=>"p"+Math.random().toString(36).slice(2,7);
+try{L.name=localStorage.getItem("soiree:name")||""}catch(e){}
+
+/* ===================== LOGIQUE HÔTE ===================== */
+function newState(mode){
+ return{ph:"lobby",mode,host:ME,pl:[],cfg:DEF_CFG(),r:0,pr:null,out:[],clues:[],log:[],tally:null,win:null,rv:null,meme:null,fal:null,order:[],turn:0,end:0,rt:0};
+}
+function counts(n){
+ const c=S.cfg;
+ if(c.assign==="manual")return{u:Math.min(c.nu,n-2),w:Math.min(c.nw,n-2)};
+ if(c.assign==="random"){const tot=Math.max(1,Math.floor(Math.random()*Math.max(1,Math.floor(n/3)))+1);let w=n>=5?Math.floor(Math.random()*(tot+1)):0;let u=tot-w;if(!u&&!w)u=1;return{u,w}}
+ return{u:Math.max(1,Math.floor(n/4)),w:n>=5?(n>=10?2:1):0};
+}
+function pickWords(){
+ const c=S.cfg;let pairs=[];
+ const cust=c.custom.split("\n").map(l=>l.split(/[\/|;]/).map(x=>x.trim())).filter(a=>a.length>=2&&a[0]&&a[1]);
+ const bank=c.cats.flatMap(k=>BANK[k]||[]);
+ if(c.words==="custom"&&cust.length)pairs=cust;
+ else if(c.words==="pick"&&c.pick){const f=bank.concat(cust).find(p=>p.join(" / ")===c.pick);if(f)pairs=[f]}
+ if(!pairs.length)pairs=bank.concat(cust);
+ if(!pairs.length)pairs=Object.values(BANK).flat();
+ const p=pickR(pairs);return Math.random()<.5?{civ:p[0],uc:p[1]}:{civ:p[1],uc:p[0]};
+}
+function deal(){
+ const n=S.pl.length;if(n<BASE_MIN)return toast("Il faut au moins 3 joueurs");
+ const c=S.cfg,ids=shuffle(S.pl.map(p=>p.id));H={role:{},words:pickWords(),votes:{},q:[],dead:[],bonus:{},boom:false,fal:null,seen:{}};
+ ids.forEach(id=>H.role[id]={base:null,sp:[]});
+ const man=c.assign==="manual";
+ if(man)ids.forEach(id=>{const m=c.manual[id]||{};if(m.base&&m.base!=="auto")H.role[id].base=m.base;if(m.sp&&m.sp!=="none")H.role[id].sp.push(m.sp)});
+ let{u,w}=counts(n);
+ const fx=b=>ids.filter(i=>H.role[i].base===b).length;
+ u=Math.max(0,u-fx("uc"));w=Math.max(0,w-fx("mw"));
+ const free=ids.filter(i=>!H.role[i].base);
+ free.forEach((id,i)=>{H.role[id].base=i<u?"uc":i<u+w?"mw":"civil"});
+ if(!ids.some(i=>H.role[i].base!=="civil")){H.role[free[0]||ids[0]].base="uc"}
+ // rôles spéciaux (pas ceux déjà fixés manuellement)
+ const have=k=>ids.filter(i=>H.role[i].sp.includes(k));
+ const noSp=()=>shuffle(ids.filter(i=>!H.role[i].sp.length));
+ for(const k of Object.keys(SPECIALS)){
+  if(!man||true){ if(!c.sp[k]||n<SPECIALS[k].min||have(k).length)continue;
+   const need=(k==="lovers"||k==="duelists")?2:1,pool=noSp();if(pool.length<need)continue;pool.slice(0,need).forEach(i=>H.role[i].sp.push(k));}
+ }
+ for(const k of["lovers","duelists"]){const a=have(k);if(a.length!==2)a.forEach(i=>H.role[i].sp=H.role[i].sp.filter(x=>x!==k))}
+ ids.forEach(id=>{const r=H.role[id];r.word=r.base==="civil"?H.words.civ:r.base==="uc"?H.words.uc:null});
+ S.pl.forEach(p=>{p.alive=true;p.gh=false});S.out=[];S.win=null;S.r=0;S.pr=null;S.rv=null;
+ S.n={u:ids.filter(i=>H.role[i].base==="uc").length,w:ids.filter(i=>H.role[i].base==="mw").length,c:ids.filter(i=>H.role[i].base==="civil").length};
+ S.ph="deal";
+ if(local()){S.pr={who:S.pl[0].id,kind:"deal",i:0};L.gate=false}
+ else sendPrivs();
+}
+function partnerOf(id,k){const o=Object.keys(H.role).find(x=>x!==id&&H.role[x].sp.includes(k));return o}
+function privOf(id){
+ const r=H.role[id];
+ return{word:r.word,mw:r.base==="mw",sp:r.sp,pt:r.sp.includes("lovers")?nm(partnerOf(id,"lovers")):null,du:r.sp.includes("duelists")?nm(partnerOf(id,"duelists")):null};
+}
+function sendPrivs(){S.pl.forEach(p=>{if(p.id===ME)L.priv=privOf(p.id);else R&&R.emit("priv",privOf(p.id),p.id)})}
+function startRound(){
+ if(!local())sendPrivs();S.r++;S.clues=[];S.tally=null;S.rv=null;H.votes={};S.fal=null;H.fal=null;S.cand=null;S.revoted=false;
+ const al=shuffle(aliveIds());S.order=al;S.turn=0;
+ S.meme=S.cfg.meme&&al.length?pickR(al):null;
+ S.ph="describe";S.end=S.cfg.tDesc?Net.now()+S.cfg.tDesc*1000:0;
+ const fs=al.find(i=>H.role[i].sp.includes("falafel"));
+ if(fs&&al.length>1)S.pr={who:fs,kind:"falafel"};
+ else if(local()&&false){}
+}
+function voters(){return S.pl.filter(p=>(p.alive||(S.cfg.ghostAll||p.gh))&&!(H&&H.fal&&H.fal.kind==="bad"&&H.fal.to===p.id)).map(p=>p.id)}
+function startVote(){
+ S.ph="vote";H.votes={};S.end=0;
+ if(local()){H.vq=voters();S.pr={who:H.vq[0],kind:"vote",i:0};L.gate=false}
+}
+function act(d){
+ if(!isHost||!S)return;const p=d.p;const host=local()||p===S.host;
+ const k=d.k;
+ if(k==="join"){if(!pl(p)&&S.ph==="lobby"&&S.pl.length<BASE_MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,14),alive:true,sc:0,gh:false});}
+ else if(k==="add"&&host&&local()&&S.ph==="lobby"&&S.pl.length<BASE_MAX){const n=(d.n||"").trim().slice(0,14);if(n)S.pl.push({id:uid(),n,alive:true,sc:0,gh:false})}
+ else if(k==="del"&&host&&S.ph==="lobby")S.pl=S.pl.filter(x=>x.id!==d.id);
+ else if(k==="cfg"&&host&&S.ph==="lobby")deepSet(S.cfg,d.path,d.v);
+ else if(k==="start"&&host&&S.ph==="lobby")deal();
+ else if(k==="pseen"){/* local: lecture du mot */ if(S.pr&&S.pr.kind==="deal"&&S.pr.who===p){const i=S.pr.i+1;if(i<S.pl.length){S.pr={who:S.pl[i].id,kind:"deal",i};L.gate=false}else{S.pr=null;startRound()}}}
+ else if(k==="go"&&host&&S.ph==="deal"&&!local()){startRound()}
+ else if(k==="fal"&&S.pr&&S.pr.kind==="falafel"&&S.pr.who===p&&aliveIds().includes(d.to)){H.fal={to:d.to,kind:d.kind==="bad"?"bad":"good"};S.fal=d.to;if(H.fal.kind==="bad"&&!local()){const pv={...privOf(d.to),nov:true};if(d.to===ME)L.priv=pv;else R.emit("priv",pv,d.to)}S.pr=null;if(local())L.gate=false}
+ else if(k==="nxt"&&S.ph==="describe"&&!S.pr&&(host||S.order[S.turn]===p)){if(d.t&&S.cfg.typed)S.clues.push({id:S.order[S.turn],t:String(d.t).slice(0,80)});S.turn++;S.end=S.cfg.tDesc?Net.now()+S.cfg.tDesc*1000:0;if(S.turn>=S.order.length){S.ph="discuss";S.end=S.cfg.tDisc?Net.now()+S.cfg.tDisc*1000:0}}
+ else if(k==="vote"&&host&&S.ph==="discuss")startVote();
+ else if(k==="vote!"&&host&&S.ph==="vote"&&!local())resolveVote();
+ else if(k==="cast"&&S.ph==="vote"){
+   const ok=voters().includes(p)&&(!S.cand||S.cand.includes(d.to))&&pl(d.to)&&(pl(d.to).alive)&&d.to!==p;
+   if(ok){H.votes[p]=d.to;
+    if(local()){const i=S.pr.i+1;if(i<H.vq.length){S.pr={who:H.vq[i],kind:"vote",i};L.gate=false}else{S.pr=null;resolveVote()}}
+    else if(voters().every(v=>H.votes[v]))resolveVote();}}
+ else if(k==="gd"&&S.pr&&S.pr.kind==="goddess"&&S.pr.who===p&&S.pr.opts.includes(d.to)){S.pr=null;S.rv={goddess:true};H.q=[{t:"elim",id:d.to}];proc()}
+ else if(k==="av"&&S.pr&&S.pr.kind==="avenger"&&S.pr.who===p&&aliveIds().includes(d.to)){S.pr=null;H.q.unshift({t:"elim",id:d.to});proc()}
+ else if(k==="mwg"&&S.pr&&S.pr.kind==="mwguess"&&S.pr.who===p){
+   S.pr=null;const g=String(d.t||"").trim().toLowerCase(),w=H.words.civ.toLowerCase();
+   const norm=s=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+   if(norm(g)===norm(w)&&g){S.log.push("🎯 "+nm(p)+" a deviné « "+H.words.civ+" » !");finishGame("mw",p)}else{S.log.push("❌ "+nm(p)+" a répondu « "+(d.t||"…")+" ». Raté !");proc()}}
+ else if(k==="next"&&host&&S.ph==="result"){if(S.win)finishGame(S.win);else startRound()}
+ else if(k==="again"&&host&&S.ph==="end"){S.ph="lobby";S.pr=null;S.out=[];S.win=null;S.pl.forEach(x=>{x.alive=true;x.gh=false})}
+ if(R&&!local())S.on=[...R.peers(),ME];
+ bc();render();
+}
+function deepSet(o,path,v){const a=path.split(".");while(a.length>1){const k=a.shift();o=o[k]=o[k]||{}}o[a[0]]=v}
+function resolveVote(){
+ const vs=voters();let cnt={};const cand=S.cand||aliveIds();
+ S.tally=Object.entries(H.votes).map(([f,t])=>({f,t}));
+ cand.forEach(i=>cnt[i]=0);
+ for(const[f,t]of Object.entries(H.votes))if(cnt[t]!==undefined)cnt[t]++;
+ const top=o=>{const m=Math.max(0,...Object.values(o));return m?Object.keys(o).filter(i=>o[i]===m):[]};
+ let tied=top(cnt);
+ if(tied.length===1&&H.role[tied[0]].sp.includes("boomerang")&&!H.boom){
+   H.boom=true;S.log.push("🪃 "+nm(tied[0])+" renvoie les votes à leurs auteurs !");
+   const b=tied[0];cnt={};cand.forEach(i=>cnt[i]=0);
+   for(const[f,t]of Object.entries(H.votes)){if(t===b){cnt[f]=(cnt[f]||0)+1}else if(t!==b&&cnt[t]!==undefined)cnt[t]++}
+   delete cnt[b];tied=top(cnt);
+ }
+ if(H.fal&&H.fal.kind==="good"&&tied.includes(H.fal.to)){
+   S.log.push("🥙 "+nm(H.fal.to)+" était protégé par son falafel !");delete cnt[H.fal.to];tied=top(cnt);}
+ if(!tied.length){S.log.push("Aucun vote valable : personne n’est éliminé.");return endResult([])}
+ if(tied.length>1){
+   const g=Object.keys(H.role).find(i=>H.role[i].sp.includes("goddess"));
+   if(g){S.log.push("⚖️ Égalité ! La Déesse de la Justice tranche.");S.pr={who:g,kind:"goddess",opts:tied};if(local())L.gate=false;return}
+   if(!S.revoted){S.revoted=true;S.cand=tied;S.log.push("Égalité : nouveau vote entre "+tied.map(nm).join(", ")+".");H.votes={};return startVote()}
+   S.log.push("Deuxième égalité : personne n’est éliminé.");return endResult([])
+ }
+ H.q=[{t:"elim",id:tied[0]}];proc();
+}
+function proc(){
+ while(H.q.length){
+  const st=H.q.shift();
+  if(st.t==="elim"){
+   const x=pl(st.id);if(!x||!x.alive)continue;
+   x.alive=false;H.dead.push(st.id);const r=H.role[st.id];
+   if(H.dead.length===1&&r.sp.includes("fool")){H.bonus[st.id]=(H.bonus[st.id]||0)+4}
+   if(r.sp.includes("ghost"))x.gh=true;
+   S.out.push({id:st.id,role:r.base,r:S.r});S.log.push("💀 "+x.n+" est éliminé — "+RL[r.base]+(r.word?" ("+r.word+")":""));
+   const extra=[];
+   if(r.sp.includes("lovers")){const o=partnerOf(st.id,"lovers");if(o&&pl(o).alive){S.log.push("💔 "+nm(o)+" meurt de chagrin.");extra.push({t:"elim",id:o})}}
+   if(r.sp.includes("avenger")&&aliveIds().length>1)extra.push({t:"av",id:st.id});
+   if(r.base==="mw"&&S.cfg.mwGuess)extra.push({t:"mw",id:st.id});
+   H.q.unshift(...extra);
+  }else if(st.t==="av"){S.pr={who:st.id,kind:"avenger"};if(local())L.gate=false;return}
+  else if(st.t==="mw"){S.pr={who:st.id,kind:"mwguess"};if(local())L.gate=false;return}
+ }
+ endResult(S.out.filter(o=>o.r===S.r).map(o=>o.id));
+}
+function endResult(){
+ const al=aliveIds(),civ=al.filter(i=>H.role[i].base==="civil").length,inf=al.length-civ;
+ S.win=inf===0?"civil":civ<=1?"inf":null;S.ph="result";S.pr=null;
+ S.rv=S.rv||{};
+}
+function finishGame(w,who){
+ const c=S.cfg.pts;
+ S.pl.forEach(p=>{const r=H.role[p.id];let g=0;
+  if(w==="civil"&&r.base==="civil")g=c.civil;
+  else if(w==="inf"&&p.alive){g=r.base==="uc"?c.uc:r.base==="mw"?c.mw:0}
+  else if(w==="mw"&&p.id===who)g=c.mw;
+  g+=H.bonus[p.id]||0;
+  const d=Object.keys(H.role).filter(i=>H.role[i].sp.includes("duelists"));
+  if(r.sp.includes("duelists")&&d.length===2){const fi=H.dead.find(x=>d.includes(x));if(fi){g+=fi===p.id?-2:2}}
+  p.g=g;p.sc+=g});
+ S.win=w;S.ph="end";S.pr=null;S.words=H.words;S.roles=Object.fromEntries(Object.entries(H.role).map(([i,r])=>[i,{b:r.base,sp:r.sp}]));
+}
+function tick(){
+ if(!isHost||!S||!S.end||Net.now()<S.end)return;
+ if(S.ph==="describe"&&!S.pr)act({k:"nxt",p:S.host});
+ else if(S.ph==="discuss")act({k:"vote",p:S.host});
+}
+
+/* ===================== RENDU ===================== */
+const card=(h,b)=>`<div class="card"><h2>${h}</h2>${b}</div>`;
+const tog=(path,on)=>`<button class="tog ${on?"on":""}" data-a="tg" data-path="${path}" aria-pressed="${!!on}"></button>`;
+const pills=(path,opts,cur)=>`<div class="pills">${opts.map(([v,l])=>`<button class="pill ${cur===v?"on":""}" data-a="set" data-path="${path}" data-v="${v}">${l}</button>`).join("")}</div>`;
+const step=(path,v,min,max)=>`<div class="stepper"><button data-a="st" data-path="${path}" data-d="-1" data-min="${min}" data-max="${max}">−</button><output>${v}</output><button data-a="st" data-path="${path}" data-d="1" data-min="${min}" data-max="${max}">+</button></div>`;
+function viewer(){return local()?(L.gate&&S.pr?S.pr.who:null):ME}
+function render(){
+ if(!S){return renderHome()}
+ const hb=isHost;
+ $("#who").textContent=local()?"📱 1 téléphone":(code?"Salon "+code:"");
+ if(S.pr&&mustPrompt())return renderPrompt();
+ ({lobby:rLobby,deal:rDeal,describe:rDescribe,discuss:rDiscuss,vote:rVote,result:rResult,end:rEnd})[S.ph]();
+ if(S.pr&&!mustPrompt())app.insertAdjacentHTML("afterbegin",`<div class="ban">⏳ En attente de ${esc(nm(S.pr.who))}…</div>`);
+}
+function mustPrompt(){return local()||S.pr.who===ME}
+function renderHome(){
+ app.innerHTML=`<header class="hero"><div class="logo">🕵️</div><h1>Undercover</h1><p>Civils, Undercover, Mr. White : un mot, trois camps. Décris sans te trahir. De 3 à 20 joueurs.</p></header>
+ ${card("Ton prénom",`<input type="text" id="pname" maxlength="14" value="${esc(L.name)}" placeholder="Prénom" autocomplete="off">`)}
+ ${card("Comment jouer ?",`
+  <button class="btn primary big" data-a="m-local" style="margin-top:0">📱 Un seul téléphone (on se le passe)</button>
+  <button class="btn primary big" data-a="m-private">🔒 Salon privé (chacun son téléphone)</button>
+  <button class="btn primary big" data-a="m-public">🌍 Salon public (avec des inconnus)</button>`)}
+ ${card("Rejoindre avec un code",`<div class="row"><input type="text" id="pcode" maxlength="4" placeholder="CODE" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn primary" data-a="join">Rejoindre</button></div>
+  <button class="link" data-a="plist">Voir les salons publics ouverts</button><div id="publist"></div>`)}
+ <p id="hmsg" class="hint center" role="status"></p>`;
+ const c=new URLSearchParams(location.search).get("c");if(c&&$("#pcode"))$("#pcode").value=c.toUpperCase();
+}
+function rLobby(){
+ const c=S.cfg,n=S.pl.length,host=isHost,u=counts(n);
+ let h="";
+ if(!local())h+=`<div class="card center"><h2>${S.mode==="public"?"Salon public":"Code du salon"}</h2><div class="code">${code}</div><button class="btn" data-a="copy">🔗 Copier le lien</button></div>`;
+ h+=card(`Joueurs <span class="hint" style="display:inline">${n}/${BASE_MAX}</span>`,
+  `<div class="chips">${S.pl.map(p=>`<span class="chip ${p.id===S.host&&!local()?"host":""}">${esc(p.n)}${host&&p.id!==ME?` <button class="link mini" style="display:inline;margin:0" data-a="del" data-id="${p.id}">✕</button>`:""}</span>`).join("")}</div>
+  ${local()&&host?`<div class="row" style="margin-top:10px"><input type="text" id="addn" maxlength="14" placeholder="Ajouter un joueur"><button class="btn" data-a="add">+</button></div>`:""}
+  <p class="hint">${n<BASE_MIN?`Il faut au moins ${BASE_MIN} joueurs.`:`Répartition prévue : ${n-u.u-u.w} civils, ${u.u} undercover, ${u.w} Mr. White.`}</p>`);
+ if(!host)return app.innerHTML=h+`<p class="hint center">En attente de l’hôte… (tu peux le laisser configurer la partie)</p><button class="link" data-a="leave">Quitter</button>`;
+ h+=card("🎭 Répartition",`
+  ${pills("assign",[["auto","Auto"],["random","Aléatoire"],["manual","Manuel"]],c.assign)}
+  ${c.assign==="manual"?`<div class="srow"><span>Undercover</span>${step("nu",c.nu,0,Math.max(0,n-2))}</div><div class="srow"><span>Mr. White</span>${step("nw",c.nw,0,Math.max(0,n-2))}</div>
+   <p class="hint">Tu peux aussi imposer le rôle de chacun ci-dessous (tu le verras alors !).</p>
+   ${S.pl.map(p=>{const m=c.manual[p.id]||{};return`<div class="srow"><span>${esc(p.n)}</span><span class="row"><select class="mini" data-a="man" data-id="${p.id}" data-f="base">${[["auto","Auto"],["civil","Civil"],["uc","Undercover"],["mw","Mr. White"]].map(([v,l])=>`<option value="${v}" ${m.base===v?"selected":""}>${l}</option>`).join("")}</select>
+   <select class="mini" data-a="man" data-id="${p.id}" data-f="sp"><option value="none">—</option>${Object.entries(SPECIALS).map(([k,s])=>`<option value="${k}" ${m.sp===k?"selected":""}>${s.ico} ${s.n}</option>`).join("")}</select></span></div>`}).join("")}`:""}
+  <div class="srow"><span><b>Mr. White peut deviner</b><small>S’il est éliminé, dernière chance.</small></span>${tog("mwGuess",c.mwGuess)}</div>`);
+ h+=card("✨ Rôles spéciaux",Object.entries(SPECIALS).map(([k,s])=>{const ok=n>=s.min;return`<div class="sp"><b>${s.ico}</b><span><b>${s.n}</b>${s.min>3?` <span class="tag">dès ${s.min}</span>`:""}<small>${s.d}</small></span>${ok?tog("sp."+k,c.sp[k]):`<span class="hint">—</span>`}</div>`}).join("")+
+  `<div class="sp"><b>🎭</b><span><b>Mr. Meme</b><small>Chaque manche, un joueur décrit par gestes (en présentiel).</small></span>${tog("meme",c.meme)}</div>
+   <div class="sp"><b>👻</b><span><b>Tous les éliminés restent fantômes</b><small>Ils continuent de voter.</small></span>${tog("ghostAll",c.ghostAll)}</div>`);
+ h+=card("📝 Les mots",`${pills("words",[["random","Aléatoire"],["pick","Choisir un couple"],["custom","Mes mots"]],c.words)}
+  <div class="pills" style="margin-top:8px">${Object.keys(BANK).map(k=>`<button class="pill ${c.cats.includes(k)?"on":""}" data-a="cat" data-k="${k}">${k}</button>`).join("")}</div>
+  ${c.words==="pick"?`<select data-a="pickw" style="margin-top:8px"><option value="">— au hasard —</option>${c.cats.flatMap(k=>BANK[k]).map(p=>`<option ${c.pick===p.join(" / ")?"selected":""}>${esc(p.join(" / "))}</option>`).join("")}</select><p class="hint">Attention : tu verras les mots.</p>`:""}
+  <p class="hint" style="margin-top:10px">Tes propres couples (un par ligne : <i>mot civil / mot undercover</i>). Ils s’ajoutent à la banque, ou la remplacent avec « Mes mots ».</p>
+  <textarea data-a="cust" placeholder="plage / piscine&#10;chat / tigre">${esc(c.custom)}</textarea>`);
+ h+=card("⚙️ Options",`<div class="srow"><span>Indices écrits<small>Chacun tape son indice (en ligne)</small></span>${tog("typed",c.typed)}</div>
+  <div class="srow"><span>Temps de description</span>${pills("tDesc",[[0,"∞"],[15,"15 s"],[30,"30 s"],[60,"60 s"]],c.tDesc)}</div>
+  <div class="srow"><span>Temps de discussion</span>${pills("tDisc",[[0,"∞"],[60,"1 min"],[120,"2 min"],[300,"5 min"]],c.tDisc)}</div>
+  <div class="srow"><span>Points Civil</span>${step("pts.civil",c.pts.civil,0,20)}</div>
+  <div class="srow"><span>Points Undercover</span>${step("pts.uc",c.pts.uc,0,30)}</div>
+  <div class="srow"><span>Points Mr. White</span>${step("pts.mw",c.pts.mw,0,30)}</div>`);
+ h+=`<button class="btn primary big" data-a="start" ${n<BASE_MIN?"disabled":""}>Lancer la partie 🚀</button><button class="link" data-a="leave">Quitter</button>`;
+ const sy=scrollY;app.innerHTML=h;scrollTo(0,sy);
+}
+function privCard(){
+ const p=L.priv;if(!p)return"<p class='hint center'>Réception de ton mot…</p>";
+ const tags=(p.nov?"<span class='tag'>🤢 Falafel avarié : tu ne votes pas</span>":"")+(p.sp||[]).map(k=>`<span class="tag">${SPECIALS[k].ico} ${SPECIALS[k].n}</span>`).join("");
+ const info=[p.pt?`💕 Ton amoureux·se : <b>${esc(p.pt)}</b>`:"",p.du?`⚔️ Ton adversaire en duel : <b>${esc(p.du)}</b>`:""].filter(Boolean).join("<br>");
+ return`<div class="secret"><div class="hint">Ton mot secret</div><div class="word">${L.show?(p.mw?"— Aucun —<br><small>Tu es Mr. White : improvise !</small>":esc(p.word)):"•••••"}</div>
+  <button class="btn" data-a="peek">${L.show?"🙈 Cacher":"👁️ Voir"}</button><div style="margin-top:8px">${tags}</div>${L.show&&info?`<p class="hint">${info}</p>`:""}</div>`;
+}
+function rDeal(){
+ app.innerHTML=`<div class="center"><h1>Les mots sont distribués</h1></div>${privCard()}
+ <p class="hint center">Regarde ton mot… personne ne sait s’il est Civil ou infiltré. Sauf toi, peut-être !</p>
+ ${isHost?`<button class="btn primary big" data-a="go">Tout le monde est prêt → Manche 1</button>`:`<p class="hint center">L’hôte lance la manche.</p>`}`;
+}
+function listPlayers(extra){return S.pl.map(p=>`<div class="prow ${p.alive?"":"dead"} ${extra&&extra(p)||""} ${p.id===ME&&!local()?"me":""}">${esc(p.n)}${S.fal===p.id?" 🥙":""}${S.meme===p.id?" 🎭":""}<span class="pts">${p.sc}</span></div>`).join("")}
+function banner(){return(S.meme?`<div class="ban">🎭 Mr. Meme : ${esc(nm(S.meme))} décrit son mot par gestes, sans parler !</div>`:"")+(S.fal?`<div class="ban" style="background:var(--amber);color:#1b1340">🥙 ${esc(nm(S.fal))} a reçu un falafel…</div>`:"")}
+function timerHtml(){return S.end?`<div class="timer" id="tm">–</div>`:""}
+function rDescribe(){
+ const cur=S.order[S.turn],mine=cur===ME||isHost;
+ app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>Description</h1>${local()?"":privCard()}${banner()}${timerHtml()}
+ <div class="card"><h2>🎤 C’est à ${esc(nm(cur))}</h2><p class="hint" style="margin:0">Décris ton mot en un mot ou une phrase.</p>
+ ${S.cfg.typed&&!local()&&cur===ME?`<input type="text" id="clue" maxlength="80" placeholder="Ton indice" style="margin-top:8px">`:""}
+ ${mine||local()?`<button class="btn primary big" data-a="nxt">${S.turn+1>=S.order.length?"Fini → discussion":"J’ai décrit ✓ → suivant"}</button>`:""}</div>
+ ${S.order.map((id,i)=>{const c=S.clues.find(x=>x.id===id);return`<div class="prow ${i===S.turn?"cur":""}">${i+1}. ${esc(nm(id))}${i<S.turn?" ✓":""}${c?` — « ${esc(c.t)} »`:""}</div>`}).join("")}`;
+}
+function rDiscuss(){
+ app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>Discussion</h1>${local()?"":privCard()}${banner()}${timerHtml()}
+ <p class="center">Qui a un mot différent ? Ne te dévoile pas trop tôt…</p>
+ ${S.clues.length?card("Indices",S.clues.map(c=>`<div>${esc(nm(c.id))} : « ${esc(c.t)} »</div>`).join("")):""}
+ ${card("Joueurs",listPlayers())}
+ ${isHost?`<button class="btn primary big" data-a="vote">Passer au vote 🗳️</button>`:`<p class="hint center">L’hôte lance le vote.</p>`}`;
+}
+function rVote(){
+ const vs=voters(),done=Object.keys((H&&isHost?H.votes:{})).length,me=pl(ME)||{};
+ const can=(me.alive||me.gh||S.cfg.ghostAll)&&!L.voted&&!(L.priv&&L.priv.nov),cand=S.cand||aliveIds();
+ app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>Vote</h1>${privCard()}
+ ${can&&!S.pr?`<div class="card"><h2>Qui éliminer ?</h2>${cand.filter(i=>i!==ME).map(i=>`<button class="pick" data-a="cast" data-id="${i}">${esc(nm(i))}</button>`).join("")}</div>`:`<p class="center hint">Vote enregistré… en attente des autres.</p>`}
+ ${isHost?`<p class="hint center">${done}/${vs.length} votes</p><button class="btn" data-a="vote!">Clôturer le vote</button>`:""}`;
+}
+function rResult(){
+ const last=S.out.filter(o=>o.r===S.r);
+ app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>${last.length?"Éliminé !":"Pas d’élimination"}</h1>
+ ${last.map(o=>`<div class="secret"><div class="word">${esc(nm(o.id))}</div><div class="rl ${o.role}" style="font-size:1.3rem">${RL[o.role]}</div></div>`).join("")}
+ ${card("Déroulé",S.log.slice(-8).map(l=>`<div>${esc(l)}</div>`).join("")||"—")}
+ ${S.tally&&S.tally.length?card("Votes",S.tally.map(t=>`<div>${esc(nm(t.f))} → <b>${esc(nm(t.t))}</b></div>`).join("")):""}
+ ${S.win?`<div class="ban">${S.win==="civil"?"Il ne reste que des Civils !":"Il ne reste qu’un seul Civil !"}</div>`:""}
+ ${isHost?`<button class="btn primary big" data-a="next">${S.win?"Voir les résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte continue…</p>`}`;
+}
+function rEnd(){
+ const w=S.win,txt=w==="civil"?"Les Civils gagnent ! 🎉":w==="inf"?"Les infiltrés gagnent ! 😈":"Mr. White a deviné le mot ! 🎯";
+ const roleName=id=>{const r=S.roles[id];return RL[r.b]+(r.sp.length?" · "+r.sp.map(k=>SPECIALS[k].ico).join(""):"")};
+ app.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>${txt}</h1><p>Mots : <b>${esc(S.words.civ)}</b> (Civils) · <b>${esc(S.words.uc)}</b> (Undercover)</p></div>
+ ${[...S.pl].sort((a,b)=>b.sc-a.sc).map(p=>`<div class="prow ${p.id===ME&&!local()?"me":""}"><span>${esc(p.n)}<br><small class="rl ${S.roles[p.id].b}">${roleName(p.id)}</small></span><span class="pts">${p.sc}${p.g?` (${p.g>0?"+":""}${p.g})`:""}</span></div>`).join("")}
+ ${isHost?`<button class="btn primary big" data-a="again">Rejouer (scores conservés)</button>`:`<p class="hint center">L’hôte peut relancer.</p>`}<button class="link" data-a="leave">Quitter</button>`;
+}
+function renderPrompt(){
+ const pr=S.pr,who=pr.who;
+ if(local()&&!L.gate)return app.innerHTML=`<div class="center"><div class="big-emoji">📱</div><h1>Passe le téléphone à</h1><div class="word">${esc(nm(who))}</div><p class="hint">Les autres ne regardent pas !</p><button class="btn primary big" data-a="gate">Je suis ${esc(nm(who))}</button></div>`;
+ const alive=aliveIds().filter(i=>i!==who);
+ let h="";
+ if(pr.kind==="deal"){const p=privOf(who);L.priv=p;h=`<h1>Ton mot</h1>${privCard()}<button class="btn primary big" data-a="pseen">J’ai vu, je cache</button>`}
+ else if(pr.kind==="vote"){const cand=(S.cand||aliveIds()).filter(i=>i!==who);h=`<h1>${esc(nm(who))}, qui éliminer ?</h1>${cand.map(i=>`<button class="pick" data-a="cast" data-id="${i}">${esc(nm(i))}</button>`).join("")}`}
+ else if(pr.kind==="falafel")h=`<h1>🥙 Vendeur de falafels</h1><p>Donne un falafel à un joueur. Bon : il est protégé du vote. Avarié : il ne peut pas voter.</p>${alive.map(i=>`<div class="row"><button class="pick" data-a="fal" data-k="good" data-id="${i}">🥙 ${esc(nm(i))} — bon</button><button class="pick" data-a="fal" data-k="bad" data-id="${i}">🤢 avarié</button></div>`).join("")}`;
+ else if(pr.kind==="goddess")h=`<h1>⚖️ Égalité !</h1><p>Tu tranches : qui est éliminé ?</p>${pr.opts.map(i=>`<button class="pick" data-a="gd" data-id="${i}">${esc(nm(i))}</button>`).join("")}`;
+ else if(pr.kind==="avenger")h=`<h1>🗡️ Vengeance !</h1><p>Tu es éliminé : emporte quelqu’un avec toi.</p>${alive.map(i=>`<button class="pick" data-a="av" data-id="${i}">${esc(nm(i))}</button>`).join("")}`;
+ else if(pr.kind==="mwguess")h=`<h1>🎯 Dernière chance</h1><p>Tu étais Mr. White. Quel est le mot des Civils ?</p><input type="text" id="mwg" placeholder="Le mot…" autocomplete="off"><button class="btn primary big" data-a="mwg">Valider</button>`;
+ app.innerHTML=h;
+}
+function renderWaitPrompt(){}
+setInterval(()=>{if(S&&S.end){const t=$("#tm");if(t)t.textContent=Math.max(0,Math.ceil((S.end-Net.now())/1000))+" s"}tick()},500);
+
+/* ===================== CONNEXION ===================== */
+async function startOnline(mode,create,joinCode){
+ const name=$("#pname").value.trim().slice(0,14);if(!name)return msg("Entre ton prénom 🙂");
+ L.name=name;try{localStorage.setItem("soiree:name",name)}catch(e){}
+ code=create?mkCode():joinCode;
+ try{R=await Net.join("uc-"+code)}catch(e){return msg(e.message)}
+ isHost=R.host;if(create&&!isHost){R.leave();return startOnline(mode,true)}
+ R.on("st",d=>{S=d;if(!R.host&&S.ph==="lobby")L.priv=null;if(S.ph!=="vote")L.voted=false;render()});
+ R.on("priv",d=>{L.priv=d;render()});
+ if(isHost){S=newState(mode);R.on("act",act);act({k:"join",p:ME,n:name});setInterval(bc,2500);
+  if(mode==="public"){const reg=()=>S&&S.ph==="lobby"?Net.pub({room:"uc-"+code,game:"uc",host:name,count:S.pl.length,max:BASE_MAX}):Net.pub({room:"uc-"+code,close:true});reg();setInterval(reg,15000)}}
+ else{const hello=()=>{if(!S||!pl(ME))R.emit("act",{k:"join",p:ME,n:name},"host")};hello();setInterval(hello,2000)}
+}
+function startLocal(){const name=$("#pname").value.trim().slice(0,14);if(name){L.name=name;try{localStorage.setItem("soiree:name",name)}catch(e){}}
+ isHost=true;S=newState("local");act({k:"join",p:ME,n:L.name||"Joueur 1"});}
+const msg=t=>{const e=$("#hmsg");if(e)e.textContent=t};
+
+/* ===================== ÉVÉNEMENTS ===================== */
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-a]");if(!b||b.tagName==="SELECT"||b.tagName==="TEXTAREA")return;const a=b.dataset.a,d=b.dataset;
+ if(a==="m-local")startLocal();
+ else if(a==="m-private")startOnline("private",true);
+ else if(a==="m-public")startOnline("public",true);
+ else if(a==="join"){const c=$("#pcode").value.trim().toUpperCase();if(!/^[A-Z0-9]{4}$/.test(c))return msg("Code à 4 caractères.");startOnline("private",false,c)}
+ else if(a==="plist"){const l=await Net.pubList("uc");$("#publist").innerHTML=l.length?l.map(r=>`<button class="pick" data-a="jpub" data-c="${r.room.slice(3)}">${esc(r.host)} · ${r.count}/${r.max}</button>`).join(""):"<p class='hint'>Aucun salon public ouvert pour l’instant.</p>"}
+ else if(a==="jpub")startOnline("private",false,d.c);
+ else if(a==="copy"){const u=location.origin+location.pathname+"?c="+code;try{await navigator.clipboard.writeText(u);toast("Lien copié")}catch(x){prompt("Lien :",u)}}
+ else if(a==="leave"){if(R)R.leave();location.href=location.pathname}
+ else if(a==="peek"){L.show=!L.show;render()}
+ else if(a==="gate"){L.gate=true;render()}
+ else if(a==="add"){const i=$("#addn");send({k:"add",n:i.value})}
+ else if(a==="del")send({k:"del",id:d.id});
+ else if(a==="set")send({k:"cfg",path:d.path,v:isNaN(d.v)||d.v===""?d.v:+d.v});
+ else if(a==="tg"){const v=d.path.startsWith("sp.")?!S.cfg.sp[d.path.slice(3)]:!S.cfg[d.path];send({k:"cfg",path:d.path,v})}
+ else if(a==="st"){const cur=d.path.split(".").reduce((o,k)=>o[k],S.cfg);send({k:"cfg",path:d.path,v:Math.max(+d.min,Math.min(+d.max,cur+ +d.d))})}
+ else if(a==="cat"){const s=new Set(S.cfg.cats);s.has(d.k)?s.delete(d.k):s.add(d.k);if(!s.size)s.add(d.k);send({k:"cfg",path:"cats",v:[...s]})}
+ else if(a==="start")send({k:"start"});
+ else if(a==="go")send({k:"go"});
+ else if(a==="pseen"){L.gate=false;L.show=false;send({k:"pseen"})}
+ else if(a==="nxt"){const c=$("#clue");send({k:"nxt",t:c?c.value:""});if(local())L.gate=false}
+ else if(a==="vote")send({k:"vote"});
+ else if(a==="vote!")send({k:"vote!"});
+ else if(a==="cast"){L.voted=true;send({k:"cast",to:d.id});if(local())L.gate=false;render()}
+ else if(a==="fal"){send({k:"fal",to:d.id,kind:d.k});L.gate=false}
+ else if(a==="gd"){send({k:"gd",to:d.id});L.gate=false}
+ else if(a==="av"){send({k:"av",to:d.id});L.gate=false}
+ else if(a==="mwg"){send({k:"mwg",t:$("#mwg").value});L.gate=false}
+ else if(a==="next"){send({k:"next"});L.gate=false}
+ else if(a==="again")send({k:"again"});
+});
+document.addEventListener("change",e=>{const t=e.target,a=t.dataset.a;if(!a)return;
+ if(a==="man"){const m={...(S.cfg.manual[t.dataset.id]||{})};m[t.dataset.f]=t.value;send({k:"cfg",path:"manual."+t.dataset.id,v:m})}
+ else if(a==="pickw")send({k:"cfg",path:"pick",v:t.value});
+ else if(a==="cust")send({k:"cfg",path:"custom",v:t.value})});
+addEventListener("beforeunload",()=>R&&R.leave());
+render();
+</script></body></html>

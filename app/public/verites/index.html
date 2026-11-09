@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="fr" data-anim="light" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Les Petites Vérités — tout le monde confie une vérité, deux joueurs échangent les leurs en secret. Défends la vérité de l'autre sans te faire griller. 18+">
+<title>Les Petites Vérités · 18+</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#ece7ff;--surface:#fffdf8;--ink:#1b1340;--muted:#5c5585;--edge:#1b1340;--sh:#1b1340;--violet:#6a47ff;--pink:#ff4f8b;--amber:#ffc531;--teal:#19c7b0;--danger:#e23a6e}
+html[data-theme="dark"]{color-scheme:dark;--bg:#121020;--surface:#231e39;--ink:#f7f3ff;--muted:#bdb4d8;--edge:#9d93bd;--sh:#080611;--violet:#9279ff;--pink:#ff659d;--amber:#ffc531;--teal:#32d7c0;--danger:#ff7298}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%}
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font:500 1rem/1.45 "Bricolage Grotesque",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-radial-gradient(circle at 50% 120%,transparent 0 90px,color-mix(in srgb,var(--ink) 4%,transparent) 90px 92px)}
+.wrap{position:relative;z-index:1;max-width:620px;margin:0 auto;padding:20px 16px 90px}
+.hero{text-align:center;padding:8px 0 4px}
+.logo{font-size:48px;display:inline-block;transform:rotate(-8deg)}
+h1{font-size:clamp(2rem,8.5vw,3rem);line-height:1.02;margin:.1em 0 .25em;font-weight:800;letter-spacing:-.02em;transform:rotate(-1.2deg)}
+.hero p{color:var(--muted);margin:0 auto;max-width:42ch}
+h2{font-size:1.12rem;margin:0 0 10px;font-weight:800}
+.card{background:var(--surface);border:2.5px solid var(--edge);border-radius:18px;padding:16px;margin:14px 0;box-shadow:5px 5px 0 var(--sh)}
+.row{display:flex;gap:8px;align-items:center}.between{justify-content:space-between}.center{text-align:center}
+input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--edge);border-radius:12px;padding:11px 13px}
+textarea{resize:vertical;min-height:84px}
+input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--pink);outline-offset:2px}
+.btn{font:inherit;font-weight:800;color:var(--ink);background:var(--surface);border:2.5px solid var(--edge);border-radius:12px;padding:11px 18px;cursor:pointer;box-shadow:3px 3px 0 var(--sh);transition:transform .1s,box-shadow .1s}
+.btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 var(--sh)}
+.btn.primary{background:var(--violet);color:#fff}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.ghosty{background:transparent;box-shadow:none}
+.btn.big{width:100%;font-size:1.1rem;padding:15px;margin-top:10px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.hint{color:var(--muted);font-size:.92rem;margin:10px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--amber);border:2px solid var(--edge);border-radius:99px;padding:5px 13px;font-weight:800;color:#1b1340}
+.chip.dim{background:var(--surface);color:var(--muted)}
+.chip.ok{background:var(--teal)}
+.chip button{border:0;background:transparent;font:inherit;font-size:1.1rem;cursor:pointer;line-height:1;padding:0}
+.code{font-size:clamp(2.4rem,10vw,3.2rem);font-weight:800;letter-spacing:.22em;text-align:center;margin:4px 0;color:var(--violet)}
+.warn18{background:var(--pink);color:#fff;border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;font-weight:800;display:flex;gap:10px;align-items:flex-start;margin:14px 0;box-shadow:4px 4px 0 var(--sh)}
+.warn18 input{width:22px;height:22px;accent-color:var(--violet);flex:none;margin-top:2px}
+.warn18 small{display:block;font-weight:500;opacity:.92}
+.mode{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;margin:8px 0;cursor:pointer;box-shadow:3px 3px 0 var(--sh);transition:transform .1s}
+.mode:active{transform:translate(2px,2px)}
+.mode.on{background:color-mix(in srgb,var(--teal) 30%,var(--surface));border-color:var(--edge);box-shadow:3px 3px 0 var(--teal)}
+.mode .mi{font-size:1.4rem}
+.mode small{display:block;color:var(--muted);font-weight:500}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{width:42px;height:42px;border-radius:50%;border:2.5px solid var(--edge);background:var(--surface);color:var(--ink);font:inherit;font-size:1.3rem;font-weight:800;cursor:pointer}
+.stepper output{min-width:3.4ch;text-align:center;font-weight:800;font-size:1.25rem}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:2px dashed var(--edge)}
+.srow:first-of-type{border-top:0}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font:inherit;font-weight:800;font-size:.88rem;background:var(--surface);border:2px solid var(--edge);border-radius:99px;padding:6px 13px;cursor:pointer}
+.pill.on{background:var(--violet);color:#fff}
+.qcard{background:var(--surface);border:3px solid var(--edge);border-radius:22px;padding:26px 20px;margin:16px 0;box-shadow:7px 7px 0 var(--violet);text-align:center}
+.qcard .q{font-size:clamp(1.5rem,6vw,2rem);font-weight:800;line-height:1.2;margin:0}
+.qcard .sub{color:var(--muted);font-weight:800;font-size:.9rem;text-transform:uppercase;letter-spacing:.08em;margin:0 0 12px}
+.truth{margin:14px 0;padding:18px 16px;background:var(--bg);border:2.5px solid var(--edge);border-radius:16px;font-size:clamp(1.25rem,5vw,1.6rem);font-weight:800;line-height:1.3;text-align:center;word-break:break-word}
+.swapped{background:var(--pink);color:#fff;border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;font-weight:800;margin:0 0 12px;box-shadow:3px 3px 0 var(--sh)}
+.swapped small{display:block;font-weight:500;opacity:.95}
+.counter{text-align:right;font-size:.85rem;color:var(--muted);font-weight:800}
+.counter.over{color:var(--danger)}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
+.pick{font:inherit;font-weight:800;color:var(--ink);background:var(--surface);border:2.5px solid var(--edge);border-radius:12px;padding:13px 8px;cursor:pointer;box-shadow:3px 3px 0 var(--sh);text-align:center;word-break:break-word;line-height:1.15}
+.pick.on{background:var(--teal)}
+.pick:disabled{opacity:.45;cursor:not-allowed}
+.timer{font-size:clamp(3.4rem,16vw,5.5rem);font-weight:800;text-align:center;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:6px 0;line-height:1}
+.timer.low{color:var(--danger)}
+.bar{height:14px;border-radius:9px;background:var(--surface);border:2px solid var(--edge);overflow:hidden;margin:8px 0 16px}
+.bar i{display:block;height:100%;background:var(--pink);transition:width .25s linear}
+.plist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.prow{display:flex;align-items:center;gap:10px;background:var(--surface);border:2.5px solid var(--edge);border-radius:12px;padding:10px 13px;font-weight:800;box-shadow:3px 3px 0 var(--sh)}
+.prow .pts{margin-left:auto;background:var(--amber);border:2px solid var(--edge);border-radius:99px;padding:2px 11px;font-size:.92rem}
+.prow .delta{color:var(--teal);font-size:.9rem}
+.prow.me{border-style:solid;box-shadow:3px 3px 0 var(--violet)}
+.prow.top1{background:color-mix(in srgb,var(--amber) 40%,var(--surface))}
+.readlist{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.readrow{display:flex;align-items:center;gap:10px;border:2.5px solid var(--edge);border-radius:12px;padding:11px 13px;background:var(--surface);font-weight:800}
+.readrow.done{opacity:.6;background:color-mix(in srgb,var(--teal) 25%,var(--surface))}
+.readrow.cur{box-shadow:3px 3px 0 var(--pink)}
+.readrow .st{margin-left:auto}
+.reveal-big{font-size:clamp(1.4rem,6vw,1.9rem);font-weight:800;text-align:center;line-height:1.25;margin:14px 0}
+.adminbar{position:sticky;bottom:12px;z-index:20;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(4px);border:2.5px solid var(--edge);border-radius:16px;padding:9px;margin-top:16px;box-shadow:4px 4px 0 var(--sh)}
+.adminbar .btn{padding:8px 13px;font-size:.9rem}
+.mixwrap{text-align:center;padding:44px 0}
+.mixemoji{font-size:4.2rem;display:inline-block;animation:spinmix 1.1s ease-in-out infinite}
+@keyframes spinmix{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.25)}100%{transform:rotate(360deg) scale(1)}}
+.mixcards{display:flex;justify-content:center;gap:10px;margin-top:18px}
+.mixcards span{width:46px;height:64px;border:2.5px solid var(--edge);border-radius:10px;background:var(--surface);box-shadow:3px 3px 0 var(--violet);animation:cardshuf .7s ease-in-out infinite alternate}
+.mixcards span:nth-child(2){animation-delay:.12s}
+.mixcards span:nth-child(3){animation-delay:.24s}
+.mixcards span:nth-child(4){animation-delay:.36s}
+@keyframes cardshuf{from{transform:translateX(-14px) rotate(-6deg)}to{transform:translateX(14px) rotate(6deg)}}
+.statcard{background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;margin:8px 0;box-shadow:3px 3px 0 var(--sh);font-weight:800}
+.statcard small{display:block;color:var(--muted);font-weight:500}
+.crown{font-size:4.4rem;text-align:center;display:block;animation:crownb 1.6s ease-in-out infinite}
+@keyframes crownb{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-8px) rotate(4deg)}}
+.link{background:none;border:0;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer;display:block;margin:16px auto 0}
+.warnmsg{background:var(--amber);border:2px solid var(--edge);border-radius:12px;padding:9px 13px;font-weight:800;margin:0 0 12px;color:#1b1340}
+.chip.ok,.pick.on,.prow .pts{color:#1b1340}
+.homelink{position:fixed;left:max(14px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));z-index:50;width:50px;height:50px;border-radius:50%;border:2.5px solid var(--edge);background:var(--surface);color:var(--ink);font-size:1.3rem;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:3px 3px 0 var(--sh)}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:70;overflow:hidden}
+#fx i{position:absolute;top:-20px;width:10px;height:16px;border-radius:2px;animation:fall ease-in forwards}
+@keyframes fall{from{transform:translate(0,-6vh) rotate(0)}to{transform:translate(var(--dx),108vh) rotate(var(--r))}}
+.stage{animation:rise .3s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}}
+.badge18{display:inline-block;background:var(--pink);color:#fff;border:2px solid var(--edge);border-radius:99px;padding:2px 12px;font-weight:800;font-size:.85rem;transform:rotate(4deg)}
+@media (max-width:480px){.pick-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== Bouton et panneau de réglages (musique, animations) ===== */
+.setbtn{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:50;width:50px;height:50px;border-radius:50%;border:2.5px solid var(--edge);background:var(--surface);color:var(--ink);font-size:1.4rem;line-height:1;cursor:pointer;box-shadow:3px 3px 0 var(--sh);padding:0}
+.setpanel{position:fixed;inset:0;z-index:90;background:rgba(27,19,64,.5);display:flex;align-items:flex-end;justify-content:center}
+.setbox{width:100%;max-width:30rem;max-height:92dvh;overflow:auto;background:var(--surface);border:2.5px solid var(--edge);border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -6px 0 var(--sh)}
+@media (min-width:700px){.setpanel{align-items:center}.setbox{border-radius:20px;box-shadow:6px 6px 0 var(--sh)}}
+.setbox .pills{margin:4px 0 8px}
+input[type=range]{width:100%;accent-color:var(--violet)}
+
+/* ===== Animations (réglables dans ⚙️) ===== */
+@keyframes pop{from{opacity:0;transform:scale(.92) rotate(-1.2deg)}}
+@keyframes wiggle{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(6deg) scale(1.1)}}
+@keyframes drift{from{transform:translateY(105vh) rotate(0)}to{transform:translateY(-15vh) rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+#bgfx{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#bgfx span{position:absolute;top:0;opacity:.13;animation:drift linear infinite}
+html:not([data-anim="off"]) .truth{animation:pop .3s cubic-bezier(.3,1.5,.5,1)}
+html:not([data-anim="off"]) .timer.low{animation:pulse .8s ease-in-out infinite}
+html:not([data-anim="off"]) .btn:hover:not(:disabled):not(:active){transform:translateY(-2px) rotate(-.6deg)}
+html[data-anim="full"] .logo{animation:wiggle 3.2s ease-in-out infinite}
+html[data-anim="off"] *,html[data-anim="off"] *::before,html[data-anim="off"] *::after{animation:none!important;transition:none!important}
+</style>
+</head>
+<body>
+<div id="bgfx" aria-hidden="true"></div>
+<main class="wrap">
+<p id="warn" class="warnmsg" hidden role="status">Connexion à l’hôte perdue… patiente un instant ou reviens au salon.</p>
+
+<!-- ============ ACCUEIL ============ -->
+<section id="s-home">
+  <div class="card" id="rejoin" hidden>
+    <h2>🔁 Partie en cours</h2>
+    <p class="hint" id="rejoin-info" style="margin:0 0 4px"></p>
+    <button class="btn primary big" data-act="rejoin">Reprendre ma place</button>
+    <button class="link" data-act="forget">Non merci, nouvelle partie</button>
+  </div>
+  <header class="hero">
+    <div class="logo">🤫</div>
+    <h1>Les Petites Vérités <span class="badge18">18+</span></h1>
+    <p>Tout le monde confie une vérité. Deux joueurs échangent les leurs en secret et doivent défendre celle de l’autre… sans se faire griller. De 4 à 20 joueurs, chacun sur son écran.</p>
+  </header>
+  <label class="warn18">
+    <input type="checkbox" id="age18">
+    <span>Je confirme que tous les joueurs ont 18 ans ou plus.<small>Ce jeu peut aborder des sujets pour adultes : confidences, soirées, amour et petits secrets.</small></span>
+  </label>
+  <div class="card">
+    <h2>Ton prénom</h2>
+    <input type="text" id="pname" placeholder="Prénom" maxlength="16" autocomplete="off">
+    <button class="btn primary big" data-act="create">Créer une partie 🚀</button>
+  </div>
+  <div class="card">
+    <h2>Rejoindre une partie</h2>
+    <div class="row">
+      <input type="text" id="pcode" placeholder="CODE" maxlength="4" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800">
+      <button class="btn primary" data-act="join">Rejoindre</button>
+    </div>
+  </div>
+  <p id="hmsg" class="hint" role="status"></p>
+</section>
+
+<!-- ============ SALON ============ -->
+<section id="s-lobby" hidden>
+  <div class="card center">
+    <h2>Code de la partie</h2>
+    <div class="code" id="lcode"></div>
+    <button class="btn" data-act="copylink">🔗 Copier le lien d’invitation</button>
+    <p class="hint">Chaque joueur ouvre le lien, entre le code et son prénom.</p>
+  </div>
+  <div class="card">
+    <h2>Les joueurs <span id="pcount" class="hint" style="display:inline"></span></h2>
+    <div id="plist" class="chips"></div>
+    <p id="phint" class="hint"></p>
+  </div>
+  <div id="cfg-host" hidden>
+    <div class="card">
+      <h2>Le mode</h2>
+      <div id="modes"></div>
+    </div>
+    <div class="card">
+      <h2>La partie</h2>
+      <div class="srow"><span><b>Nombre de manches</b></span>
+        <div class="stepper"><button data-act="rminus" aria-label="Moins de manches">−</button><output id="rn">5</output><button data-act="rplus" aria-label="Plus de manches">+</button></div>
+      </div>
+      <div class="srow"><span><b>Durée de l’interrogatoire</b></span>
+        <div class="pills" id="timerpills"></div>
+      </div>
+      <div class="srow"><span><b>👻 Mode Fantôme</b><br><small class="hint" style="margin:2px 0 0">Parfois, personne n’est échangé… mais personne ne le sait.</small></span>
+        <div class="pills" id="ghostpills"></div>
+      </div>
+    </div>
+    <button class="btn primary big" id="start" data-act="start">Lancer la partie 🚀</button>
+  </div>
+  <p id="wait-host" class="hint center" hidden>En attente que l’hôte configure et lance la partie…</p>
+  <button class="link" data-act="leave">Quitter le salon</button>
+</section>
+
+<!-- ============ PARTIE ============ -->
+<section id="s-game" hidden>
+  <div id="stage" class="stage"></div>
+  <div id="admin" class="adminbar" hidden>
+    <span style="font-weight:800;font-size:.85rem;align-self:center">👑 Hôte :</span>
+    <button class="btn" data-act="skip">Passer l’étape ⏭</button>
+    <button class="btn" data-act="skipround">Passer la manche ⏭⏭</button>
+    <button class="btn danger" data-act="endgame">Fin ⏹</button>
+  </div>
+</section>
+
+<!-- ============ FIN ============ -->
+<section id="s-final" hidden>
+  <div id="final-stage" class="stage"></div>
+  <button class="link" data-act="leave">Retour à l’accueil</button>
+</section>
+
+</main>
+<div id="fx" aria-hidden="true"></div>
+<a class="homelink" href="/" aria-label="Retour au hub de jeux">🏠</a>
+<button id="setbtn" class="setbtn" data-act="setopen" aria-label="Réglages (affichage, musique et animations)" aria-haspopup="dialog">⚙️</button>
+<div id="setpanel" class="setpanel" data-act="setclose" data-bd="1" hidden role="dialog" aria-modal="true" aria-label="Réglages">
+  <div class="setbox">
+    <h2>⚙️ Réglages</h2>
+    <div class="srow"><b>🌙 Affichage</b></div>
+    <div class="pills">
+      <button class="pill" data-act="theme" data-theme="light">☀️ Clair</button>
+      <button class="pill" data-act="theme" data-theme="dark">🌙 Sombre</button>
+    </div>
+    <div class="srow"><b>🎵 Musique de fond</b><button class="pill" id="mtoggle" data-act="mtoggle"></button></div>
+    <label class="srow" for="vol"><span>Volume</span><output id="volv"></output></label>
+    <input type="range" id="vol" min="0" max="100" step="5" aria-label="Volume de la musique">
+    <div class="srow"><b>✨ Animations</b></div>
+    <div class="pills">
+      <button class="pill" data-act="anim" data-a="off">Aucune</button>
+      <button class="pill" data-act="anim" data-a="light">Légères</button>
+      <button class="pill" data-act="anim" data-a="full">Complètes</button>
+    </div>
+    <p class="hint">Complètes : emojis qui flottent en fond et logo animé. Les confettis font partie des animations légères.</p>
+    <button class="btn primary big" data-act="setclose">Fermer</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================================================================
+   LES PETITES VÉRITÉS — hôte autoritaire, relais SSE/REST
+   S = état public (diffusé par l'hôte, SANS les vérités)
+   H = mémoire privée de l'hôte (vérités, attributions, votes)
+   ================================================================ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const pickR = a => a[Math.floor(Math.random()*a.length)];
+const CH = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const ME = (()=>{ let v=""; try{v=localStorage.getItem("lpv:id")||"";}catch(e){}
+  if(!v){ v=(Math.random().toString(36)+"00000000").slice(2,10); try{localStorage.setItem("lpv:id",v);}catch(e){} } return v; })();
+
+const TIMER_OPTS = [[60,"1:00"],[90,"1:30"],[120,"2:00"],[150,"2:30"],[180,"3:00"]];
+const GHOST_OPTS = [["jamais","Jamais"],["rares","Rares"],["parfois","Parfois"],["souvent","Souvent"]];
+const GHOST_RATE = {jamais:0, rares:0.15, parfois:0.32, souvent:0.5};
+const MIN_P = 4, MAX_P = 20, MAXLEN = 180;
+
+const MODES = {
+  classique:{ico:"🎈", name:"Classique", desc:"Le mode complet : des confidences pour tous les groupes."},
+  pimente:{ico:"🌶️", name:"Pimenté", desc:"Des questions bien plus épicées, pour soirées qui assument."},
+  explosif:{ico:"💥", name:"Explosif", desc:"Des sujets à fort potentiel de drama. Accrochez-vous."},
+  entrenous:{ico:"💛", name:"Entre Nous", desc:"Pour les groupes qui se connaissent vraiment."},
+  famille:{ico:"🍽️", name:"Repas de famille", desc:"Pour (re)découvrir ta famille autrement."},
+  evjf:{ico:"🥂", name:"EVJF & EVG", desc:"Tout ce qui s’y passe reste entre vous."},
+  totale:{ico:"🎢", name:"La Totale", desc:"Classique, Pimenté et Entre Nous mélangés, en montée crescendo."},
+  coquin:{ico:"🔥", name:"Coquin", desc:"La version très chaude : désirs, secrets de lit et nuits agitées. Entre adultes consentants."}
+};
+
+const Q = {
+classique:[
+"Ma peur la plus irrationnelle, c’est…","Le truc le plus gênant que j’aie fait en public, c’est…","Ma plus grosse honte d’enfance, c’est…",
+"Le mensonge que je raconte le plus souvent, c’est…","Mon plaisir coupable, c’est…","La chose la plus bizarre que j’aie mangée, c’est…",
+"Mon pire rencard, c’était…","Le surnom dont j’ai le plus honte, c’est…","La dernière chose que j’ai cherchée sur Google, c’est…",
+"Ce que je fais quand je suis seul(e) chez moi, c’est…","Ma plus grosse flemme assumée, c’est…","Le pire cadeau que j’aie reçu, c’est…",
+"Ce qui me fait pleurer à tous les coups, c’est…","Mon talent le plus inutile, c’est…","La chose que je n’ai jamais avouée à mes parents, c’est…",
+"Mon pire fail au travail ou à l’école, c’est…","Ce que les gens seraient surpris d’apprendre sur moi, c’est…","Ma phobie la plus ridicule, c’est…",
+"Le truc que j’ai chipé étant petit(e), c’est…","Ma dernière grosse honte, c’est…","Ce que je fais semblant de maîtriser, c’est…",
+"Le pire surnom que j’aie donné à quelqu’un, c’est…","Mon habitude la plus bizarre, c’est…","La chose la plus enfantine que je fais encore, c’est…",
+"Le pire achat impulsif de ma vie, c’est…","Ce que je déteste faire mais que je fais quand même, c’est…"],
+pimente:[
+"Mon crush le plus inavouable, c’est…","Le message le plus osé que j’aie envoyé, c’était…","Ma pire technique de drague, c’est…",
+"Le râteau le plus violent que j’aie pris, c’est…","Ce que j’ai fait à 3 h du matin et que je regrette, c’est…","Le fantasme le plus sage que je peux avouer, c’est…",
+"Le pire surnom qu’on m’ait donné dans l’intimité, c’est…","Ma plus grosse honte en rendez-vous amoureux, c’est…","Ce que je cacherais dans mon historique, c’est…",
+"La chose la plus audacieuse que j’aie faite pour séduire, c’est…","Mon premier baiser, c’était…","Le pire texto envoyé à la mauvaise personne, c’est…",
+"Ce que je n’ai jamais osé demander à un(e) partenaire, c’est…","Mon pire lendemain de soirée, c’était…","Le mensonge que j’ai dit pour impressionner un crush, c’est…",
+"Ce qui me fait craquer à tous les coups, c’est…","Ma pire habitude quand quelqu’un me plaît, c’est…","La chose la plus romantique que j’aie faite, c’est…",
+"Ce que j’ai fait en soirée dont je ne suis pas fier(ère), c’est…","Mon pire ghosting, subi ou infligé, c’est…","La pire phrase de drague qu’on m’ait sortie, c’est…",
+"Le pire rencard issu d’une appli, c’était…","Ce que je ne referai plus jamais en amour, c’est…","Ma technique infaillible (ou pas) pour séduire, c’est…"],
+explosif:[
+"La personne de ce groupe que j’ai jugée avant de la connaître, c’est…","Le secret d’un ami que j’ai failli révéler, c’est…","La pire embrouille que j’aie eue avec quelqu’un, c’était…",
+"Ce qui m’énerve le plus chez les gens de ce groupe, c’est…","La fois où j’ai menti à tout le groupe, c’était…","La personne que j’ai ghostée, et pourquoi, c’est…",
+"Ce que j’ai dit dans le dos de quelqu’un ici, c’est…","La fois où j’ai failli quitter le groupe, c’était…","Ce que je ne pardonnerai jamais, c’est…",
+"Mon pire clash en soirée, c’était…","La rumeur la plus folle que j’aie entendue sur moi, c’est…","La chose que j’ai faite par vengeance, c’est…",
+"Ce que je dirais si je pouvais parler sans aucune conséquence, c’est…","La fois où j’ai pleuré à cause de quelqu’un, c’était…","Le pire défaut que je me reconnais, c’est…",
+"Ce que je reproche à mes amis, c’est…","La fois où j’ai été un mauvais ami, c’était…","Ce que je n’ai jamais digéré, c’est…",
+"La dispute la plus ridicule que j’aie eue, c’était…","La chose que j’ai faite exprès pour rendre quelqu’un jaloux, c’est…"],
+entrenous:[
+"Ce que je n’ai jamais osé vous dire, c’est…","Mon meilleur souvenir avec vous, c’est…","La fois où vous m’avez sauvé(e) sans le savoir, c’était…",
+"Ce que je vous envie parfois, c’est…","Le truc que je fais exprès pour vous faire rire, c’est…","Ce que j’ai failli ne jamais vous pardonner, c’est…",
+"Ce que je ferais pour vous sans hésiter, c’est…","La chose que j’admire le plus chez vous, c’est…","Mon pire souvenir avec le groupe, c’est…",
+"Ce que je ressens quand on ne se voit pas longtemps, c’est…","Le cadeau de votre part qui m’a le plus touché(e), c’est…","Ce que j’aimerais qu’on fasse plus souvent ensemble, c’est…",
+"La fois où j’ai eu honte de vous (désolé), c’était…","Ce que je sais de vous que personne d’autre ne sait, c’est…","La première impression que j’ai eue de vous, c’était…",
+"Ce dont je ne vous ai jamais remerciés, c’est…","La chose que je comprends enfin à votre sujet, c’est…","Ce que je ferais si on devait se perdre de vue, c’est…"],
+famille:[
+"Le secret de famille que je ne suis pas censé(e) connaître, c’est…","Mon souvenir de repas de famille le plus gênant, c’est…","Le cadeau de famille que j’ai détesté, c’est…",
+"La bêtise que mes parents n’ont jamais sue, c’est…","Ce que ma famille croit à tort à mon sujet, c’est…","Le plat de famille que je déteste en secret, c’est…",
+"La chose que j’ai cassée et cachée, c’est…","Mon souvenir d’enfance le plus drôle, c’est…","Ce que j’ai dit un jour à table et qui a fait taire tout le monde, c’est…",
+"La tradition de famille que je trouve ridicule, c’est…","Ce que je faisais en cachette pendant les repas, c’était…","La photo de famille qui me fait le plus honte, c’est…",
+"Ce que je n’ai jamais osé dire à mes parents, c’est…","Mon pire cadeau offert à un membre de la famille, c’était…","La dispute de famille dont je me souviens encore, c’est…",
+"Ce que je pique toujours dans la cuisine en cachette, c’est…","La chose que ma famille ignore sur ma vie actuelle, c’est…","Le surnom que ma famille me donne et que je déteste, c’est…"],
+evjf:[
+"Ce qui s’est déjà passé en soirée et qui doit rester entre nous, c’est…","La pire idée qu’on ait eue en soirée, c’est…","Ce que je prévois de faire ce soir et que personne ne sait, c’est…",
+"Ce que je n’oublierai jamais de nos soirées, c’est…","Le pire état dans lequel je me suis réveillé(e), c’était…","Ce que je ferai si on me met au défi ce soir, c’est…",
+"Mon pire souvenir de ce genre de soirée, c’est…","Ce que la ou le futur(e) marié(e) ne doit jamais savoir, c’est…","La chose la plus folle que j’aie vue en soirée, c’est…",
+"La danse que je sors toujours après deux verres, c’est…","Ce que je dirais au mariage si on me passait le micro, c’est…","Le défi que je lance pour ce soir, c’est…",
+"Ce que je prévois comme vengeance pour mon propre enterrement de vie de célibataire, c’est…","La chose la plus embarrassante que j’aie faite devant ce groupe, c’est…",
+"Ce que j’ai promis de ne jamais raconter, et que je ne raconterai pas, c’est…","Le pire pari que j’aie accepté en soirée, c’était…"]
+};
+const EX = {
+classique:"« …les pigeons. Ils ont des yeux trop petits, je ne leur fais pas confiance. »",
+pimente:"« …mon prof de sport de terminale. Je préfère que ce soit dit ici plutôt qu’en tribunal. »",
+explosif:"« …je pensais que Léa était insupportable. Puis elle m’a prêté sa voiture. Je suis faible. »",
+entrenous:"« …que sans vous, j’aurais probablement quitté la ville il y a deux ans. »",
+famille:"« …que c’était moi qui avais mangé le gâteau de mamie en 2014. Désolé, tonton. »",
+evjf:"« …impliquant une fontaine, trois flamants roses gonflables et un accord avec la mairie. »",
+totale:"« …les pigeons. Ils ont des yeux trop petits, je ne leur fais pas confiance. »",
+coquin:"« …disons que l’hôtel ne m’a pas facturé que la chambre. On n’en parle plus. »"
+};
+
+/* ---------- Nouvelles questions (banques élargies) ---------- */
+Q.coquin=[
+"Mon endroit le plus insolite pour un câlin, c’était…","La chose la plus osée que j’aie faite en soirée, c’est…","Mon pire lendemain de nuit d’amour, c’était…",
+"Le fantasme le plus sage que je peux avouer ici, c’est…","Ce que je ne dirai jamais à mes parents sur ma vie amoureuse, c’est…","La pire panne pendant un moment intime, c’était…",
+"Le truc le plus gênant entendu à travers un mur, c’était…","Ma pire expérience avec un(e) inconnu(e), c’était…","Le message le plus hot que j’aie reçu, c’était…",
+"Ce que je cache dans ma table de nuit, c’est…","Mon pire réveil chez quelqu’un, c’était…","La chose que j’ai faite pour séduire et qui a totalement raté, c’est…",
+"Le pire prétexte utilisé pour rentrer accompagné(e), c’était…","Ma plus grande honte après une nuit d’amour, c’est…","Le défi le plus osé que j’aie relevé, c’était…",
+"Ce qui me fait rougir rien que d’y penser, c’est…","Le pire moment où l’on m’a surpris(e), c’était…","La chose que je n’ai jamais osé demander au lit, c’est…",
+"Mon pire fou rire pendant un câlin, c’était…","Le lieu public où j’ai failli me faire prendre, c’était…","Ce que mon historique de recherche révélerait, c’est…",
+"La pire phrase entendue au lit, c’était…","Le truc que j’ai fait une fois et que je ne referai jamais, c’est…","Ma pire technique de drague en soirée, c’est…",
+"Le pire surnom entendu dans l’intimité, c’était…","La chose la plus folle que j’aie faite par désir, c’est…","Mon pire plan drague sur une appli, c’était…",
+"Le pire SMS envoyé après minuit, c’était…","Ce que je ferais si on me laissait une nuit sans aucune conséquence, c’est…","Ma plus longue nuit blanche, c’était à cause de…",
+"Le déguisement le plus raté (ou réussi) que j’aie porté pour quelqu’un, c’était…","La chose la plus romantique et coquine à la fois que j’aie vécue, c’est…"
+];
+Q.classique.push(
+"La chose la plus enfantine que je possède encore, c’est…","Mon pire fou rire au mauvais moment, c’était…","Le truc que je fais toujours quand je suis stressé(e), c’est…",
+"Ma plus grande honte en vacances, c’est…","Le pire mensonge que j’ai dit à un prof, c’était…","Ce que je mangerais tous les jours si je pouvais, c’est…",
+"Le pire cadeau que j’aie offert, c’était…","Ma manie la plus bizarre au volant, c’est…","La chose que je n’ai jamais réussi à apprendre, c’est…",
+"Mon pire achat en ligne, c’était…","Le truc que je collectionne en secret, c’est…","Ma plus grosse peur quand j’étais petit(e), c’était…",
+"La pire coupe de cheveux que j’aie eue, c’était…","Ce que je fais toujours en retard, c’est…","Ma pire expérience au restaurant, c’était…",
+"Le truc le plus embarrassant dans ma chambre, c’est…","Ce que je chantonne sans m’en rendre compte, c’est…","La chose que je fais semblant de détester mais que j’adore, c’est…",
+"Mon pire moment de solitude en groupe, c’était…","Le truc que je n’ose jamais jeter, c’est…","Ma plus grande fierté secrète, c’est…",
+"Le pire mot que j’aie inventé en parlant trop vite, c’est…","Ce que je fais quand personne ne répond dans le groupe, c’est…","Le truc le plus ringard que j’écoute, c’est…",
+"Ma technique pour éviter quelqu’un dans la rue, c’est…","Le pire déguisement que j’aie porté, c’était…","Ce que je vérifie trois fois avant de partir, c’est…",
+"Le truc que je dis tout le temps et qui énerve tout le monde, c’est…","Ma pire galère de transport, c’était…","La chose que j’ai apprise très tard et qui a choqué tout le monde, c’est…",
+"Mon habitude la plus agaçante selon les autres, c’est…","Le truc que je fais mieux que tout le monde ici, c’est…","Ma plus belle honte de soirée, c’est…",
+"Ce que je ferais si je gagnais au loto demain, c’est…","La chose la plus bizarre dans mon sac, c’est…","Mon secret pour ne jamais être à l’heure, c’est…",
+"Le truc qui me met en colère pour rien, c’est…","Ma pire idée de génie à 3 h du matin, c’était…","La chose que j’ai déjà faite en dormant, c’est…",
+"Le pire conseil que j’aie suivi, c’était…"
+);
+Q.pimente.push(
+"Le dernier rêve un peu chaud dont je me souviens, c’était…","Ma pire technique pour aborder quelqu’un, c’est…","Le message que j’ai écrit sans jamais l’envoyer, c’était…",
+"Mon crush le plus inattendu, c’est…","Le pire surnom que j’aie donné à un(e) ex, c’est…","Ce que j’ai fait pour impressionner quelqu’un qui me plaisait, c’est…",
+"Ma plus grosse honte devant un(e) crush, c’est…","Le pire rencard que j’aie laissé tomber, c’était…","Ce que je regarde en premier chez quelqu’un, c’est…",
+"La chose la plus romantique qu’on m’ait faite, c’est…","Le truc qui me fait craquer à coup sûr, c’est…","Ma pire habitude quand je drague, c’est…",
+"Le mensonge que j’ai dit à un rencard, c’est…","Ce que je ne referai plus jamais à un premier rendez-vous, c’est…","Le pire compliment que j’aie reçu, c’était…",
+"Le pire moment pour un fou rire pendant un rencard, c’était…","Ce que j’ai stalké en dernier sur les réseaux, c’est…","Ma plus grande honte en boîte, c’est…",
+"Le pire baiser que j’aie donné, c’était…","Ce que je ferais si mon crush d’hier me relançait aujourd’hui, c’est…"
+);
+Q.explosif.push(
+"La fois où j’ai cassé avec quelqu’un par message, c’était…","Ce que je pense vraiment du groupe quand je suis fatigué(e), c’est…","La pire chose que j’aie dite sous le coup de la colère, c’est…",
+"La fois où j’ai fait semblant d’être malade pour éviter quelqu’un ici, c’était…","La pire trahison que j’aie vécue, c’était…","Ce que j’ai fait et dont je ne suis vraiment pas fier(ère), c’est…",
+"La fois où j’ai ri du problème de quelqu’un, c’était…","Le truc que j’ai dit dans le dos de quelqu’un et qui s’est su, c’est…","Ma pire dispute avec un(e) ami(e), c’était…",
+"La fois où j’ai menti pour couvrir quelqu’un, c’était…","La pire rumeur que j’aie lancée sans le vouloir, c’est…","Ce que j’ai détruit par colère, c’est…",
+"La fois où j’ai été un(e) vrai(e) salaud(e), c’était…","Ce que je n’ai toujours pas digéré chez quelqu’un ici, c’est…","La fois où j’ai été jaloux(se) pour une raison ridicule, c’était…"
+);
+Q.entrenous.push(
+"Ce que vous ne savez toujours pas sur moi, c’est…","La fois où vous m’avez déçu(e) sans le savoir, c’était…","Ce que j’aimerais qu’on fasse plus souvent, c’est…",
+"Mon pire souvenir avec vous, c’est…","Ce que je n’ai jamais osé vous demander, c’est…","Le truc que je fais exprès pour vous énerver, c’est…",
+"Ce que je vous ai caché pendant des années, c’est…","La fois où j’ai eu le plus peur pour vous, c’était…","Ce que je changerais dans notre amitié, c’est…",
+"Ce que je pense vraiment de votre couple (ou de votre célibat), c’est…","La fois où vous m’avez fait mourir de rire, c’était…","Ce que je vous envie le plus, c’est…",
+"Le moment où je me suis senti(e) le plus proche de vous, c’était…"
+);
+Q.famille.push(
+"Le cadeau que j’ai refilé à quelqu’un d’autre, c’était…","Ce que je fais en cachette quand je rentre chez mes parents, c’est…","La tradition que je déteste mais que je subis, c’est…",
+"Le mensonge que je maintiens en famille depuis des années, c’est…","La chose que je critique chez eux mais que je fais pareil, c’est…","Mon pire repas de famille, c’était…",
+"Ce que je n’ai jamais dit à mon frère ou ma sœur, c’est…","La photo de famille que je déteste le plus, c’est…","Ce que je pique toujours chez mes parents, c’est…",
+"La dispute la plus ridicule qu’on ait eue, c’était…","Ce que ma famille ne comprendra jamais à ma vie, c’est…","Le secret que je garde pour protéger quelqu’un de la famille, c’est…",
+"La chose que je faisais en cachette pendant les repas, c’était…"
+);
+Q.evjf.push(
+"Ce que je prévois de faire ce soir et que personne ne sait, c’est…","Ce que je ferai pour me venger lors du prochain EVJF ou EVG, c’est…","La chose la plus folle que j’aie vue en soirée, c’est…",
+"Ce que j’ai fait à la dernière soirée et que j’assume à moitié, c’est…","Le pire pari que j’aie accepté en soirée, c’était…","Ce que je dirais au mariage si on me passait le micro après trois verres, c’est…",
+"Le défi que je lance pour ce soir, c’est…","Ce que je ne raconterai jamais au conjoint ou à la conjointe, c’est…","Mon pire duo au karaoké, c’était…",
+"La pire idée de cadeau pour le ou la futur(e) marié(e), c’est…","Ce que j’ai déjà fait à un enterrement de vie de célibataire et qui reste entre nous, c’est…","Le truc que je regrette d’avoir dit à un mariage, c’est…"
+);
+
+function bankFor(mode, round, rounds){
+  if(mode!=="totale") return Q[mode]||Q.classique;
+  const third = Math.max(1, Math.ceil(rounds/3));
+  if(round<=third) return Q.classique;
+  if(round<=third*2) return Q.entrenous;
+  return Q.pimente;
+}
+
+/* ---------- État ---------- */
+let R=null, S=null, isHost=false, code="", lastSt=0, tk=0;
+let H=null;                 // privé hôte : {truths,assign,swap,ghost,votes,participants,stats}
+let L={ name:"", asg:null, vote:[], sent:false, rk:"" };
+let lastPhase="", clockOffset=0;
+const sharedNow = () => Date.now()+clockOffset;
+function syncClock(serverNow, startedAt){
+  if(!Number.isFinite(serverNow)) return;
+  const localNow=Date.now();
+  const estimatedLocal=startedAt===undefined?localNow:(startedAt+localNow)/2;
+  clockOffset=serverNow-estimatedLocal;
+}
+
+/* ---------- Transport (relais /api/rooms) ---------- */
+const ROOM = Promise.resolve({join: async roomName => {
+  const startedAt=Date.now();
+  const jr = await fetch("/api/rooms/join",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({room:roomName,cid:ME})});
+  const j = await jr.json().catch(()=>({}));
+  if(!jr.ok || !j.ok) throw new Error(j.error || "Salon introuvable");
+  syncClock(j.serverNow,startedAt);
+  const conn = j.conn;
+  isHost = !!j.host;
+  const peers = new Map();
+  const callbacks = new Map();
+  const es = new EventSource("/api/rooms/stream?room="+encodeURIComponent(roomName)+"&cid="+encodeURIComponent(ME)+"&conn="+encodeURIComponent(conn));
+  es.addEventListener("peers", e => {
+    peers.clear();
+    try{ JSON.parse(e.data).forEach(id => { if(id!==ME) peers.set(id,{presence:{id}}); }); }catch(err){}
+    const fn = callbacks.get("__peers"); if(fn) fn();
+  });
+  es.addEventListener("evt", e => {
+    let m=null; try{ m=JSON.parse(e.data); }catch(err){}
+    if(!m) return;
+    syncClock(m.serverNow);
+    const fn = callbacks.get(m.topic); if(fn) fn({data:m.data});
+  });
+  return {
+    on: (t,fn)=>callbacks.set(t,fn),
+    onPeers: fn=>callbacks.set("__peers",fn),
+    peers: ()=>[...peers.values()],
+    emit: (topic,data,to)=>fetch("/api/rooms/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({room:roomName,conn,topic,data,to:to||""})}).then(r=>r.json()).catch(()=>({ok:false})),
+    leave: ()=>{ try{es.close();}catch(e){}
+      try{ navigator.sendBeacon("/api/rooms/leave", new Blob([JSON.stringify({room:roomName,conn})],{type:"application/json"})); }catch(e){}
+      return Promise.resolve(); }
+  };
+}});
+
+const online = () => new Set([ME, ...(R?R.peers().map(p=>p.presence&&p.presence.id):[]).filter(Boolean)]);
+const nm = id => (S && S.pl.find(p=>p.id===id)||{n:"?"}).n;
+const msg = t => { $("#hmsg").textContent=t; };
+const fmtT = s => Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+
+/* ---------- Persistance hôte (survit à un rechargement) ---------- */
+function saveHost(){
+  if(!isHost||!S) return;
+  try{ localStorage.setItem("lpv:host:"+code, JSON.stringify({S,H})); }catch(e){}
+}
+function loadHost(){
+  try{ const d=JSON.parse(localStorage.getItem("lpv:host:"+code)||"null");
+    if(d&&d.S&&d.S.host===ME){ S=d.S; H=d.H; return true; } }catch(e){}
+  return false;
+}
+/* ---------- Reprise de session (quitter la page sans perdre sa place) ---------- */
+function saveSess(){ try{ localStorage.setItem("lpv:sess", JSON.stringify({code, name:L.name, ts:Date.now()})); }catch(e){} }
+function clearSess(){ try{ localStorage.removeItem("lpv:sess"); }catch(e){} }
+function getSess(){ try{ const s=JSON.parse(localStorage.getItem("lpv:sess")||"null");
+  return s && /^[A-Z0-9]{4}$/.test(s.code||"") ? s : null; }catch(e){ return null; } }
+function showRejoin(){
+  const s=getSess(); if(!s) return;
+  $("#rejoin").hidden=false;
+  $("#rejoin-info").textContent=`Salon ${s.code} · ${s.name||"Joueur inconnu"}`;
+}
+
+/* ---------- Diffusion ---------- */
+function bc(){ if(!isHost||!R||!S) return; if(S.ph==="lobby") S.cfg=L.cfg; R.emit("st",S).catch(()=>{}); saveHost(); }
+function send(d){ d.p=ME; if(isHost) return hostAct(d); if(R) R.emit("act",d,"host").catch(()=>{}); }
+
+/* ---------- Configuration ---------- */
+L.cfg = { mode:"classique", rounds:5, timer:90, ghost:"rares" };
+
+/* ---------- Cycle de vie ---------- */
+async function enter(create){
+  const name = $("#pname").value.trim().slice(0,16);
+  if(!$("#age18").checked) return msg("Confirme d’abord que tout le monde a 18 ans ou plus. 🔞");
+  if(!name) return msg("Entre ton prénom d’abord 🙂");
+  code = create ? Array.from({length:4},()=>CH[Math.floor(Math.random()*CH.length)]).join("")
+                : $("#pcode").value.trim().toUpperCase();
+  if(!create && !/^[A-Z0-9]{4}$/.test(code)) return msg("Entre le code à 4 lettres du salon.");
+  L.name = name;
+  try{ localStorage.setItem("lpv:name",name); }catch(e){}
+  try{
+    const ns = await ROOM;
+    R = await ns.join(code);
+    if(create && !isHost){ // collision improbable : un salon existe déjà avec ce code
+      R.leave(); R=null;
+      code = Array.from({length:4},()=>CH[Math.floor(Math.random()*CH.length)]).join("");
+      R = await ns.join(code);
+    }
+  }catch(e){ return msg(e.message||"Salon introuvable"); }
+  bind();
+  if(isHost){
+    if(!loadHost()){
+      S = { ph:"lobby", host:ME, pl:[], cfg:{...L.cfg}, round:0, q:"", ch:3,
+            submitted:[], noted:[], readOk:[], voted:[], order:[], end:0,
+            imp:null, votesN:{}, deltas:{}, ghostRound:false, parts:[] };
+      H = freshH();
+    }
+    hostAct({k:"join",p:ME,n:name});
+    bc();
+    saveSess();
+    show("lobby"); render();
+  } else {
+    S = null;
+    try{ const a=JSON.parse(localStorage.getItem("lpv:asg:"+code)||"null"); if(a&&typeof a.text==="string") L.asg=a; }catch(e){}
+    saveSess();
+    show("lobby"); renderLobby();
+    send({k:"join",n:name});
+  }
+}
+function freshH(){ return { truths:{}, assign:{}, swap:null, ghost:false, votes:{}, participants:[], stats:{found:{},impWins:{},ghosts:0} }; }
+
+function bind(){
+  R.on("st", m => {
+    const d=m.data; if(isHost||!d||typeof d.host!=="string"||!Array.isArray(d.pl)) return;
+    S=d; lastSt=Date.now();
+    render();
+  });
+  R.on("act", m => { if(isHost) hostAct(m.data); });
+  R.on("pv", m => {
+    const d=m.data||{};
+    if(d.k==="truth" && typeof d.text==="string" && d.round===((S&&S.round)||0)){
+      L.asg={text:d.text, swapped:d.swapped||null, round:d.round};
+      try{ localStorage.setItem("lpv:asg:"+code, JSON.stringify(L.asg)); }catch(e){}
+      render();
+    }
+  });
+  R.onPeers(() => { if(isHost&&S){ bc(); } render(); });
+}
+function onPhase(ph){
+  if(ph==="reveal"){ L.asg=null; L.asgRound=0; try{ localStorage.removeItem("lpv:asg:"+code); }catch(e){} }
+  if(ph==="vote"){ L.vote=[]; L.sent=false; }
+  if(ph==="write"){ L.sent=false; L.draft=""; }
+  const st=$("#stage"); if(st){ st.classList.remove("stage"); void st.offsetWidth; st.classList.add("stage"); }
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ---------- Logique hôte ---------- */
+function uniq(n){ let m=n,k=2; while(S.pl.some(p=>p.n.toLowerCase()===m.toLowerCase())) m=n+" "+k++; return m; }
+const clean = s => String(s||"").replace(/[<>"']/g,"").replace(/\s+/g," ").trim().slice(0,16);
+
+function hostAct(d){
+  if(!d||typeof d.k!=="string"||typeof d.p!=="string") return;
+  let P = S.pl.find(x=>x.id===d.p);
+  if(d.k==="join"){
+    if(!P && S.pl.length<MAX_P){
+      P = {id:d.p, n:uniq(clean(d.n)||"Joueur"), score:0};
+      S.pl.push(P);
+    }
+  }
+  else if(d.k==="truth"){
+    if(S.ph!=="write"||!H.participants.includes(d.p)||H.truths[d.p]) return;
+    const t = String(d.text||"").replace(/[\u0000-\u001f]/g," ").trim().slice(0,MAXLEN);
+    if(!t) return;
+    H.truths[d.p]=t;
+    if(!S.submitted.includes(d.p)) S.submitted.push(d.p);
+    if(doneAll("submitted")) doMix();
+  }
+  else if(d.k==="needtruth"){
+    if(d.p!==ME && (S.ph==="reveal"||S.ph==="read"||S.ph==="interro"||S.ph==="vote") && H.assign[d.p]!==undefined) sendTruth(d.p);
+  }
+  else if(d.k==="noted"){
+    if(S.ph!=="reveal"||S.noted.includes(d.p)||!H.participants.includes(d.p)) return;
+    S.noted.push(d.p);
+    if(doneAll("noted")){ S.ph="read"; S.order=shuffle(H.participants); }
+  }
+  else if(d.k==="readok"){
+    if(S.ph!=="read"||S.readOk.includes(d.p)||!H.participants.includes(d.p)) return;
+    S.readOk.push(d.p);
+    if(doneAll("readOk")){ S.ph="interro"; S.end=sharedNow()+S.cfg.timer*1000; }
+  }
+  else if(d.k==="vote"){
+    if(S.ph!=="vote"||S.voted.includes(d.p)||!H.participants.includes(d.p)) return;
+    const c = Array.isArray(d.c)?d.c.filter(x=>typeof x==="string"):[];
+    if(c.length!==2 || c[0]===c[1] || c.includes(d.p)) return;
+    if(!c.every(x=>H.participants.includes(x))) return;
+    H.votes[d.p]=c; S.voted.push(d.p);
+    if(doneAll("voted")) doResult();
+  }
+  else if(d.k==="kick"){
+    if(d.p===ME) return;
+    S.pl = S.pl.filter(x=>x.id!==d.p);
+    H.participants = H.participants.filter(x=>x!==d.p);
+  }
+  else if(!P){ return; }
+  auto(); bc(); render();
+}
+
+function doneAll(key){
+  const on = online();
+  const wait = H.participants.filter(id=>on.has(id));
+  return wait.length>0 && wait.every(id=>S[key].includes(id));
+}
+function sendTruth(pid){
+  const swappedWith = H.swap && H.swap.includes(pid) ? nm(H.swap.find(x=>x!==pid)) : null;
+  R.emit("pv",{k:"truth", text:H.assign[pid], swapped:swappedWith, round:S.round}, pid).catch(()=>{});
+}
+function ensureHostAsg(){
+  // l'hôte joue aussi : sa propre attribution est lue localement (le relais ne renvoie pas à l'émetteur)
+  if(!isHost || !H || H.assign[ME]===undefined || (L.asg && L.asgRound===S.round)) return;
+  const swappedWith = H.swap && H.swap.includes(ME) ? nm(H.swap.find(x=>x!==ME)) : null;
+  L.asg = { text:H.assign[ME], swapped:swappedWith };
+  L.asgRound = S.round;
+}
+function auto(){
+  if(!S) return;
+  if(S.ph==="interro" && sharedNow()>=S.end) S.ph="vote";
+}
+
+/* ---------- Étapes hôte ---------- */
+function startGame(){
+  if(S.pl.length<MIN_P) return;
+  S.pl.forEach(p=>p.score=0);
+  H.stats={found:{},impWins:{},ghosts:0};
+  S.round=0; nextRound();
+}
+function nextRound(){
+  S.round++;
+  if(S.round>S.cfg.rounds){ S.ph="final"; bc(); render(); return; }
+  const bank = bankFor(S.cfg.mode, S.round, S.cfg.rounds);
+  S.q = pickR(bank);
+  S.ch = 3;
+  S.submitted=[]; S.noted=[]; S.readOk=[]; S.voted=[];
+  S.imp=null; S.votesN={}; S.deltas={}; S.ghostRound=false;
+  H.truths={}; H.assign={}; H.swap=null; H.ghost=false; H.votes={};
+  H.participants = S.pl.map(p=>p.id);
+  S.parts = H.participants.slice();
+  S.ph="question";
+  bc(); render();
+}
+function doMix(){
+  // Compléter les absents pour ne pas bloquer
+  H.participants.forEach(id=>{ if(!H.truths[id]) H.truths[id]="…j’ai complètement oublié ce que j’allais dire."; });
+  S.ph="mix"; bc(); render();
+  H.ghost = Math.random() < (GHOST_RATE[S.cfg.ghost]||0);
+  const ids = H.participants;
+  H.swap = null;
+  if(!H.ghost && ids.length>=2){
+    const pair = shuffle(ids).slice(0,2);
+    H.swap = pair;
+    H.assign[pair[0]] = H.truths[pair[1]];
+    H.assign[pair[1]] = H.truths[pair[0]];
+  }
+  ids.forEach(id=>{ if(H.assign[id]===undefined) H.assign[id]=H.truths[id]; });
+  setTimeout(()=>{
+    if(!S||S.ph!=="mix") return;
+    S.ph="reveal"; S.noted=[];
+    H.participants.forEach(sendTruth);
+    ensureHostAsg();
+    H.truths={}; // les vérités brutes s'effacent dès le mélange
+    bc(); render();
+  }, 2800);
+}
+function doResult(){
+  const imps = H.swap||[];
+  const parts = H.participants;
+  S.votesN={}; S.pl.forEach(p=>S.votesN[p.id]=0);
+  Object.entries(H.votes).forEach(([v,c])=>c.forEach(x=>{ S.votesN[x]=(S.votesN[x]||0)+1; }));
+  S.deltas={};
+  if(H.ghost || imps.length<2){
+    S.imp=[]; S.ghostRound=true; H.stats.ghosts++;
+  } else {
+    S.imp=imps; S.ghostRound=false;
+    const others = parts.filter(id=>!imps.includes(id));
+    Object.entries(H.votes).forEach(([v,c])=>{
+      if(imps.includes(v)) return;
+      const hits = c.filter(x=>imps.includes(x)).length;
+      if(hits>0){ S.deltas[v]=(S.deltas[v]||0)+hits; H.stats.found[v]=(H.stats.found[v]||0)+hits; }
+    });
+    imps.forEach(i=>{
+      const against = others.filter(v=>H.votes[v]&&H.votes[v].includes(i)).length;
+      if(others.length>0 && against*2 < others.length){
+        S.deltas[i]=(S.deltas[i]||0)+2;
+        H.stats.impWins[i]=(H.stats.impWins[i]||0)+1;
+      }
+    });
+  }
+  Object.entries(S.deltas).forEach(([id,d])=>{ const p=S.pl.find(x=>x.id===id); if(p) p.score+=d; });
+  H.assign={}; H.votes={};
+  S.stats = JSON.parse(JSON.stringify(H.stats));
+  S.ph="result";
+  bc(); render();
+}
+function skipPhase(){
+  if(!isHost||!S) return;
+  switch(S.ph){
+    case "question": S.ph="write"; break;
+    case "write": doMix(); return;
+    case "mix": return;
+    case "reveal": S.ph="read"; S.order=shuffle(H.participants); break;
+    case "read": S.ph="interro"; S.end=sharedNow()+S.cfg.timer*1000; break;
+    case "interro": S.ph="vote"; break;
+    case "vote": doResult(); return;
+    case "result": nextRound(); return;
+  }
+  bc(); render();
+}
+
+/* ---------- Affichage ---------- */
+function show(name){
+  ["home","lobby","game","final"].forEach(n=>$("#s-"+n).hidden = n!==name);
+  if(name==="game") $("#stage").parentElement && window.scrollTo({top:0});
+}
+function playerInGame(){ return S && S.pl.some(p=>p.id===ME); }
+
+function render(){
+  if(!S){ return; }
+  // Ne rien reconstruire si le contenu est identique : cela évite les clignotements,
+  // les animations qui recommencent et les pertes de focus sur mobile.
+  const k=JSON.stringify([S,L.asg,L.sent,L.vote]);
+  if(L.rk===k) return;
+  const ae=document.activeElement;
+  if(ae&&(ae.tagName==="TEXTAREA"||ae.tagName==="INPUT")&&ae.closest("#stage")&&L.rk) return;
+  L.rk=k;
+  const ta=$("#truth"); if(ta) L.draft=ta.value; // conserve la saisie en cours
+  if(lastPhase!==S.ph){ lastPhase=S.ph; onPhase(S.ph); }
+  if(S.ph==="final"){ renderFinal(); show("final"); $("#admin").hidden = !isHost; return; }
+  if(S.ph==="lobby"){ renderLobby(); show("lobby"); return; }
+  show("game");
+  $("#admin").hidden = !isHost;
+  const me = playerInGame();
+  const g = $("#stage");
+  const mode = MODES[S.cfg.mode]||MODES.classique;
+  const head = `<p class="hint center" style="margin:0 0 6px">Manche <b>${S.round}/${S.cfg.rounds}</b> · ${mode.ico} ${esc(mode.name)}${isHost?" · 👑 tu es l’hôte":""}</p>`;
+
+  if(S.ph==="question"){
+    g.innerHTML = head + `
+      <div class="qcard"><p class="sub">La question de la manche</p><p class="q">${esc(S.q)}</p></div>
+      ${isHost?`
+      <div class="card">
+        <div class="row">
+          <button class="btn" data-act="changeq" ${S.ch<=0?"disabled":""}>🔄 Changer <b>(${S.ch})</b></button>
+        </div>
+        <details style="margin-top:12px"><summary style="font-weight:800;cursor:pointer">✍️ Écrire ma propre question</summary>
+          <div class="row" style="margin-top:10px"><input type="text" id="customq" maxlength="120" placeholder="Ta phrase à compléter…"><button class="btn" data-act="setq">OK</button></div>
+        </details>
+        <button class="btn primary big" data-act="go">À vos vérités ! 🚀</button>
+      </div>`:`<p class="hint center">L’hôte prépare la question…</p>`}`;
+  }
+  else if(S.ph==="write"){
+    const iSub = S.submitted.includes(ME) || L.sent;
+    const parts = S.parts && S.parts.length ? S.parts : S.pl.map(p=>p.id);
+    const iPlay = me && parts.includes(ME);
+    g.innerHTML = head + `
+      <div class="qcard"><p class="sub">Complète la phrase — en secret 🤫</p><p class="q">${esc(S.q)}</p></div>
+      ${iPlay ? (iSub?`
+        <div class="card center"><p style="font-size:2rem;margin:6px">✅</p><b>Ta vérité est enregistrée.</b><p class="hint">On attend les autres…</p></div>`
+      :`
+      <div class="card">
+        <textarea id="truth" maxlength="${MAXLEN}" rows="3" placeholder="Complète la phrase… personne ne regarde 👀">${esc(L.draft||"")}</textarea>
+        <div class="counter"><span id="tcount">${(L.draft||"").length}</span>/${MAXLEN}</div>
+        <p class="hint">💡 Évite les détails qui te trahiraient tout de suite : quelqu’un d’autre devra peut-être raconter TA vérité.</p>
+        <p class="hint"><button class="btn ghosty" data-act="example" style="text-decoration:underline">Voir un exemple</button> <span id="ex" hidden>${esc(EX[S.cfg.mode]||EX.classique)}</span></p>
+        <button class="btn primary big" data-act="submit">Envoyer ma vérité 🤫</button>
+      </div>`) : `<p class="hint center">Les autres écrivent leurs vérités… tu joueras à la prochaine manche.</p>`}
+      <p class="hint center">${S.submitted.length}/${parts.length} ont écrit</p>`;
+    const ta2=$("#truth");
+    if(ta2){ ta2.addEventListener("input",()=>{ L.draft=ta2.value; $("#tcount").textContent=ta2.value.length; }); }
+  }
+  else if(S.ph==="mix"){
+    g.innerHTML = head + `
+      <div class="mixwrap">
+        <span class="mixemoji">🌀</span>
+        <div class="mixcards"><span></span><span></span><span></span><span></span></div>
+        <h2 style="margin-top:18px">On mélange…</h2>
+        <p class="hint">Deux vérités vont peut-être être échangées. Personne ne sait qui. Même pas toi.</p>
+      </div>`;
+  }
+  else if(S.ph==="reveal"){
+    ensureHostAsg();
+    const parts = S.parts && S.parts.length ? S.parts : S.pl.map(p=>p.id);
+    const iSub = S.noted.includes(ME);
+    let body;
+    if(!me) body = `<p class="hint center">Tu joueras à la prochaine manche.</p>`;
+    else if(!L.asg) body = `<div class="card center"><span class="mixemoji" style="font-size:2.6rem">📨</span><p><b>Ta vérité arrive…</b></p><p class="hint">Elle s’affiche ici, pour toi uniquement.</p></div>`;
+    else body = `
+      ${L.asg.swapped?`<div class="swapped">⚠️ Ta vérité a été échangée avec <b>${esc(L.asg.swapped)}</b> !<small>Tu dois raconter SA vérité comme si c’était la tienne… sans te faire griller.</small></div>`:""}
+      <div class="truth">${esc(L.asg.text)}</div>
+      ${iSub?`<p class="hint center">En attente des autres…</p>`:`<button class="btn primary big" data-act="noted">C’est noté ✅</button>`}
+      <p class="hint center">Ne montre cet écran à personne. ${S.noted.length}/${parts.length} sont prêts.</p>`;
+    g.innerHTML = head + `<div class="qcard"><p class="sub">Ta vérité pour cette manche</p></div>` + body;
+  }
+  else if(S.ph==="read"){
+    const iDone = S.readOk.includes(ME);
+    const nextReader = S.order.find(id=>!S.readOk.includes(id));
+    g.innerHTML = head + `
+      <div class="card">
+        <h2>📖 Le tour de table</h2>
+        <p class="hint">Chacun lit SA vérité à voix haute, comme un souvenir à soi. Puis on passe au suivant.</p>
+        <div class="readlist">
+          ${S.order.map(id=>`<div class="readrow ${S.readOk.includes(id)?"done":""} ${id===nextReader?"cur":""}">
+            <span>${esc(nm(id))}${id===ME?" (toi)":""}</span>
+            <span class="st">${S.readOk.includes(id)?"✅":(id===nextReader?"🗣️ à toi":"⏳")}</span>
+          </div>`).join("")}
+        </div>
+        ${me && !iDone ? `<button class="btn primary big" data-act="readok">Ok, je l’ai lue ! 🗣️</button>` : `<p class="hint center">On écoute…</p>`}
+      </div>`;
+  }
+  else if(S.ph==="interro"){
+    g.innerHTML = head + `
+      <div class="card center">
+        <h2>🔍 Interrogatoire</h2>
+        <div class="timer" id="cd">–:––</div>
+        <div class="bar"><i id="cdbar" style="width:100%"></i></div>
+        <p class="hint">Posez-vous des questions ! Deux d’entre vous racontent peut-être la vérité de quelqu’un d’autre. Repérez-les… ou semez le doute. 👀</p>
+        ${isHost?`<button class="btn primary" data-act="tovote">Passer au vote ⏭</button>`:`<p class="hint">L’hôte peut écourter l’interrogatoire.</p>`}
+      </div>`;
+  }
+  else if(S.ph==="vote"){
+    const parts = S.parts && S.parts.length ? S.parts : S.pl.map(p=>p.id);
+    const iVoted = S.voted.includes(ME) || L.sent;
+    g.innerHTML = head + `
+      <div class="card">
+        <h2>🗳️ Le vote</h2>
+        ${me ? (iVoted?`<div class="center"><p style="font-size:2rem;margin:6px">🗳️</p><b>Vote enregistré.</b><p class="hint">Suspense…</p></div>`:`
+        <p class="hint">Désigne <b>2 imposteurs</b> : ceux qui racontent la vérité de quelqu’un d’autre.
+        ${(isHost? (H.swap&&H.swap.includes(ME)) : L.asg&&L.asg.swapped) ? " <b>Toi aussi tu votes — il ne faut pas te trahir. 😉</b>":""}</p>
+        <div class="pick-grid">
+          ${S.pl.filter(p=>p.id!==ME && parts.includes(p.id)).map(p=>`<button class="pick ${L.vote.includes(p.id)?"on":""}" data-act="pick" data-id="${p.id}">${esc(p.n)}</button>`).join("")}
+        </div>
+        <button class="btn primary big" data-act="sendvote" ${L.vote.length!==2?"disabled":""}>Voter 🗳️</button>`) :
+        `<p class="hint center">Tu joueras à la prochaine manche.</p>`}
+        <p class="hint center">${S.voted.length}/${parts.length} ont voté</p>
+      </div>`;
+  }
+  else if(S.ph==="result"){
+    const imps = S.imp||[];
+    const sorted = [...S.pl].sort((a,b)=>b.score-a.score);
+    g.innerHTML = head + `
+      ${S.ghostRound?`
+      <div class="qcard" style="box-shadow:7px 7px 0 var(--teal)">
+        <p style="font-size:2.6rem;margin:4px">👻</p>
+        <p class="q">Manche fantôme !</p>
+        <p class="hint" style="font-size:1rem;margin-top:8px">Personne n’avait été échangé… et pourtant les accusations ont fusé. 😂<br>Aucun point cette manche.</p>
+      </div>`:`
+      <div class="qcard" style="box-shadow:7px 7px 0 var(--pink)">
+        <p style="font-size:2.6rem;margin:4px">🎭</p>
+        <p class="q">Démasqués !</p>
+        <p class="reveal-big">${esc(nm(imps[0]))} racontait la vérité de ${esc(nm(imps[1]))},<br>et inversement !</p>
+        <p class="hint">${imps.map(i=>`${esc(nm(i))} : démasqué${""} par ${S.votesN[i]||0} joueur${(S.votesN[i]||0)>1?"s":""}`).join(" · ")}</p>
+      </div>`}
+      <div class="card">
+        <h2>🏆 Scores</h2>
+        <div class="plist">
+          ${sorted.map((p,i)=>`<div class="prow ${p.id===ME?"me":""} ${i===0?"top1":""}">
+            <span>${i===0?"👑":(i+1)+"."} ${esc(p.n)}${p.id===ME?" (toi)":""}</span>
+            ${S.deltas[p.id]?`<span class="delta">+${S.deltas[p.id]}</span>`:""}
+            <span class="pts">${p.score} pt${p.score>1?"s":""}</span>
+          </div>`).join("")}
+        </div>
+      </div>
+      ${isHost?`<button class="btn primary big" data-act="next">${S.round>=S.cfg.rounds?"Voir le final 🏁":"Manche suivante ▶️"}</button>`:`<p class="hint center">En attente de l’hôte pour la suite…</p>`}`;
+  }
+}
+
+function renderLobby(){
+  show("lobby");
+  $("#lcode").textContent = code;
+  if(!S){
+    $("#pcount").textContent = "";
+    $("#plist").innerHTML = "";
+    $("#phint").textContent = "Connexion au salon…";
+    $("#cfg-host").hidden = true; $("#wait-host").hidden = true;
+    return;
+  }
+  const n = S.pl.length;
+  $("#pcount").textContent = `(${n}/${MAX_P})`;
+  $("#plist").innerHTML = S.pl.map(p=>`<span class="chip">${esc(p.n)}${p.id===S.host?" 👑":""}${p.id===ME?" (toi)":""}${isHost&&p.id!==ME?` <button data-act="kick" data-id="${p.id}" aria-label="Retirer ${esc(p.n)}">✕</button>`:""}</span>`).join("");
+  $("#phint").textContent = n<MIN_P ? `Il faut au moins ${MIN_P} joueurs pour lancer (il en manque ${MIN_P-n}).` : "Tout le monde est là ? C’est parti !";
+  $("#cfg-host").hidden = !isHost;
+  $("#wait-host").hidden = isHost;
+  if(isHost){
+    $("#rn").textContent = S.cfg.rounds;
+    $("#start").disabled = n<MIN_P;
+    $("#modes").innerHTML = Object.entries(MODES).map(([id,m])=>`
+      <button class="mode ${S.cfg.mode===id?"on":""}" data-act="mode" data-id="${id}">
+        <span class="mi">${m.ico}</span><span><b>${esc(m.name)}</b><small>${esc(m.desc)}</small></span>
+      </button>`).join("");
+    $("#timerpills").innerHTML = TIMER_OPTS.map(([v,l])=>`<button class="pill ${S.cfg.timer===v?"on":""}" data-act="timer" data-v="${v}">${l}</button>`).join("");
+    $("#ghostpills").innerHTML = GHOST_OPTS.map(([v,l])=>`<button class="pill ${S.cfg.ghost===v?"on":""}" data-act="ghost" data-v="${v}">${l}</button>`).join("");
+  }
+}
+
+function renderFinal(){
+  const sorted=[...S.pl].sort((a,b)=>b.score-a.score);
+  const w = sorted[0];
+  const st = S.stats||{found:{},impWins:{},ghosts:0};
+  const foundEntries = Object.entries(st.found||{});
+  const det = foundEntries.sort((a,b)=>b[1]-a[1])[0];
+  const impEntries = Object.entries(st.impWins||{});
+  const imp = impEntries.sort((a,b)=>b[1]-a[1])[0];
+  const recap = ["🤫 Les Petites Vérités — le récap","",
+    ...sorted.map((p,i)=>`${i===0?"👑":(i+1)+"."} ${p.n} : ${p.score} pt${p.score>1?"s":""}`),"",
+    det?`🕵️ Détective de la soirée : ${nm(det[0])} (${det[1]} démasquage${det[1]>1?"s":""})`:"",
+    imp?`🎭 Imposteur insaisissable : ${nm(imp[0])}`:"",
+    st.ghosts?`👻 Manches fantômes : ${st.ghosts}`:""].filter(Boolean).join("\n");
+  $("#final-stage").innerHTML = `
+    <div class="center"><span class="crown">👑</span></div>
+    <div class="qcard" style="box-shadow:7px 7px 0 var(--amber)">
+      <p class="sub">Et le ou la grande gagnante est…</p>
+      <p class="q">${esc(w?w.n:"—")}</p>
+      <p class="hint" style="font-size:1rem;margin-top:6px">${w?w.score:0} points de pure sincérité (ou de beau mensonge)</p>
+    </div>
+    <div class="card">
+      <h2>La soirée en chiffres</h2>
+      ${det?`<div class="statcard">🕵️ Détective de la soirée : ${esc(nm(det[0]))}<small>${det[1]} imposteur${det[1]>1?"s":""} démasqué${det[1]>1?"s":""}</small></div>`:""}
+      ${imp?`<div class="statcard">🎭 Imposteur insaisissable : ${esc(nm(imp[0]))}<small>a survécu ${imp[1]} manche${imp[1]>1?"s":""} sans se faire griller</small></div>`:""}
+      ${st.ghosts?`<div class="statcard">👻 ${st.ghosts} manche${st.ghosts>1?"s":""} fantôme${st.ghosts>1?"s":""}<small>personne n’était échangé… et tout le monde s’est accusé</small></div>`:""}
+      <div class="plist" style="margin-top:12px">
+        ${sorted.map((p,i)=>`<div class="prow ${i===0?"top1":""}"><span>${i===0?"👑":(i+1)+"."} ${esc(p.n)}</span><span class="pts">${p.score} pt${p.score>1?"s":""}</span></div>`).join("")}
+      </div>
+    </div>
+    <div class="card">
+      <h2>📲 Le récap en story</h2>
+      <p class="hint">Prénoms et points uniquement — les vérités, elles, restent entre vous (et sont déjà effacées).</p>
+      <button class="btn primary big" data-act="recap">Copier le récap 📋</button>
+      <p class="hint" id="recap-ok" hidden>Copié ! Colle-le où tu veux. ✨</p>
+    </div>
+    ${isHost?`<button class="btn big" data-act="replay">🔁 Rejouer une partie</button>`:`<p class="hint center">L’hôte peut relancer une partie.</p>`}
+  `;
+  $("#final-stage").dataset.recap = recap;
+  const fs=$("#final-stage"); fs.classList.remove("stage"); void fs.offsetWidth; fs.classList.add("stage");
+  confetti();
+}
+
+function confetti(){
+  if(SET.anim==="off") return;
+  const fx=$("#fx"); if(!fx) return;
+  const colors=["#6a47ff","#ff4f8b","#ffc531","#19c7b0","#fffdf8"];
+  for(let i=0;i<70;i++){
+    const s=document.createElement("i");
+    s.style.left=Math.random()*100+"vw";
+    s.style.background=pickR(colors);
+    s.style.setProperty("--dx",(Math.random()*40-20)+"vw");
+    s.style.setProperty("--r",(Math.random()*720-360)+"deg");
+    s.style.animationDuration=(2.2+Math.random()*1.6)+"s";
+    s.style.animationDelay=(Math.random()*0.7)+"s";
+    fx.appendChild(s);
+    setTimeout(()=>s.remove(),4600);
+  }
+}
+
+/* ---------- Minuteurs ---------- */
+setInterval(()=>{
+  tk++;
+  if(R && isHost && S){ if(tk%2===0) bc(); auto(); if(S.ph==="interro"&&sharedNow()>=S.end){ S.ph="vote"; } bc(); render(); }
+  else if(R && !isHost){
+    if(!S || !S.pl.some(p=>p.id===ME)) R.emit("act",{k:"join",p:ME,n:L.name},"host").catch(()=>{});
+    if(S && (S.ph==="reveal"||S.ph==="read"||S.ph==="interro"||S.ph==="vote") && !L.asg && tk%2===0) R.emit("act",{k:"needtruth",p:ME},"host").catch(()=>{});
+    $("#warn").hidden = !S || Date.now()-lastSt<12000;
+  }
+},2000);
+setInterval(()=>{
+  if(!S||S.ph!=="interro") return;
+  const left=Math.max(0,Math.ceil((S.end-sharedNow())/1000));
+  const cd=$("#cd"); if(cd){ cd.textContent=fmtT(left); cd.classList.toggle("low",left<=10); }
+  const bar=$("#cdbar"); if(bar) bar.style.width=Math.max(0,(left/S.cfg.timer)*100)+"%";
+},250);
+
+/* ---------- Réglages : musique & animations ---------- */
+const SET={music:true,vol:35,anim:"light",theme:"light"};
+function loadSet(){
+  let reduced=false; try{ reduced=matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}
+  SET.anim=reduced?"off":"light";
+  try{
+    const o=JSON.parse(localStorage.getItem("soiree:set")||localStorage.getItem("lpv:set")||"{}");
+    if(typeof o.music==="boolean") SET.music=o.music;
+    if(Number.isFinite(o.vol)) SET.vol=Math.min(100,Math.max(0,Math.round(o.vol)));
+    if(["off","light","full"].includes(o.anim)) SET.anim=o.anim;
+    if(["light","dark"].includes(o.theme)) SET.theme=o.theme;
+  }catch(e){}
+}
+function saveSet(){ try{ localStorage.setItem("soiree:set",JSON.stringify(SET)); }catch(e){} }
+function applySet(){
+  document.documentElement.dataset.anim=SET.anim;
+  document.documentElement.dataset.theme=SET.theme;
+  document.querySelectorAll('[data-act="anim"]').forEach(x=>x.classList.toggle("on",x.dataset.a===SET.anim));
+  document.querySelectorAll('[data-act="theme"]').forEach(x=>x.classList.toggle("on",x.dataset.theme===SET.theme));
+  const mt=$("#mtoggle"); mt.textContent=SET.music?"🔊 Activée":"🔇 Coupée"; mt.classList.toggle("on",SET.music);
+  $("#vol").value=SET.vol; $("#volv").textContent=SET.vol+" %";
+  buildBg(); muApply();
+}
+/* Emojis flottants en fond (animations « Complètes ») */
+function buildBg(){
+  const el=$("#bgfx");
+  if(SET.anim!=="full"){ el.textContent=""; return; }
+  if(el.childElementCount) return;
+  const em=["🤫","🎭","💛","🌶️","👻","✨","🎈","💥","🥂","🎢","🕵️","❓"];
+  for(let i=0;i<14;i++){
+    const sp=document.createElement("span"); sp.textContent=em[i%em.length];
+    sp.style.cssText=`left:${(i*7.3+Math.random()*5)%96}vw;font-size:${22+Math.random()*30}px;animation-duration:${16+Math.random()*16}s;animation-delay:-${Math.random()*20}s`;
+    el.appendChild(sp);
+  }
+}
+/* Musique de fond générée dans le navigateur (aucun fichier à charger) */
+const MU={ctx:null,master:null,dry:null,delay:null,noise:null,timer:null,step:0,t:0,unlocked:false};
+const BPM=94, SP=60/BPM/2;
+const PROG=[[48,52,55,59],[45,48,52,55],[41,45,48,52],[43,47,50,53]];
+const PENT=[72,74,76,79,81,84];
+const mf=m=>440*Math.pow(2,(m-69)/12);
+function muInit(){
+  if(MU.ctx) return true;
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false;
+  const c=MU.ctx=new AC();
+  MU.master=c.createGain(); MU.master.gain.value=0;
+  const comp=c.createDynamicsCompressor(); MU.master.connect(comp); comp.connect(c.destination);
+  const lp=c.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=3200; lp.connect(MU.master); MU.dry=lp;
+  MU.delay=c.createDelay(1); MU.delay.delayTime.value=SP*3;
+  const fb=c.createGain(); fb.gain.value=.32; MU.delay.connect(fb); fb.connect(MU.delay);
+  const dg=c.createGain(); dg.gain.value=.5; MU.delay.connect(dg); dg.connect(lp);
+  const len=Math.floor(c.sampleRate*.5), buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  MU.noise=buf; return true;
+}
+function voice(type,freq,t,o){
+  o=o||{}; const c=MU.ctx, vol=o.vol||.1, a=o.a||.01, dur=o.dur||.3, r=o.r||.1;
+  const osc=c.createOscillator(), g=c.createGain();
+  osc.type=type; osc.frequency.value=freq; if(o.detune) osc.detune.value=o.detune;
+  g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(vol,t+a);
+  if(o.sustain){ g.gain.setValueAtTime(vol,t+dur); g.gain.linearRampToValueAtTime(.0001,t+dur+r); }
+  else g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  osc.connect(g); g.connect(MU.dry);
+  if(o.send){ const sg=c.createGain(); sg.gain.value=o.send; g.connect(sg); sg.connect(MU.delay); }
+  osc.start(t); osc.stop(t+dur+(o.sustain?r:0)+.05);
+}
+function kick(t){
+  const c=MU.ctx, o=c.createOscillator(), g=c.createGain();
+  o.type="sine"; o.frequency.setValueAtTime(130,t); o.frequency.exponentialRampToValueAtTime(42,t+.14);
+  g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.0001,t+.22);
+  o.connect(g); g.connect(MU.dry); o.start(t); o.stop(t+.25);
+}
+function hat(t,v,f){
+  const c=MU.ctx, src=c.createBufferSource(), g=c.createGain(), h=c.createBiquadFilter();
+  src.buffer=MU.noise; h.type="highpass"; h.frequency.value=f;
+  g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+.06);
+  src.connect(h); h.connect(g); g.connect(MU.dry); src.start(t); src.stop(t+.09);
+}
+function muStep(n,t){
+  const ch=PROG[Math.floor(n/8)%4], k=n%8;
+  if(k===0){
+    ch.forEach((m,i)=>voice("triangle",mf(m+12),t,{vol:.05,a:.35,dur:SP*8-.3,r:.6,sustain:true,detune:i*4-6}));
+    voice("sine",mf(ch[0]-12),t,{vol:.3,dur:SP*3.2});
+  }
+  if(k===5) voice("sine",mf(ch[0]-5),t,{vol:.2,dur:SP*2});
+  if(k===0||k===4) kick(t);
+  if(k%2===1) hat(t,.05,7000);
+  if(k===2||k===6) hat(t,.07,2800);
+  if([1,1,0,1,1,0,1,1][k]&&Math.random()<.85) voice("triangle",mf(ch[[0,2,1,3,2,1,3,2][k]]+24),t,{vol:.09,dur:SP*1.8,send:.35});
+  if((k===7&&Math.random()<.35)||(k===3&&Math.random()<.2)) voice("sine",mf(PENT[Math.floor(Math.random()*PENT.length)]),t,{vol:.07,dur:SP*3,send:.5});
+}
+function muSched(){
+  const c=MU.ctx; if(!c) return;
+  while(MU.t<c.currentTime+.3){ muStep(MU.step,MU.t); MU.step=(MU.step+1)%32; MU.t+=SP; }
+}
+function muVol(){ if(MU.ctx) MU.master.gain.setTargetAtTime(SET.music?SET.vol/100*.9:0,MU.ctx.currentTime,.1); }
+function muStart(){
+  if(!muInit()) return; const c=MU.ctx;
+  if(c.state==="suspended") c.resume();
+  if(!MU.timer){ MU.t=c.currentTime+.1; MU.step=0; MU.timer=setInterval(muSched,90); }
+  muVol();
+}
+function muStop(){
+  if(!MU.ctx) return;
+  if(MU.timer){ clearInterval(MU.timer); MU.timer=null; }
+  MU.master.gain.setTargetAtTime(0,MU.ctx.currentTime,.15);
+}
+function muApply(){
+  if(SET.music&&SET.vol>0&&MU.unlocked&&!document.hidden) muStart(); else muStop();
+}
+function unlockAudio(){
+  MU.unlocked=true;
+  if(MU.ctx&&MU.ctx.state==="running"&&MU.timer) return;
+  muApply();
+}
+["click","touchend","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
+document.addEventListener("visibilitychange",()=>{
+  if(!MU.ctx) return;
+  if(document.hidden) MU.ctx.suspend(); else if(SET.music&&SET.vol>0&&MU.unlocked) MU.ctx.resume();
+});
+
+/* ---------- Actions ---------- */
+document.addEventListener("click", e=>{
+  const t=e.target.closest("[data-act]"); if(!t) return;
+  if(t.hasAttribute("data-bd")&&e.target!==t) return;
+  const a=t.dataset.act;
+  if(a==="setopen"){ $("#setpanel").hidden=false; }
+  else if(a==="setclose"){ $("#setpanel").hidden=true; }
+  else if(a==="mtoggle"){ SET.music=!SET.music; saveSet(); MU.unlocked=true; applySet(); }
+  else if(a==="anim"){ SET.anim=t.dataset.a; saveSet(); applySet(); }
+  else if(a==="theme"){ SET.theme=t.dataset.theme; saveSet(); applySet(); }
+  else if(a==="rejoin"){
+    const s=getSess(); if(!s) return;
+    $("#age18").checked=true;
+    $("#pname").value=s.name||$("#pname").value;
+    $("#pcode").value=s.code;
+    $("#rejoin").hidden=true;
+    enter(false);
+  }
+  else if(a==="forget"){ clearSess(); $("#rejoin").hidden=true; }
+  else if(a==="create"){ $("#rejoin").hidden=true; enter(true); }
+  else if(a==="join") enter(false);
+  else if(a==="copylink"){
+    const url=location.origin+"/verites/index.html#"+code;
+    (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>{t.textContent="✅ Lien copié !";setTimeout(()=>t.textContent="🔗 Copier le lien d’invitation",1600);}).catch(()=>{prompt("Copie ce lien :",url);});
+  }
+  else if(a==="leave"){ clearSess(); if(R) R.leave(); location.href="/"; }
+  else if(a==="mode"&&isHost&&S.ph==="lobby"){ S.cfg.mode=t.dataset.id; bc(); render(); }
+  else if(a==="timer"&&isHost&&S.ph==="lobby"){ S.cfg.timer=+t.dataset.v; bc(); render(); }
+  else if(a==="ghost"&&isHost&&S.ph==="lobby"){ S.cfg.ghost=t.dataset.v; bc(); render(); }
+  else if(a==="rminus"&&isHost){ S.cfg.rounds=Math.max(1,S.cfg.rounds-1); bc(); render(); }
+  else if(a==="rplus"&&isHost){ S.cfg.rounds=Math.min(15,S.cfg.rounds+1); bc(); render(); }
+  else if(a==="kick"&&isHost){ hostAct({k:"kick",p:t.dataset.id}); }
+  else if(a==="start"&&isHost){ startGame(); }
+  else if(a==="changeq"&&isHost&&S.ph==="question"&&S.ch>0){ S.ch--; S.q=pickR(bankFor(S.cfg.mode,S.round,S.cfg.rounds)); bc(); render(); }
+  else if(a==="setq"&&isHost&&S.ph==="question"){ const v=$("#customq").value.trim().slice(0,120); if(v){ S.q=v; L.rk=""; bc(); render(); } }
+  else if(a==="go"&&isHost&&S.ph==="question"){ S.ph="write"; bc(); render(); }
+  else if(a==="example"){ const x=$("#ex"); if(x) x.hidden=!x.hidden; }
+  else if(a==="submit"){
+    const ta=$("#truth"); const v=(ta?ta.value:"").trim();
+    if(!v){ msg2(ta); return; }
+    if(isHost){ hostAct({k:"truth",p:ME,text:v}); } else { send({k:"truth",text:v}); }
+    L.sent=true; L.rk=""; if(ta) ta.blur();
+    render();
+  }
+  else if(a==="noted"){ if(isHost) hostAct({k:"noted",p:ME}); else send({k:"noted"}); render(); }
+  else if(a==="readok"){ if(isHost) hostAct({k:"readok",p:ME}); else send({k:"readok"}); render(); }
+  else if(a==="tovote"&&isHost){ S.ph="vote"; bc(); render(); }
+  else if(a==="pick"){
+    const id=t.dataset.id;
+    if(L.vote.includes(id)) L.vote=L.vote.filter(x=>x!==id);
+    else if(L.vote.length<2) L.vote.push(id);
+    render();
+  }
+  else if(a==="sendvote"&&L.vote.length===2){
+    L.sent=true;
+    if(isHost) hostAct({k:"vote",p:ME,c:L.vote}); else send({k:"vote",c:L.vote});
+    render();
+  }
+  else if(a==="next"&&isHost){ nextRound(); }
+  else if(a==="skip"&&isHost){ skipPhase(); }
+  else if(a==="skipround"&&isHost){ nextRound(); }
+  else if(a==="endgame"&&isHost){ if(confirm("Terminer la partie maintenant et voir les scores ?")){ S.stats=JSON.parse(JSON.stringify(H.stats)); S.ph="final"; bc(); render(); } }
+  else if(a==="replay"&&isHost){ S.pl.forEach(p=>p.score=0); H=freshH(); S.round=0; S.ph="lobby"; bc(); show("lobby"); render(); }
+  else if(a==="recap"){
+    const txt=$("#final-stage").dataset.recap||"";
+    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>{$("#recap-ok").hidden=false;}).catch(()=>{prompt("Copie le récap :",txt);});
+  }
+});
+function msg2(el){ if(el){ el.style.borderColor="var(--danger)"; el.placeholder="Écris quelque chose d’abord…"; el.focus(); } }
+document.addEventListener("input",e=>{
+  if(e.target&&e.target.id==="vol"){ SET.vol=+e.target.value; saveSet(); $("#volv").textContent=SET.vol+" %"; MU.unlocked=true; muApply(); muVol(); }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("#setpanel").hidden=true; });
+$("#pname").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();enter(!$("#pcode").value.trim());} });
+$("#pcode").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();enter(false);} });
+try{ $("#pname").value=localStorage.getItem("lpv:name")||""; }catch(e){}
+if(/^#[A-Za-z0-9]{4}$/.test(location.hash)) $("#pcode").value=location.hash.slice(1).toUpperCase();
+loadSet(); applySet(); showRejoin();
+</script>
+</body>
+</html>
