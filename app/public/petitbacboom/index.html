@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Petit Bac Boom</title>
+<style>
+:root{--yel:#ffd21f;--ink:#1d1030}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#fff;background:radial-gradient(circle at 50% 30%,#5a2bd6,#2a0f6b 65%,#12052e);background-attachment:fixed;padding:env(safe-area-inset-top) 10px 24px;overflow-x:hidden}
+h1{font-size:clamp(2rem,8vw,4rem);margin:.2em 0;text-shadow:0 4px 0 #1d0a4a,0 0 30px #ff4f8b;letter-spacing:.05em}
+.btn{font:800 1rem inherit;border:0;border-radius:999px;padding:12px 20px;background:var(--yel);color:var(--ink);cursor:pointer;box-shadow:0 4px 0 #a37d00;margin:4px;touch-action:manipulation}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #a37d00}.btn.dk{background:#3b1f8a;color:#fff;box-shadow:0 4px 0 #1d0a4a}.btn.sm{padding:6px 12px;font-size:.8rem}.btn:disabled{opacity:.4}
+input,select,textarea{font:inherit;padding:11px;border-radius:12px;border:2px solid #0004;width:100%;margin:4px 0;background:#fff;color:var(--ink)}
+.box{background:#0004;border:2px solid #fff3;border-radius:18px;padding:14px;margin:10px auto;max-width:560px}
+.c{text-align:center}.hint{opacity:.75;font-size:.85rem}[hidden]{display:none!important}
+.code{font-size:3rem;font-weight:900;letter-spacing:.25em;background:#fff;color:var(--ink);border-radius:14px;padding:4px 14px;display:inline-block}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row label{font-size:.8rem;opacity:.85}
+.pl{display:flex;align-items:center;gap:6px;background:#0003;border-radius:10px;padding:5px 9px;margin:4px 0;font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%;background:#777;flex:none}.dot.on{background:#2cff8a}
+#arena{position:relative;width:min(92vw,560px);aspect-ratio:1;margin:6px auto}
+.seat{position:absolute;width:92px;transform:translate(-50%,-50%);text-align:center;background:#2a1480;border:3px solid #fff3;border-radius:14px;padding:4px 2px;font-size:.78rem;font-weight:800;transition:.3s}
+.seat.act{border-color:#ff3b3b;background:#6a1a8a;box-shadow:0 0 24px #ff3b3b;transform:translate(-50%,-50%) scale(1.15);z-index:3}
+.seat.dead{opacity:.35;filter:grayscale(1)}.seat .lv{letter-spacing:2px}
+.bomb{position:absolute;left:50%;top:50%;width:46%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 32% 28%,#ff9a6a,#e8341c 45%,#7a1008 90%);box-shadow:inset -10px -14px 30px #0008,0 10px 30px #000a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2}
+.bomb.low{animation:bl .35s infinite alternate}@keyframes bl{to{transform:translate(-50%,-50%) scale(1.07);filter:brightness(1.4)}}
+.bomb::before{content:"";position:absolute;top:-9%;left:50%;width:7%;height:16%;background:#444;border-radius:4px;transform:translateX(-50%)}
+.bomb::after{content:"✨";position:absolute;top:-17%;left:52%;font-size:1.6rem;animation:sp .3s infinite alternate}@keyframes sp{to{transform:scale(1.4) rotate(20deg)}}
+.syl{background:#0b1a12;color:#6fff9a;font:900 clamp(1.4rem,7vw,2.6rem) monospace;border-radius:10px;padding:2px 12px;text-shadow:0 0 12px #6fff9a;text-transform:uppercase;text-align:center}
+.tm{font:900 clamp(1.4rem,6vw,2.4rem) monospace;color:#fff;text-shadow:0 0 10px #ffd21f}
+.arrow{position:absolute;left:50%;top:50%;width:0;height:0;z-index:4;transition:transform .5s cubic-bezier(.3,1.4,.5,1)}
+.arrow::after{content:"➤";position:absolute;left:30%;top:0;transform:translateY(-50%);font-size:clamp(2rem,9vw,3.4rem);color:#ff2b2b;text-shadow:0 0 14px #f00;white-space:nowrap}
+.boom{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:min(60vw,320px);z-index:9;animation:bm 1s forwards;pointer-events:none}@keyframes bm{0%{transform:scale(.2);opacity:1}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1.5);opacity:0}}
+.hist{max-height:150px;overflow:auto;font-size:.85rem;background:#0004;border-radius:10px;padding:6px}.hist b{color:var(--yel)}
+.ok{background:#1b8a3a}.no{background:#b3261e}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000d;padding:10px 16px;border-radius:12px;z-index:99;font-weight:700}
+.mod{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:50;padding:12px}.mod .box{background:#2a0f6b;max-height:90vh;overflow:auto;width:100%}
+</style>
+<link rel="stylesheet" href="/theme/petitbacboom.css">
+</head><body>
+<div class="c"><h1>💣 PETIT BAC BOOM</h1><div class="hint" id="who"></div></div>
+
+<section id="s-home" class="box c">
+ <input id="pn" maxlength="14" placeholder="Ton pseudo">
+ <input id="pc" maxlength="6" placeholder="CODE (6 caractères)" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:800">
+ <button class="btn" data-a="create">🎮 Créer une partie</button><button class="btn" data-a="join">🔑 Rejoindre</button>
+ <div><button class="btn dk sm" data-a="rules">📜 Règles</button></div><p id="hm" class="hint"></p><a href="/" style="color:#fff">← Hub</a>
+</section>
+
+<section id="s-lobby" hidden>
+ <div class="box c"><div class="hint">Code de la partie</div><div class="code" id="lc"></div><div><button class="btn" data-a="copy">📋 Copier</button></div></div>
+ <div class="box"><b>Joueurs</b><div id="plist"></div></div>
+ <div class="box" id="cfg" hidden>
+  <div class="row"><div><label>Chrono</label><select id="c-dur"><option>5</option><option>10</option><option selected>15</option><option>20</option><option>30</option><option>45</option></select></div>
+  <div><label>Vies par joueur</label><select id="c-lv"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+  <div><label>Difficulté des syllabes</label><select id="c-df"><option value="e">Facile</option><option value="m" selected>Moyenne</option><option value="h">Difficile (chrono -30 %)</option></select></div>
+  <div><label>Validation</label><select id="c-val"><option value="a">Auto (syllabe + répétition)</option><option value="h">Par l’hôte</option><option value="f">Libre (aucune vérification)</option></select></div>
+  <div><label>La syllabe doit être…</label><select id="c-pos"><option value="c">Contenue</option><option value="d">Au début</option><option value="f">À la fin</option></select></div>
+  <div><label>Répétitions</label><select id="c-rep"><option value="n">Interdites</option><option value="y">Autorisées</option></select></div></div>
+  <label>Syllabes personnalisées (séparées par des virgules, facultatif)</label><input id="c-cu" placeholder="cha, tri, bou…">
+  <div class="c"><button class="btn" data-a="start">▶ Lancer la partie</button><button class="btn dk sm" data-a="closeroom">Fermer la salle</button></div></div>
+ <p id="wh" class="c hint" hidden>En attente de l’hôte…</p>
+ <div class="c"><button class="btn dk sm" data-a="leave">Quitter</button></div>
+</section>
+
+<section id="s-game" hidden>
+ <div class="c hint" id="gi"></div>
+ <div id="arena"><div class="arrow" id="ar"></div><div class="bomb" id="bomb"><div class="syl" id="syl"></div><div class="tm" id="tm"></div></div></div>
+ <div class="box c" id="inp" hidden><input id="w" autocomplete="off" autocapitalize="off" placeholder="Ton mot…" maxlength="40"><button class="btn" data-a="word">✔ Valider</button><div class="hint" id="inh"></div></div>
+ <div class="box c" id="pend" hidden></div>
+ <div class="box c" id="over" hidden></div>
+ <div class="box"><b>Historique</b><div class="hist" id="hist"></div></div>
+ <div class="c" id="hb"></div>
+</section>
+<div id="toast" hidden></div>
+<script src="/shared/net.js"></script>
+<script>
+"use strict";
+const Q=s=>document.querySelector(s),eh=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const say=t=>{const e=Q("#toast");e.textContent=t;e.hidden=false;clearTimeout(say.t);say.t=setTimeout(()=>e.hidden=true,2600)};
+const TK=(()=>{let t=sessionStorage.getItem("pbb:tk");if(!t){t=Math.random().toString(36).slice(2,10);sessionStorage.setItem("pbb:tk",t)}return t})();
+const SYL={e:"cha,tri,bo,mar,ton,ver,sta,pri,ou,lou,pa,ma,ro,ne,te,la,mi,sou,ser,bar,pla,gra,fo,ven,com".split(","),
+ m:"ble,cle,gno,pho,tion,eur,oir,ain,ois,ill,ent,rou,chi,gue,eau,qui,cr,str,spe,ard,mis,pou,tru,ble,dra".split(","),
+ h:"xy,ghe,uff,ypt,ckl,mn,sch,ouy,gym,aïe,eux,oeu,fl,zz,thr,rhu,ngu,ymp,yth,ctu".split(",")};
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+const mkRoom=()=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return s};
+let R=null,S=null,isHost=false,code="",lastBoom=0;
+const hm=t=>Q("#hm").textContent=t,view=v=>["home","lobby","game"].forEach(x=>Q("#s-"+x).hidden=x!==v);
+const me=()=>S&&S.pl.find(p=>p.id===TK);
+async function enter(create){
+ const name=Q("#pn").value.trim().slice(0,14);if(!name)return hm("Choisis un pseudo 🙂");
+ const c=create?mkRoom():Q("#pc").value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(c))return hm("Le code de partie a 6 caractères.");
+ hm("Connexion…");try{R=await Net.join("pbb-"+c)}catch(e){return hm("Connexion impossible : "+e.message)}
+ isHost=R.host;if(create&&!isHost){R.leave();return enter(true)}
+ if(!create&&isHost){R.leave();R=null;return hm("Code incorrect ou partie expirée.")}
+ code=c;localStorage.setItem("pbb:name",name);R.on("st",d=>{S=d;route()});
+ if(isHost){R.on("act",hostAct);let snap=null;try{snap=JSON.parse(localStorage.getItem("pbb:snap:"+c)||"null")}catch(e){}
+  S=snap&&snap.host===TK?snap:{ph:"lobby",host:TK,pl:[],cfg:{},words:[],used:[],turn:-1,syl:"",dl:0,msg:"",pend:null,paused:false,at:Date.now()};
+  hostAct({k:"join",p:TK,m:ME,n:name});setInterval(tick,200);setInterval(bc,2500)}
+ else{const hi=()=>R.emit("act",{k:"join",p:TK,m:ME,n:name},"host");hi();setInterval(hi,2500)}
+ Q("#lc").textContent=c;Q("#who").textContent="Salon "+c;route();
+}
+const send=d=>{d.p=TK;d.m=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
+function bc(){if(!isHost||!S)return;const on=new Set([...R.peers(),ME]);S.pl.forEach(p=>{p.on=p.id===TK||on.has(p.pid)});S.now=Net.now();R.emit("st",S).catch(()=>{});try{localStorage.setItem("pbb:snap:"+code,JSON.stringify(S))}catch(e){}route()}
+const alive=()=>S.pl.filter(p=>p.lv>0);
+function nextTurn(from){const n=S.pl.length;for(let k=1;k<=n;k++){const i=(from+k*S.cfg.dir+n*n)%n;if(S.pl[i].lv>0)return i}return from}
+function newSyl(){const c=S.cfg;const pool=c.cu&&c.cu.length?c.cu:SYL[c.df];S.syl=pool[Math.floor(Math.random()*pool.length)]}
+function arm(){S.dl=Net.now()+S.cfg.dur*1000;S.pend=null}
+function hostAct(d){
+ if(!isHost||!S||S.ph==="closed")return;const pp=S.pl.find(x=>x.id===d.p),h=d.p===TK;
+ if(d.k==="join"){const x=pp||S.pl.find(y=>y.n.toLowerCase()===String(d.n).toLowerCase()&&!y.on&&y.id!==TK);
+  if(x){x.id=d.p;x.pid=d.m;x.on=true}else if(S.ph==="lobby"&&S.pl.length<16)S.pl.push({id:d.p,n:String(d.n||"?").slice(0,14),pid:d.m,on:true,lv:3,wins:0,bo:0});
+  else if(!x)R.emit("st",Object.assign({},S,{late:true}),d.m).catch(()=>{})}
+ else if(!pp)return;
+ else if(d.k==="start"&&h&&(S.ph==="lobby"||S.ph==="over")){
+  if(S.pl.length<2)return say("Il faut au moins 2 joueurs");
+  const g=Q("#c-dur");if(S.ph==="lobby"&&g){const df=Q("#c-df").value;S.cfg={dur:Math.round(+Q("#c-dur").value*(df==="h"?.7:1)),lv:+Q("#c-lv").value,df,val:Q("#c-val").value,pos:Q("#c-pos").value,rep:Q("#c-rep").value==="y",cu:Q("#c-cu").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),dir:1}}
+  S.pl.forEach(p=>{p.lv=S.cfg.lv;p.bo=0});S.words=[];S.used=[];S.turn=Math.floor(Math.random()*S.pl.length);newSyl();arm();S.ph="play";S.paused=false;S.msg=""}
+ else if(d.k==="word"&&S.ph==="play"&&!S.paused&&S.pl[S.turn]===pp&&!S.pend)submit(pp,String(d.w||"").trim().slice(0,40));
+ else if(d.k==="judge"&&h&&S.pend){const w=S.pend;if(d.ok)accept(S.pl[S.turn],w);else{S.pend=null;S.msg="Mot refusé par l’hôte : "+w}}
+ else if(d.k==="pause"&&h&&S.ph==="play"){if(!S.paused){S.left=S.dl-Net.now();S.paused=true}else{S.dl=Net.now()+S.left;S.paused=false}}
+ else if(d.k==="lobby"&&h){S.ph="lobby";S.pl.forEach(p=>p.lv=S.cfg.lv||3)}
+ else if(d.k==="kick"&&h&&d.tp!==TK&&S.ph==="lobby")S.pl=S.pl.filter(x=>x.id!==d.tp);
+ else if(d.k==="close"&&h){S.ph="closed";bc();try{localStorage.removeItem("pbb:snap:"+code)}catch(e){}return}
+ bc();
+}
+function submit(pp,w){
+ if(!w)return;const c=S.cfg,a=norm(w),s=norm(S.syl);
+ if(c.val==="h"){S.pend=w;S.msg="";return}
+ if(c.val==="a"){
+  if(a.length<=s.length&&c.pos==="c"&&a===s)return S.msg="« "+w+" » : trop court";
+  const okp=c.pos==="d"?a.startsWith(s):c.pos==="f"?a.endsWith(s):a.includes(s);
+  if(!okp)return S.msg="« "+w+" » ne contient pas "+S.syl.toUpperCase();
+  if(!c.rep&&S.used.includes(a))return S.msg="« "+w+" » a déjà été utilisé"}
+ accept(pp,w);
+}
+function accept(pp,w){S.used.push(norm(w));S.words.push({w,n:pp.n,s:S.syl});if(S.words.length>60)S.words.shift();S.msg="";S.turn=nextTurn(S.turn);newSyl();arm()}
+function tick(){
+ if(!isHost||!S||S.ph!=="play"||S.paused||Net.now()<S.dl)return;
+ const p=S.pl[S.turn];p.lv--;p.bo++;S.boom={n:p.n,t:Date.now(),id:p.id};S.msg="💥 "+p.n+" a fait exploser la bombe !";
+ const al=alive();
+ if(al.length<=1){S.ph="over";if(al[0])al[0].wins++;S.winner=al[0]?al[0].n:"personne"}
+ else{S.turn=p.lv>0?nextTurn(S.turn):nextTurn(S.turn);newSyl();arm()}
+ bc();
+}
+function route(){
+ if(!S)return;if(S.ph==="closed"){say("Salle fermée par l’hôte");setTimeout(()=>location.reload(),1200);return}
+ if(S.late&&!me()){R&&R.leave();R=null;S=null;view("home");return hm("Partie déjà lancée : reviens avec ton pseudo exact si tu en faisais partie.")}
+ if(S.ph==="lobby")lobby();else game();
+}
+function lobby(){view("lobby");Q("#plist").innerHTML=S.pl.map(p=>`<div class="pl"><span class="dot ${p.on?"on":""}"></span>${eh(p.n)}${p.id===TK?" (toi)":""}${p.id===S.host?" 👑":""}${isHost&&p.id!==TK?`<button class="btn dk sm" style="margin-left:auto" data-a="kick" data-id="${p.id}">✕</button>`:""}</div>`).join("");Q("#cfg").hidden=!isHost;Q("#wh").hidden=isHost}
+function game(){
+ view("game");const n=S.pl.length,cur=S.pl[S.turn],mine=me();
+ const ar=Q("#arena");
+ ar.querySelectorAll(".seat").forEach(e=>e.remove());
+ S.pl.forEach((p,i)=>{const a=(i/n)*2*Math.PI-Math.PI/2,x=50+40*Math.cos(a),y=50+40*Math.sin(a),d=document.createElement("div");
+  d.className="seat"+(i===S.turn&&S.ph==="play"?" act":"")+(p.lv<=0?" dead":"");d.style.left=x+"%";d.style.top=y+"%";
+  d.innerHTML=`<span class="dot ${p.on?"on":""}" style="display:inline-block"></span> ${eh(p.n)}<div class="lv">${"❤️".repeat(Math.max(0,p.lv))||"☠️"}</div><div class="hint">🏆${p.wins} · 💥${p.bo}</div>`;ar.append(d)});
+ const ang=S.turn>=0?(S.turn/n)*360-90:-90;Q("#ar").style.transform="rotate("+ang+"deg)";
+ Q("#syl").textContent=S.syl;
+ Q("#gi").textContent=S.ph==="play"?(S.paused?"⏸ Pause":(cur?cur.n+" a la bombe !":"")):"";
+ const mine_t=S.ph==="play"&&!S.paused&&cur&&mine&&cur.id===mine.id&&!S.pend;
+ Q("#inp").hidden=!mine_t;Q("#inh").textContent=S.msg||({a:"Auto : vérifie la syllabe et les répétitions, pas l’orthographe.",h:"L’hôte valide ton mot.",f:"Mode libre : tout est accepté."}[S.cfg.val]||"");
+ const pe=Q("#pend");pe.hidden=!(S.pend&&S.ph==="play");if(S.pend)pe.innerHTML=`<b>${eh(cur.n)}</b> propose : <b>${eh(S.pend)}</b>`+(isHost?`<div><button class="btn ok" data-a="ok">✔ Valider</button><button class="btn no" data-a="ko">✘ Refuser</button></div>`:` <span class="hint">(en attente de l’hôte)</span>`);
+ const ov=Q("#over");ov.hidden=S.ph!=="over";if(S.ph==="over")ov.innerHTML=`<h2>🏆 ${eh(S.winner)} gagne !</h2>`+(isHost?`<button class="btn" data-a="start">🔁 Rejouer</button><button class="btn dk" data-a="lobby">Réglages</button>`:"");
+ Q("#hist").innerHTML=[...S.words].reverse().map(x=>`<div><b>${eh(x.n)}</b> : ${eh(x.w)} <span class="hint">(${eh(x.s)})</span></div>`).join("")+(S.msg?`<div class="hint">${eh(S.msg)}</div>`:"");
+ Q("#hb").innerHTML=(isHost&&S.ph==="play"?`<button class="btn dk sm" data-a="pause">${S.paused?"▶ Reprendre":"⏸ Pause"}</button>`:"")+(isHost?`<button class="btn dk sm" data-a="closeroom">Fermer la salle</button>`:"")+`<button class="btn dk sm" data-a="leave">Quitter</button>`;
+ if(S.boom&&S.boom.t!==lastBoom){lastBoom=S.boom.t;if(Date.now()-S.boom.t<3000){const b=document.createElement("div");b.className="boom";b.textContent="💥";ar.append(b);setTimeout(()=>b.remove(),1000)}}
+ if(mine_t&&document.activeElement!==Q("#w")&&!game.f){game.f=1;Q("#w").value="";Q("#w").focus()}if(!mine_t)game.f=0;
+}
+setInterval(()=>{if(!S||S.ph!=="play")return;const t=S.paused?S.left:S.dl-Net.now(),s=Math.max(0,t/1000);Q("#tm").textContent=s.toFixed(1);Q("#bomb").classList.toggle("low",s<4&&!S.paused)},100);
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
+ if(a==="create")enter(true);else if(a==="join")enter(false);
+ else if(a==="rules"){const m=document.createElement("div");m.className="mod";m.innerHTML='<div class="box"><h2>📜 Règles</h2><p>Une syllabe apparaît sur la bombe. Le joueur désigné par la flèche rouge doit écrire un mot qui la contient avant la fin du chrono, puis la bombe passe au suivant.</p><p>Si le temps tombe à zéro, la bombe explose : le joueur perd une vie. Le dernier joueur en vie gagne. Tout mot français est accepté : noms propres, marques, mots familiers, aucune censure.</p><button class="btn" onclick="this.closest(\'.mod\').remove()">Compris</button></div>';document.body.append(m)}
+ else if(a==="copy"){try{await navigator.clipboard.writeText(code);say("Code copié : "+code)}catch(x){prompt("Code :",code)}}
+ else if(a==="leave"){R&&R.leave();location.reload()}
+ else if(a==="start")send({k:"start"});else if(a==="lobby")send({k:"lobby"});
+ else if(a==="kick")send({k:"kick",tp:b.dataset.id});else if(a==="pause")send({k:"pause"});
+ else if(a==="closeroom"){if(confirm("Fermer la salle pour tout le monde ?"))send({k:"close"})}
+ else if(a==="word"){const w=Q("#w").value;if(w.trim()){send({k:"word",w});Q("#w").value=""}}
+ else if(a==="ok")send({k:"judge",ok:1});else if(a==="ko")send({k:"judge",ok:0});
+});
+Q("#w").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();Q("[data-a=word]").click()}});
+try{Q("#pn").value=localStorage.getItem("pbb:name")||"";const c=new URLSearchParams(location.search).get("c");if(c)Q("#pc").value=c.toUpperCase()}catch(e){}
+addEventListener("beforeunload",()=>{R&&R.leave()});
+</script></body></html>

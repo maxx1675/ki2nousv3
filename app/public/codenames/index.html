@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Codenames</title>
+<style>
+:root{--red:#c4301c;--blue:#1f8fb0;--yel:#ffd21f;--grn:#2cff8a;--ink:#2a1208;--card:#f6e6c8}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+body{font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#fff;background:radial-gradient(circle at 50% 0,#d9541f,#8a2c12 60%,#4a160a);background-attachment:fixed;padding:env(safe-area-inset-top) 8px 24px}
+h1{font-size:clamp(2.2rem,9vw,4.5rem);letter-spacing:.12em;margin:.2em 0;text-shadow:0 4px 0 #5a1a0a,0 0 30px #ff8a3c}
+.btn{font:800 1rem inherit;border:0;border-radius:12px;padding:12px 18px;background:var(--yel);color:var(--ink);cursor:pointer;box-shadow:0 4px 0 #a37d00;margin:4px;touch-action:manipulation}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #a37d00}.btn.sm{padding:6px 10px;font-size:.8rem}.btn.dk{background:#3b1a10;color:#fff;box-shadow:0 4px 0 #1d0a05}.btn:disabled{opacity:.45}
+input,textarea,select{font:inherit;padding:10px;border-radius:10px;border:2px solid #0004;width:100%;margin:4px 0;background:#fff8ea;color:var(--ink)}
+.box{background:#0004;border:2px solid #fff3;border-radius:16px;padding:14px;margin:10px auto;max-width:560px}
+.c{text-align:center}.hint{opacity:.75;font-size:.85rem}[hidden]{display:none!important}
+.code{font-size:3.2rem;font-weight:900;letter-spacing:.25em;background:#fff;color:var(--ink);border-radius:14px;padding:6px 14px;display:inline-block}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:760px;margin:auto}
+.tm{border-radius:14px;padding:10px;min-height:120px}.tm.r{background:#a8281a}.tm.b{background:#17708c}.tm.x{grid-column:1/3;background:#0005}
+.pl{display:flex;align-items:center;gap:6px;background:#0003;border-radius:8px;padding:4px 8px;margin:4px 0;font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%;background:#777;flex:none}.dot.on{background:var(--grn)}
+#game{display:grid;grid-template-columns:minmax(120px,200px) minmax(0,1fr) minmax(120px,200px);gap:10px;max-width:1250px;margin:auto}
+.side{border-radius:14px;padding:10px}.side.r{background:#a8281a}.side.b{background:#17708c}.side.act{box-shadow:0 0 0 4px var(--yel),0 0 30px var(--yel)}
+.side .n{font-size:2.6rem;font-weight:900}
+.board{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(4px,1vw,10px);perspective:1200px}
+.cd{position:relative;aspect-ratio:1.45;cursor:pointer;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.8,.3,1.2),filter .2s;user-select:none}
+.cd:hover{transform:translateY(-3px)}.cd.fl{transform:rotateY(180deg)}
+.cd>div{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;display:flex;align-items:flex-end;justify-content:center;padding:4%;box-shadow:0 3px 0 #0006,0 6px 10px #0004}
+.f{background:var(--card);border:3px solid #d8c196;color:var(--ink)}
+.f span{background:#fff;border-radius:5px;width:100%;text-align:center;font-weight:900;font-size:clamp(.5rem,1.9vw,1.05rem);padding:3px 1px;text-transform:uppercase;overflow:hidden}
+.bk{transform:rotateY(180deg);color:#fff;border:3px solid #0003;align-items:center!important}
+.bk span{font-weight:900;font-size:clamp(.5rem,1.9vw,1.05rem);text-transform:uppercase}
+.k-r{background:linear-gradient(#e2452c,#a8281a)}.k-b{background:linear-gradient(#2aaed3,#17708c)}.k-n{background:linear-gradient(#e7d6b0,#c9b588);color:var(--ink)}.k-a{background:linear-gradient(#444,#000)}
+.hint-r .f{border-color:#e2452c;background:#f9d3c8}.hint-b .f{border-color:#2aaed3;background:#cdeaf3}.hint-n .f{background:#efe3c8}.hint-a .f{background:#555;color:#fff;border-color:#000}.hint-a .f span{color:#000}
+.cd.sel .f{outline:5px solid var(--grn);outline-offset:-1px;box-shadow:0 0 22px var(--grn);animation:pop .3s}
+@keyframes pop{50%{transform:scale(1.07)}}
+.cd.bad{animation:shk .5s}@keyframes shk{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.cd.sel,.cd.fl.k{transition-property:transform,filter}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin:8px 0}
+.clue{background:#fff;color:var(--ink);font-weight:900;font-size:1.6rem;border-radius:10px;padding:6px 14px}
+.log{background:#fff;color:#2a1208;border-radius:10px;padding:8px;font-size:.85rem;max-height:240px;overflow:auto}.log div{padding:2px 0;border-bottom:1px solid #0001}
+.mod{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:50;padding:12px}
+.mod .box{background:#4a160a;max-height:90vh;overflow:auto;width:100%}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000d;padding:10px 16px;border-radius:12px;z-index:99;font-weight:700}
+@media(max-width:760px){#game{grid-template-columns:1fr 1fr}#game .board-w{grid-column:1/3;order:-1}.side .n{font-size:1.8rem}#logb{display:inline-block!important}#logw{display:none}#logw.open{display:block}}
+@media(min-width:761px){#logb{display:none!important}}
+</style>
+<link rel="stylesheet" href="/theme/codenames.css">
+</head><body>
+<div class="c" id="top"><h1>CODENAMES</h1><div class="hint" id="who"></div></div>
+
+<section id="s-home" class="box c">
+ <input id="pn" maxlength="14" placeholder="Ton pseudo">
+ <input id="pc" maxlength="6" placeholder="CODE (6 caractères)" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:800">
+ <div><button class="btn" data-a="create">🎮 Créer une partie</button><button class="btn" data-a="join">🔑 Rejoindre une partie</button></div>
+ <div><button class="btn dk" data-a="words">✏️ Personnaliser les mots</button><button class="btn dk" data-a="words">📚 Mes listes sauvegardées</button><button class="btn dk" data-a="rules">📜 Règles du jeu</button></div>
+ <p id="hm" class="hint"></p><a href="/" style="color:#fff">← Hub</a>
+</section>
+
+<section id="s-lobby" hidden>
+ <div class="box c"><div class="hint">Code de la partie</div><div class="code" id="lc"></div><div><button class="btn" data-a="copy">📋 Copier le code</button></div>
+  <div class="hint">Envoie ce code à tes amis : ils le saisissent sur « Rejoindre une partie ».</div></div>
+ <div class="teams" id="teams"></div>
+ <div class="box c" id="hostp" hidden><div id="wsrc" class="hint"></div>
+  <button class="btn dk" data-a="words">✏️ Mots</button><button class="btn" data-a="rand">🔀 Répartition aléatoire</button><button class="btn" data-a="start" id="startb">▶ Lancer la partie</button><button class="btn dk" data-a="closeroom">Fermer la salle</button></div>
+ <p id="wh" class="c hint" hidden>En attente de l’hôte…</p>
+ <div class="c"><button class="btn dk sm" data-a="leave">Quitter</button></div>
+</section>
+
+<section id="s-game" hidden>
+ <div class="bar"><span id="stat" class="clue" style="font-size:1.1rem"></span><span id="cl" class="clue" hidden></span>
+  <span id="spyf" class="hint" hidden></span></div>
+ <div id="game"><div class="side r" id="sr"></div><div class="board-w"><div class="board" id="board"></div></div><div class="side b" id="sb"></div></div>
+ <div class="bar" id="acts"></div>
+ <div class="box" id="logw"><b>Journal</b><div class="log" id="log"></div></div>
+ <div class="bar"><button class="btn dk sm" id="logb" data-a="log">📜 Journal</button><button class="btn dk sm" data-a="leave">Quitter</button></div>
+</section>
+<div id="toast" hidden></div>
+<script src="/shared/net.js"></script>
+<script>
+"use strict";
+const Q=s=>document.querySelector(s),eh=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const say=t=>{const e=Q("#toast");e.textContent=t;e.hidden=false;clearTimeout(say.t);say.t=setTimeout(()=>e.hidden=true,2600)};
+const TK=(()=>{let t=sessionStorage.getItem("cn:tk");if(!t){t=Math.random().toString(36).slice(2,10);sessionStorage.setItem("cn:tk",t)}return t})();
+const LIB="pomme,paris,lune,voiture,chocolat,napoléon,plage,tigre,téléphone,marseille,football,soleil,château,pirate,robot,fantôme,dragon,sorcière,vampire,licorne,banane,fraise,pizza,fromage,baguette,croissant,café,thé,vin,glace,miel,sel,poivre,tomate,carotte,cinéma,théâtre,musée,école,hôpital,banque,pont,tour,église,prison,cirque,zoo,jardin,forêt,montagne,rivière,océan,île,désert,volcan,neige,pluie,orage,vent,nuage,étoile,planète,fusée,satellite,avion,train,bateau,vélo,moto,camion,taxi,métro,police,pompier,médecin,avocat,cuisinier,boulanger,facteur,juge,roi,reine,prince,chevalier,soldat,espion,agent,voleur,détective,docteur,professeur,chien,chat,cheval,vache,cochon,mouton,lapin,loup,ours,lion,éléphant,girafe,singe,serpent,requin,baleine,dauphin,aigle,hibou,abeille,araignée,papillon,or,argent,diamant,perle,clé,porte,fenêtre,mur,toit,lit,table,chaise,miroir,lampe,livre,stylo,papier,ciseaux,marteau,couteau,fourchette,verre,bouteille,sac,chapeau,lunettes,montre,bague,couronne,épée,bouclier,arc,canon,bombe,glace,feu,eau,terre,air,ombre,lumière,musique,guitare,piano,tambour,danse,magie,rêve,secret,code,mission,mot,nombre,lettre,carte,dé,jeu,balle,filet,but,stade,champion,médaille,europe,afrique,asie,amérique,canada,espagne,italie,londres,tokyo,new york,égypte,pyramide,mars,jupiter,lune,pharaon,cléopâtre,mozart,einstein,picasso,hugo,molière,disney,minecraft,mario,pikachu,batman,mickey".split(",");
+const WCOLORS={r:"rouge",b:"bleue"};
+let R=null,S=null,isHost=false,code="",H={key:[]},KEY=null,seen={};
+
+/* ----- listes de mots (localStorage) ----- */
+const lists=()=>{try{return JSON.parse(localStorage.getItem("cn:lists")||"{}")}catch(e){return{}}};
+const saveLists=o=>{try{localStorage.setItem("cn:lists",JSON.stringify(o))}catch(e){say("Stockage indisponible")}};
+const useName=()=>localStorage.getItem("cn:use")||"";
+const parseW=t=>[...new Set(t.split(/[\n;]/).map(x=>x.trim()).filter(Boolean))];
+function pick25(){const u=useName(),l=lists()[u];const src=l&&l.length>=25?l:LIB;const a=[...new Set(src)];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,25)}
+function wordsModal(){
+ const L=lists(),m=document.createElement("div");m.className="mod";
+ m.innerHTML=`<div class="box"><h2>✏️ Mes mots</h2><p class="hint">Un mot par ligne (25 minimum). Le jeu en tire 25 au hasard.</p>
+ <select id="wl"><option value="">🔀 Mots aléatoires (bibliothèque intégrée)</option>${Object.keys(L).map(k=>`<option ${k===useName()?"selected":""} value="${eh(k)}">${eh(k)} (${L[k].length})</option>`).join("")}</select>
+ <input id="wn" placeholder="Nom de la liste (ex : Soirée entre amis)"><textarea id="wt" rows="9" placeholder="Johnny&#10;Emma&#10;Paris…"></textarea>
+ <div class="hint" id="wc"></div><button class="btn" id="w1">💾 Enregistrer</button><button class="btn" id="w2">✔ Utiliser cette liste</button><button class="btn dk" id="w3">🗑 Supprimer</button><button class="btn dk" id="w4">Fermer</button></div>`;
+ document.body.append(m);const sel=m.querySelector("#wl"),nm=m.querySelector("#wn"),tx=m.querySelector("#wt");
+ const load=()=>{const k=sel.value;nm.value=k;tx.value=(lists()[k]||[]).join("\n");cnt()};const cnt=()=>m.querySelector("#wc").textContent=parseW(tx.value).length+" mot(s)";
+ sel.onchange=load;tx.oninput=cnt;load();
+ m.querySelector("#w1").onclick=()=>{const k=nm.value.trim(),w=parseW(tx.value);if(!k)return say("Donne un nom à la liste");if(w.length<25)return say("Il faut au moins 25 mots");const o=lists();o[k]=w;saveLists(o);say("Liste enregistrée ✔");m.remove();wordsModal()};
+ m.querySelector("#w2").onclick=()=>{const k=sel.value||nm.value.trim();if(k&&!lists()[k]){const w=parseW(tx.value);if(w.length<25)return say("25 mots minimum");const o=lists();o[k]=w;saveLists(o)}localStorage.setItem("cn:use",k);say(k?"Liste « "+k+" » active":"Mots aléatoires");m.remove();srcInfo()};
+ m.querySelector("#w3").onclick=()=>{const k=sel.value;if(!k)return;const o=lists();delete o[k];saveLists(o);if(useName()===k)localStorage.removeItem("cn:use");m.remove();wordsModal()};
+ m.querySelector("#w4").onclick=()=>m.remove();
+}
+const srcInfo=()=>{const e=Q("#wsrc");if(e)e.textContent="Mots : "+(useName()||"aléatoires (bibliothèque)")};
+
+/* ----- connexion ----- */
+const mkRoom=()=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[Math.floor(Math.random()*c.length)];return s};
+const hm=t=>Q("#hm").textContent=t;
+const view=v=>["home","lobby","game"].forEach(x=>Q("#s-"+x).hidden=x!==v);
+async function enter(create){
+ const name=Q("#pn").value.trim().slice(0,14);if(!name)return hm("Choisis un pseudo 🙂");
+ const c=create?mkRoom():Q("#pc").value.trim().toUpperCase();
+ if(!/^[A-Z0-9]{6}$/.test(c))return hm("Le code de partie a 6 caractères.");
+ hm("Connexion…");try{R=await Net.join("cn-"+c)}catch(e){return hm("Connexion impossible : "+e.message)}
+ isHost=R.host;
+ if(create&&!isHost){R.leave();return enter(true)}
+ if(!create&&isHost){R.leave();R=null;return hm("Code incorrect ou partie expirée.")}
+ code=c;localStorage.setItem("cn:name",name);
+ R.on("st",d=>{S=d;route()});R.on("key",d=>{KEY=d;route()});
+ if(isHost){R.on("act",hostAct);
+  let snap=null;try{snap=JSON.parse(localStorage.getItem("cn:snap:"+c)||"null")}catch(e){}
+  if(snap&&snap.S&&snap.S.host===TK){S=snap.S;H=snap.H}else S={ph:"lobby",host:TK,pl:[],b:[],turn:"r",clue:null,left:{r:0,b:0},log:[],win:null,at:Date.now()};
+  hostAct({k:"join",p:TK,m:ME,n:name});setInterval(()=>{if(S.at&&Date.now()-S.at>4*3600e3)closeRoom();else bc()},2500)}
+ else{const hi=()=>R.emit("act",{k:"join",p:TK,m:ME,n:name},"host");hi();setInterval(hi,2500)}
+ Q("#lc").textContent=c;Q("#who").textContent="Salon "+c;srcInfo();route();
+}
+const me=()=>S&&S.pl.find(p=>p.id===TK);
+const send=d=>{d.p=TK;d.m=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
+function bc(){
+ if(!isHost||!S)return;const on=new Set([...R.peers(),ME]);
+ S.pl.forEach(p=>{const o=p.id===TK||on.has(p.pid);if(p.on!==o){S.log.push({t:p.n+(o?" est de retour":" a quitté la partie")});if(S.log.length>80)S.log.shift();p.on=o}});
+ S.b.forEach(()=>0);R.emit("st",S).catch(()=>{});
+ if(S.ph==="play")S.pl.filter(p=>p.spy&&p.id!==TK&&p.pid).forEach(p=>R.emit("key",{k:H.key},p.pid).catch(()=>{}));
+ if(S.ph==="play"&&me()&&me().spy)KEY={k:H.key};
+ try{localStorage.setItem("cn:snap:"+code,JSON.stringify({S,H}))}catch(e){}
+ route();
+}
+const L2=(t)=>{S.log.push({t});if(S.log.length>80)S.log.shift()};
+const other=t=>t==="r"?"b":"r";
+function hostAct(d){
+ if(!isHost||!S||S.ph==="closed")return;const pp=S.pl.find(x=>x.id===d.p),h=d.p===TK;
+ if(d.k==="join"){
+  let x=pp||S.pl.find(y=>y.n.toLowerCase()===String(d.n).toLowerCase()&&!y.on&&y.id!==TK);
+  if(x){x.id=d.p;x.pid=d.m;x.on=true}
+  else if(S.ph==="lobby"&&S.pl.length<20)S.pl.push({id:d.p,n:String(d.n||"?").slice(0,14),t:"",spy:false,pid:d.m,on:true});
+  else if(S.ph!=="lobby"&&!x)R.emit("st",Object.assign({},S,{late:true}),d.m).catch(()=>{});
+ }else if(!pp)return;
+ else if(d.k==="team"&&S.ph==="lobby"){const t=h&&d.tp?S.pl.find(x=>x.id===d.tp):pp;if(t&&["r","b",""].includes(d.t)){t.t=d.t;if(!d.t)t.spy=false}}
+ else if(d.k==="spy"&&h&&S.ph!=="end"){const t=S.pl.find(x=>x.id===d.tp);if(t&&t.t){S.pl.forEach(x=>{if(x.t===t.t)x.spy=false});t.spy=true;if(S.ph==="play")sendKeys()}}
+ else if(d.k==="rand"&&h&&S.ph==="lobby"){const a=[...S.pl].sort(()=>Math.random()-.5);a.forEach((x,i)=>{x.t=i%2?"b":"r";x.spy=false})}
+ else if(d.k==="kick"&&h&&d.tp!==TK)S.pl=S.pl.filter(x=>x.id!==d.tp);
+ else if(d.k==="start"&&h&&S.ph==="lobby")startGame();
+ else if(d.k==="again"&&h&&S.ph==="end")startGame();
+ else if(d.k==="pause"&&h&&S.ph==="play")S.paused=!S.paused;
+ else if(d.k==="close"&&h)closeRoom();
+ else if(d.k==="toLobby"&&h&&S.ph!=="lobby"){S.ph="lobby";S.b=[];S.win=null;S.clue=null;S.paused=false;S.pl.forEach(x=>x.spy=false)}
+ else if(S.ph==="play"&&!S.paused&&pp.t===S.turn){
+  if(d.k==="clue"&&pp.spy&&!S.clue){const w=String(d.w||"").trim().split(/\s+/)[0].slice(0,24),n=+d.n;if(w&&n>=0&&n<=9){S.clue={w,n};L2(pp.n+" a donné l’indice "+w.toUpperCase()+" "+n)}}
+  else if(!pp.spy&&S.clue){
+   const c=S.b[d.i];if(c&&!c.rv){
+    if(d.k==="sel")c.sel=!c.sel;
+    else if(d.k==="flip"&&c.sel)flip(d.i,pp);
+    else if(d.k==="end"){L2(pp.n+" termine le tour");swap()}}
+   if(d.k==="end"&&S.clue){L2(pp.n+" termine le tour");swap()}}
+ }
+ S.at=Date.now();bc();
+}
+function sendKeys(){S.pl.filter(p=>p.spy&&p.pid&&p.id!==TK).forEach(p=>R.emit("key",{k:H.key},p.pid).catch(()=>{}))}
+function startGame(){
+ if(S.pl.some(p=>!p.t)){return say("Chaque joueur doit choisir une équipe (ou répartition aléatoire)")}
+ for(const t of["r","b"]){const m=S.pl.filter(p=>p.t===t);if(m.length<2){return say("Il faut au moins 2 joueurs par équipe (1 espion + 1 opérateur)")}if(!m.some(p=>p.spy)){const x=m[Math.floor(Math.random()*m.length)];x.spy=true}}
+ const w=pick25(),first=Math.random()<.5?"r":"b",k=[...Array(9).fill(first),...Array(8).fill(other(first)),...Array(7).fill("n"),"a"];
+ for(let i=24;i>0;i--){const j=Math.floor(Math.random()*(i+1));[k[i],k[j]]=[k[j],k[i]]}
+ H.key=k;S.b=w.map(x=>({w:x,rv:null,sel:false}));S.turn=first;S.first=first;S.clue=null;S.win=null;S.paused=false;S.left={r:k.filter(c=>c==="r").length,b:k.filter(c=>c==="b").length};
+ S.log=[{t:"La partie commence ! Les "+WCOLORS[first==="r"?"r":"b"]+"s débutent."}];S.ph="play";S.at=Date.now();
+}
+function swap(){S.turn=other(S.turn);S.clue=null;S.b.forEach(c=>c.sel=false)}
+function flip(i,pp){
+ const c=S.b[i],k=H.key[i];c.rv=k;c.sel=false;c.nw=Date.now();
+ L2(pp.n+" montre "+c.w.toUpperCase()+" ("+({r:"rouge",b:"bleue",n:"neutre",a:"ASSASSIN"}[k])+")");
+ if(k==="r"||k==="b")S.left[k]--;
+ if(k==="a")return fin(other(S.turn),"L’assassin a été découvert !");
+ if(S.left.r===0)return fin("r");if(S.left.b===0)return fin("b");
+ if(k!==S.turn)swap();
+}
+function fin(t,why){S.win=t;S.ph="end";S.b.forEach((c,i)=>{if(!c.rv)c.kk=H.key[i]});S.b.forEach(c=>c.sel=false);L2((why||"")+" Victoire des "+(t==="r"?"rouges":"bleus")+" !")}
+function closeRoom(){S.ph="closed";bc();try{localStorage.removeItem("cn:snap:"+code)}catch(e){}}
+
+/* ----- rendu ----- */
+function route(){
+ if(!S)return;
+ if(S.ph==="closed"){say("La salle a été fermée par l’hôte");setTimeout(()=>location.reload(),1200);return}
+ if(S.late&&!me()){R&&R.leave();R=null;S=null;view("home");return hm("La partie est déjà lancée : reviens avec ton pseudo exact si tu en faisais partie.")}
+ if(!me()&&!isHost&&S.ph==="lobby"&&S.pl.length&&false)return;
+ if(S.ph==="lobby")lobby();else game();
+}
+const plHtml=(p)=>`<div class="pl"><span class="dot ${p.on?"on":""}"></span>${eh(p.n)}${p.id===TK?" (toi)":""}${p.id===S.host?" 👑":""}${p.spy?" 🕵️":""}${isHost?` <span style="margin-left:auto">${p.t!=="r"?`<button class="btn sm" data-a="mv" data-id="${p.id}" data-t="r">🔴</button>`:""}${p.t!=="b"?`<button class="btn sm" data-a="mv" data-id="${p.id}" data-t="b">🔵</button>`:""}${p.t?`<button class="btn sm dk" data-a="spy" data-id="${p.id}">🕵️</button>`:""}${p.id!==TK?`<button class="btn sm dk" data-a="kick" data-id="${p.id}">✕</button>`:""}</span>`:""}</div>`;
+function lobby(){
+ view("lobby");const col=(t,l)=>`<div class="tm ${t}"><b>${l}</b>${S.pl.filter(p=>p.t===t).map(plHtml).join("")}<button class="btn sm" data-a="join${t}">Rejoindre cette équipe</button></div>`;
+ Q("#teams").innerHTML=col("r","🔴 Équipe rouge")+col("b","🔵 Équipe bleue")+`<div class="tm x"><b>Sans équipe</b>${S.pl.filter(p=>!p.t).map(plHtml).join("")||'<div class="hint">Tout le monde a choisi une équipe</div>'}</div>`;
+ Q("#hostp").hidden=!isHost;Q("#wh").hidden=isHost;srcInfo();
+}
+function game(){
+ view("game");const my=me(),spy=my&&my.spy,key=spy&&KEY?KEY.k:null,pa=S.ph==="play"&&!S.paused&&my&&my.t===S.turn&&!my.spy&&S.clue;
+ const side=(t,e,l)=>{const m=S.pl.filter(p=>p.t===t);e.className="side "+t+(S.turn===t&&S.ph==="play"?" act":"");
+  e.innerHTML=`<div class="n">${S.left[t]}</div><b>${l}</b><div class="hint">Espion</div>${m.filter(p=>p.spy).map(plHtml).join("")}<div class="hint">Agents</div>${m.filter(p=>!p.spy).map(plHtml).join("")}`};
+ side("r",Q("#sr"),"Rouge");side("b",Q("#sb"),"Bleu");
+ const bd=Q("#board");if(bd.children.length!==25){bd.innerHTML=S.b.map((c,i)=>`<div class="cd" data-a="card" data-i="${i}"><div class="f"><span></span></div><div class="bk"><span></span></div></div>`).join("")}
+ S.b.forEach((c,i)=>{const e=bd.children[i],was=e.classList.contains("fl");e.querySelector(".f span").textContent=c.w;e.querySelector(".bk span").textContent=c.w;
+  const k=c.rv||c.kk;e.classList.toggle("fl",!!c.rv);e.classList.toggle("sel",!!c.sel&&!c.rv);
+  e.querySelector(".bk").className="bk k-"+(c.rv||"n");
+  e.className=e.className.replace(/hint-\w/g,"").trim();if(!c.rv&&(key&&key[i]||c.kk))e.classList.add("hint-"+(c.kk||key[i]));
+  if(c.rv&&!was&&c.rv!==S.turn&&S.ph==="play")e.classList.add("bad");else e.classList.remove("bad");
+  if(c.rv&&c.rv==="a"){e.querySelector(".bk").className="bk k-a"}});
+ const st=Q("#stat");st.textContent=S.ph==="end"?"🏆 Victoire des "+(S.win==="r"?"rouges":"bleus")+" !":S.paused?"⏸ Partie en pause":"Tour : "+(S.turn==="r"?"🔴 Rouges":"🔵 Bleus")+(S.clue?"":" — en attente de l’indice");
+ const cl=Q("#cl");cl.hidden=!S.clue;if(S.clue)cl.textContent=S.clue.w.toUpperCase()+" · "+S.clue.n;
+ const sf=Q("#spyf");sf.hidden=!spy;sf.textContent=spy?"Tu es maître-espion : les couleurs te sont visibles":"";
+ let a="";
+ if(S.ph==="play"&&spy&&my.t===S.turn&&!S.clue&&!S.paused)a+=`<input id="cw" maxlength="24" placeholder="Indice (un mot)" style="width:200px"><input id="cn" type="number" min="0" max="9" value="1" style="width:70px"><button class="btn" data-a="clue">Donner l’indice</button>`;
+ if(pa)a+=`<button class="btn" data-a="end">⏭ Terminer le tour</button>`;
+ if(S.ph==="play"&&my&&!spy&&my.t!==S.turn)a+=`<span class="hint">C’est à l’autre équipe de jouer…</span>`;
+ if(pa)a+=`<span class="hint">1er clic : sélectionner (vert, visible par l’équipe) · 2e clic : retourner</span>`;
+ if(isHost){if(S.ph==="play")a+=`<button class="btn dk sm" data-a="pause">${S.paused?"▶ Reprendre":"⏸ Pause"}</button>`;
+  if(S.ph==="end")a+=`<button class="btn" data-a="again">🔁 Rejouer (mêmes équipes)</button>`;
+  a+=`<button class="btn dk sm" data-a="toLobby">↩ Lobby</button><button class="btn dk sm" data-a="closeroom">Fermer la salle</button>`}
+ if(S.ph==="end")a+=`<button class="btn dk" data-a="leave">Nouvelle partie (nouveau code)</button>`;
+ const ae=Q("#acts");if(ae.dataset.h!==a){const cw=Q("#cw"),v=cw&&cw.value;ae.innerHTML=a;ae.dataset.h=a;if(v&&Q("#cw"))Q("#cw").value=v}
+ Q("#log").innerHTML=[...S.log].reverse().map(l=>`<div>${eh(l.t)}</div>`).join("");
+}
+
+/* ----- événements ----- */
+const ask=(t,f)=>{if(confirm(t))f()};
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
+ if(a==="create")enter(true);else if(a==="join")enter(false);
+ else if(a==="words")wordsModal();
+ else if(a==="rules"){const m=document.createElement("div");m.className="mod";m.innerHTML='<div class="box"><h2>📜 Règles</h2><p>Deux équipes, rouge et bleue. Chaque équipe a un <b>maître-espion</b> qui voit la couleur des 25 cartes.</p><p>À son tour, il donne un <b>indice d’un seul mot + un nombre</b>. Ses agents sélectionnent des cartes (1er clic, contour vert partagé) puis les retournent (2e clic).</p><p>Bonne carte : on continue. Carte neutre ou adverse : le tour passe. <b>Assassin : défaite immédiate.</b> La première équipe qui trouve toutes ses cartes gagne.</p><button class="btn" onclick="this.closest(\'.mod\').remove()">Compris</button></div>';document.body.append(m)}
+ else if(a==="copy"){try{await navigator.clipboard.writeText(code);say("Code copié : "+code)}catch(x){prompt("Code :",code)}}
+ else if(a==="leave"){R&&R.leave();location.reload()}
+ else if(a==="joinr")send({k:"team",t:"r"});else if(a==="joinb")send({k:"team",t:"b"});
+ else if(a==="mv")send({k:"team",tp:b.dataset.id,t:b.dataset.t});
+ else if(a==="spy")send({k:"spy",tp:b.dataset.id});
+ else if(a==="kick")ask("Retirer ce joueur ?",()=>send({k:"kick",tp:b.dataset.id}));
+ else if(a==="rand")send({k:"rand"});else if(a==="start")send({k:"start"});
+ else if(a==="again")send({k:"again"});else if(a==="pause")send({k:"pause"});
+ else if(a==="toLobby")ask("Revenir au lobby ? La partie en cours sera abandonnée.",()=>send({k:"toLobby"}));
+ else if(a==="closeroom")ask("Fermer la salle pour tout le monde ?",()=>send({k:"close"}));
+ else if(a==="clue"){const w=Q("#cw").value;if(!w.trim())return say("Écris un indice");send({k:"clue",w,n:Q("#cn").value})}
+ else if(a==="end")send({k:"end"});
+ else if(a==="log")Q("#logw").classList.toggle("open");
+ else if(a==="card"){const i=+b.dataset.i,c=S&&S.b[i];if(!c||c.rv)return;if(!S.clue)return say("Attends l’indice du maître-espion");send({k:c.sel?"flip":"sel",i})}
+});
+try{Q("#pn").value=localStorage.getItem("cn:name")||"";const c=new URLSearchParams(location.search).get("c");if(c)Q("#pc").value=c.toUpperCase()}catch(e){}
+addEventListener("beforeunload",()=>{R&&R.leave()});
+</script></body></html>
