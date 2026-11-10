@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr" data-anim="light" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photo Roulette</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<style>
+.shot{position:relative;border:3px solid var(--edge);border-radius:20px;overflow:hidden;background:#000;box-shadow:6px 6px 0 var(--pink);aspect-ratio:3/4;max-height:56vh;margin:12px auto;display:flex;align-items:center;justify-content:center}
+.shot img,.shot video{width:100%;height:100%;object-fit:contain;background:#000}
+.shot .ph{color:#fff;font-weight:800;font-size:1.3rem;text-align:center;padding:20px}
+.tbar{position:sticky;top:0;z-index:5;margin:0 -16px;padding:8px 16px;background:var(--bg)}
+.tbar .bar i{transition:width .1s linear}
+.mark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:7rem;font-weight:800;background:rgba(0,0,0,.35);animation:fin .25s}
+.mark.ok{color:#2fcf7a}.mark.ko{color:#ff4466}
+.rn{font-weight:800;color:var(--muted);text-align:center}
+.title{background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;margin:10px 0;box-shadow:3px 3px 0 var(--amber);font-weight:800}
+.title small{display:block;color:var(--muted);font-weight:500}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.thumbs img,.thumbs video{width:54px;height:54px;object-fit:cover;border-radius:8px;border:2px solid var(--edge)}
+</style></head><body>
+<main class="wrap">
+<div class="top"><a href="/">← Hub</a><span id="who" class="hint"></span></div>
+
+<section id="s-home">
+ <header class="hero"><div class="logo">📸</div><h1>Photo Roulette</h1>
+ <p>Une photo de la pellicule d’un joueur s’affiche 5 secondes. À toi de deviner à qui elle appartient — vite ! De 3 à 10 joueurs.</p></header>
+ <div class="card"><h2>Ton prénom</h2><input type="text" id="pname" maxlength="14" placeholder="Prénom" autocomplete="off">
+ <button class="btn primary big" data-a="create">Créer une partie 🚀</button></div>
+ <div class="card"><h2>Rejoindre avec un code PIN</h2><div class="row"><input type="text" id="pcode" maxlength="4" placeholder="PIN" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn primary" data-a="join">Rejoindre</button></div></div>
+ <p id="hmsg" class="hint center" role="status"></p>
+</section>
+
+<section id="s-lobby" hidden>
+ <div class="card center"><h2>Code PIN</h2><div class="code" id="lcode"></div><button class="btn" data-a="copy">🔗 Copier le lien</button></div>
+ <div class="card"><h2>Joueurs <span id="pc" class="hint" style="display:inline"></span></h2><div id="pl" class="chips"></div><p id="ph" class="hint"></p></div>
+ <div class="card"><h2 id="mtitle">📷 Ma pellicule</h2>
+  <p class="hint" style="margin:0 0 8px">Appuie sur le bouton, autorise l’accès puis « Tout sélectionner » : le site tire lui-même 20 photos au hasard, tu n’en choisis aucune !</p>
+  <input type="file" id="files" accept="image/*" multiple hidden>
+  <input type="file" id="dir" webkitdirectory multiple hidden>
+  <button class="btn primary" data-a="pick">🎲 Tirer 20 photos au hasard</button>
+  <button class="btn" data-a="dir" id="dirb">📁 Dossier entier</button>
+  <button class="btn" data-a="redraw" id="redrawb" hidden>🔄 Retirer au sort</button>
+  <span id="mycount" class="hint" style="display:inline"></span>
+  <div id="thumbs" class="thumbs"></div></div>
+ <div class="card" id="plantc" hidden><h2>🌱 Plant a photo</h2>
+  <p class="hint" style="margin:0 0 8px">Plante une photo drôle dans la pellicule d’un autre joueur : quand elle sort, c’est lui la bonne réponse !</p>
+  <div class="row"><select id="plto"></select><input type="file" id="plfile" accept="image/*" hidden><button class="btn" data-a="plant">Planter</button></div></div>
+ <div id="hostcfg" hidden class="card"><h2>La partie</h2>
+  <div class="srow"><span><b>Nombre de photos</b></span><div class="stepper"><button data-a="r-">−</button><output id="rn">15</output><button data-a="r+">+</button></div></div>
+  <div class="srow"><span><b>Affichage</b></span><div class="pills" id="showp"></div></div>
+  <div class="srow"><span><b>Mode</b></span><div class="pills" id="modep"></div></div>
+  <div class="srow"><span><b>🌱 Plant a photo</b></span><div class="pills" id="plp"></div></div>
+  <button class="btn primary big" data-a="start" id="startb">Lancer 🚀</button></div>
+ <p id="waith" class="hint center" hidden>En attente de l’hôte…</p>
+ <button class="link" data-a="leave">Quitter</button>
+</section>
+
+<section id="s-game" hidden><div id="stage" class="fade"></div></section>
+</main>
+<script src="/shared/net.js"></script>
+<script>
+const MIN=3,MAX=10;
+let R=null,S=null,isHost=false,code="",L={pool:[],name:"",media:[],mine:null,ans:null,key:"",showAgain:false};
+let H={pool:{},ans:{},used:[],order:[],stat:{}};
+const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
+const msg=t=>$("#hmsg").textContent=t;
+const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!==id);
+const bc=()=>{if(isHost&&R)R.emit("st",S).catch(()=>{})};
+const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
+try{$("#pname").value=localStorage.getItem("soiree:name")||""}catch(e){}
+
+/* ---------- médias ---------- */
+function shrink(file){return new Promise(res=>{
+  if(file.type.startsWith("video/")){ if(file.size>6e6)return res(null); const r=new FileReader();r.onload=()=>res({kind:"video",data:r.result});r.readAsDataURL(file);return}
+  const img=new Image(),u=URL.createObjectURL(file);
+  img.onload=()=>{const k=Math.min(1,720/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*k;c.height=img.height*k;c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res({kind:"photo",data:c.toDataURL("image/jpeg",.62)})};
+  img.onerror=()=>res(null);img.src=u})}
+async function addFiles(list,planto,redraw){
+  if(planto){const m=await shrink([...list][0]);if(m){send({k:"plant",to:planto,kind:m.kind,data:m.data});toast("Photo plantée 🌱")}else toast("Fichier ignoré");return}
+  const vid=S&&S.cfg.media==="video",max=vid?5:20;
+  let all=[...list].filter(f=>vid?f.type.startsWith("video/"):(f.type.startsWith("image/")||/\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name)));
+  if(!all.length){toast("Aucun fichier compatible");return}
+  if(!redraw)L.pool=all;
+  $("#redrawb").hidden=false;
+  const files=shuffle(all).slice(0,max*2); // tirage au sort, on garde de la marge si certains fichiers sont illisibles
+  L.media=[];send({k:"reset"});toast("Tirage au sort en cours…");
+  for(const f of files){ if(L.media.length>=max)break;
+    const m=await shrink(f); if(!m)continue;
+    L.media.push(m);send({k:"media",kind:m.kind,data:m.data});renderLobby()}
+  toast(L.media.length+" tirés au hasard ✔");
+}
+
+/* ---------- connexion ---------- */
+async function enter(create){
+  const name=$("#pname").value.trim().slice(0,14); if(!name)return msg("Entre ton prénom 🙂");
+  code=create?mkCode():$("#pcode").value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{4}$/.test(code))return msg("Le code PIN a 4 caractères.");
+  L.name=name;try{localStorage.setItem("soiree:name",name)}catch(e){}
+  try{R=await Net.join("pr-"+code)}catch(e){return msg(e.message)}
+  isHost=R.host; if(create&&!isHost)return enter(true);
+  R.on("st",d=>{S=d;route()});
+  R.on("ph",d=>{L.cur=d;if(S)route(true)});
+  if(isHost){R.on("act",hostAct);
+   S={ph:"lobby",host:ME,pl:[],cfg:{rounds:15,show:5,media:"photo",plant:true}};hostAct({k:"join",p:ME,n:name});
+   setInterval(tick,250); setInterval(bc,2500)}
+  else{R.on("priv",d=>{L.owner=d.own;if(S&&S.ph==="round")updLive()});const hello=()=>{if(!S||!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:name},"host")};hello();setInterval(hello,2000)}
+  view("lobby");$("#lcode").textContent=code;route();
+}
+
+/* ---------- logique hôte ---------- */
+function hostAct(d){
+  if(!isHost||!S)return;const p=d.p;
+  if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,14),sc:0});}
+  else if(d.k==="reset"&&S.pl.some(x=>x.id===p)){H.pool[p]=(H.pool[p]||[]).filter(m=>m.by)}
+  else if(d.k==="media"&&S.pl.some(x=>x.id===p)){const a=H.pool[p]=H.pool[p]||[];if(a.filter(m=>!m.by).length<20&&(d.data||"").length<9e6)a.push({kind:d.kind,data:d.data,by:null,owner:p})}
+  else if(d.k==="plant"&&S.cfg.plant&&S.pl.some(x=>x.id===d.to)&&d.to!==p&&(d.data||"").length<9e6){(H.pool[d.to]=H.pool[d.to]||[]).push({kind:d.kind,data:d.data,by:p,owner:d.to})}
+  else if(d.k==="ans"&&S.ph==="round"&&S.opts.includes(d.c)&&!H.ans[p]&&p!==H.cur.owner){H.ans[p]={c:d.c,ms:Math.max(0,Math.min(d.ms|0,S.win*1000))}}
+  else if(d.k==="needph"&&S.ph!=="lobby"&&H.cur)R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data},p);
+  else if(d.k==="cfg"&&p===ME&&S.ph==="lobby")Object.assign(S.cfg,d.cfg);
+  else if(d.k==="start"&&p===ME)startGame();
+  else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.pl.forEach(x=>x.sc=0);S.ph="lobby";if(d.media)S.cfg.media=d.media;H.stat={};}
+  S.pl.forEach(x=>x.np=(H.pool[x.id]||[]).length);
+  S.on=[...R.peers(),ME];bc();route();
+}
+function startGame(){
+  const kind=S.cfg.media==="video"?"video":"photo";
+  const all=Object.values(H.pool).flat().filter(m=>(kind==="video")===(m.kind==="video"));
+  if(S.pl.length<MIN)return toast("Il faut au moins 3 joueurs");
+  if(all.length<3)return toast("Il faut au moins 3 "+(kind==="video"?"vidéos":"photos")+" au total");
+  H.order=shuffle(all).slice(0,S.cfg.rounds);S.total=H.order.length;S.r=-1;H.stat={fast:null,streak:{}, cur:{}};
+  S.pl.forEach(x=>x.sc=0);nextRound();
+}
+function nextRound(){
+  S.r++;if(S.r>=S.total){S.ph="end";S.res=null;return finish()}
+  H.cur=H.order[S.r];H.ans={};
+  const others=shuffle(S.pl.filter(x=>x.id!==H.cur.owner)).slice(0,3).map(x=>x.id);
+  S.opts=shuffle([H.cur.owner,...others]);
+  S.win=S.cfg.show+5;S.ph="round";S.t0=Net.now()+900;S.res=null;
+  R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data});if(H.cur.owner!==ME)R.emit("priv",{own:S.r},H.cur.owner);L.cur={r:S.r,kind:H.cur.kind,data:H.cur.data};
+}
+function tick(){
+  if(!isHost||!S||S.ph!=="round")return;
+  const need=S.pl.filter(x=>x.id!==H.cur.owner).length,got=Object.keys(H.ans).length;
+  if(got>=need||Net.now()>S.t0+S.win*1000+800)reveal();
+}
+function reveal(){
+  const per=[];
+  for(const x of S.pl){ if(x.id===H.cur.owner)continue;const a=H.ans[x.id],ok=!!a&&a.c===H.cur.owner;
+    const pts=ok?Math.round(300+700*(1-a.ms/(S.win*1000))):0;x.sc+=pts;
+    const st=H.stat.cur[x.id]=ok?(H.stat.cur[x.id]||0)+1:0;H.stat.streak[x.id]=Math.max(H.stat.streak[x.id]||0,st);
+    if(ok&&(!H.stat.fast||a.ms<H.stat.fast.ms))H.stat.fast={id:x.id,ms:a.ms};
+    per.push({id:x.id,c:a?a.c:null,ok,pts,ms:a?a.ms:null})}
+  S.res={owner:H.cur.owner,by:H.cur.by,per};S.ph="reveal";S.last=S.r+1>=S.total;bc();route();
+}
+function finish(){
+  const best=[...S.pl].sort((a,b)=>b.sc-a.sc)[0];
+  const sk=Object.entries(H.stat.streak||{}).sort((a,b)=>b[1]-a[1])[0];
+  S.stats={best:{id:best.id,v:best.sc},fast:H.stat.fast,streak:sk?{id:sk[0],v:sk[1]}:null};
+}
+
+/* ---------- rendu ---------- */
+function route(media){
+  if(!S)return;
+  if(S.ph==="lobby"){view("lobby");renderLobby();return}
+  view("game");
+  const key=S.ph+":"+S.r;
+  if(S.ph==="round"&&(!L.cur||L.cur.r!==S.r)){if(!isHost&&(!L.need||Date.now()-L.need>1500)){L.need=Date.now();R.emit("act",{k:"needph",p:ME},"host")}}
+  if(media===true&&S.ph==="round"&&L.key==="round:"+S.r+":ph")return;
+  if(key===L.key&&!(media===true)&&S.ph!=="end"){updLive();return}
+  L.key=key+(S.ph==="round"&&L.cur&&L.cur.r===S.r?":ph":"");L.ans=S.ph==="round"?(L.ansR===S.r?L.ans:null):L.ans;
+  if(S.ph==="round"&&L.ansR!==S.r)L.ans=null;
+  renderGame();
+}
+function renderLobby(){
+  const on=new Set(S.on||[]);
+  $("#pl").innerHTML=S.pl.map(p=>`<span class="chip ${p.id===S.host?"host":""} ${on.has(p.id)||p.id===ME?"":"off"}">${esc(p.n)}${p.np?` · ${p.np}`:""}</span>`).join("");
+  $("#pc").textContent=`${S.pl.length}/${MAX}`;
+  const vid=S.cfg.media==="video";$("#mtitle").textContent=vid?"🎬 Mes vidéos":"📷 Ma pellicule";
+  $("#files").accept=vid?"video/*":"image/*";
+  $("#mycount").textContent=L.media.length?`✔ ${L.media.length} tirées au hasard`:"";
+  $("#thumbs").innerHTML="";
+  $("#plantc").hidden=!S.cfg.plant||vid;
+  $("#plto").innerHTML=S.pl.filter(p=>p.id!==ME).map(p=>`<option value="${p.id}">${esc(p.n)}</option>`).join("");
+  $("#ph").textContent=S.pl.length<MIN?`Il faut au moins ${MIN} joueurs (${MIN-S.pl.length} de plus).`:"Tout le monde est là ? Chacun ajoute ses médias puis l’hôte lance.";
+  $("#hostcfg").hidden=!isHost;$("#waith").hidden=isHost;
+  if(isHost){$("#rn").textContent=S.cfg.rounds;
+   $("#showp").innerHTML=[3,5,8].map(v=>`<button class="pill ${S.cfg.show===v?"on":""}" data-a="show" data-v="${v}">${v} s</button>`).join("");
+   $("#modep").innerHTML=[["photo","📸 Photos"],["video","🎬 Vidéos"]].map(([v,l])=>`<button class="pill ${S.cfg.media===v?"on":""}" data-a="mode" data-v="${v}">${l}</button>`).join("");
+   $("#plp").innerHTML=[[true,"Oui"],[false,"Non"]].map(([v,l])=>`<button class="pill ${S.cfg.plant===v?"on":""}" data-a="pl" data-v="${v}">${l}</button>`).join("");
+   $("#startb").disabled=S.pl.length<MIN}
+}
+function media(c,again){return c?(c.kind==="video"?`<video src="${c.data}" autoplay muted playsinline ${again?"loop":""}></video>`:`<img src="${c.data}" alt="Photo mystère">`):`<div class="ph">Chargement…</div>`}
+function renderGame(){
+  const st=$("#stage");st.className="";void st.offsetWidth;st.className="fade";
+  const me=S.pl.find(p=>p.id===ME);
+  const score=`<div class="rn">Photo ${Math.max(1,S.r+1)}/${S.total} · ${me?me.sc:0} pts</div>`;
+  if(S.ph==="round"){
+    const mine=H.cur&&isHost?H.cur.owner===ME:(L.cur&&L.cur.owner===ME);
+    const owner=isHost&&H.cur?H.cur.owner===ME:false; L.isOwner=owner||L.isOwner&&!isHost;
+    st.innerHTML=`<div class="tbar"><div class="bar"><i id="tb" style="width:100%"></i></div></div>${score}
+     <div class="shot" id="shot">${media(L.cur&&L.cur.r===S.r?L.cur:null)}</div>
+     <div id="opts">${S.opts.map(id=>`<button class="pick" data-a="ans" data-id="${id}">${esc(nm(id))}</button>`).join("")}</div>
+     <p class="hint center" id="ownhint"></p>`;
+    updLive();
+  }else if(S.ph==="reveal"){
+    const r=S.res,mineRes=r.per.find(x=>x.id===ME),isOwn=r.owner===ME;
+    const c=L.cur&&L.cur.r===S.r?L.cur:null;
+    st.innerHTML=`${score}<div class="shot" id="shot">${media(c,true)}${mineRes?`<div class="mark ${mineRes.ok?"ok":"ko"}">${mineRes.ok?"✓":"✗"}</div>`:""}</div>
+     <div class="card center"><h2>C’était la photo de ${esc(nm(r.owner))} ${r.by?`<br><small class="hint">🌱 plantée par ${esc(nm(r.by))}</small>`:""}</h2>
+      ${isOwn?"<p class='hint'>C’était la tienne 😏</p>":mineRes?`<b>${mineRes.ok?"+"+mineRes.pts+" pts · "+mineRes.ms+" ms":"Raté…"}</b>`:""}</div>
+     ${[...S.pl].sort((a,b)=>b.sc-a.sc).map((p,i)=>{const x=r.per.find(q=>q.id===p.id);return`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)} ${x?(x.ok?"✓":"✗"):"📸"}<span class="pts">${p.sc}</span></div>`}).join("")}
+     <div class="row" style="justify-content:center;gap:10px;margin-top:10px"><button class="btn" data-a="again-show">🔁 Show photo again</button>
+     ${isHost?`<button class="btn primary" data-a="next">${S.last?"Résultats 🏆":"Suivante →"}</button>`:""}</div>`;
+  }else if(S.ph==="end"){
+    const s=S.stats||{},rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
+    st.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Results</h1><p><b>${esc(nm(rank[0].id))}</b> est le champion !</p></div>
+     <div class="title">🥇 Meilleur score<small>${esc(nm(s.best.id))} — ${s.best.v}</small></div>
+     <div class="title">⚡ Réponse la plus rapide<small>${s.fast?esc(nm(s.fast.id))+" — "+s.fast.ms+" ms":"—"}</small></div>
+     <div class="title">🔥 Plus longue série<small>${s.streak&&s.streak.v?esc(nm(s.streak.id))+" — "+s.streak.v:"—"}</small></div>
+     ${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)}<span class="pts">${p.sc}</span></div>`).join("")}
+     ${isHost?`<button class="btn primary big" data-a="again">Play again</button><button class="btn big" data-a="again-video">Play with videos 🎬</button>`:`<p class="hint center">L’hôte peut relancer une partie.</p>`}
+     <button class="link" data-a="leave">Quitter</button>`;
+  }
+}
+function updLive(){
+  if(S.ph!=="round")return;
+  const el=$("#ownhint");
+  const owner=isHost&&H.cur?H.cur.owner:null;
+  if(el)el.textContent=(owner===ME||(!isHost&&L.owner===S.r))?"C’est ta photo : tu ne joues pas ce tour 😎":"";
+}
+/* barre de temps et masquage de la photo */
+setInterval(()=>{
+  if(!S||S.ph!=="round")return;
+  const tb=$("#tb");if(!tb)return;
+  const el=(Net.now()-S.t0)/1000,left=Math.max(0,1-el/S.win);tb.style.width=(el<0?100:left*100)+"%";
+  const sh=$("#shot");if(sh&&el>S.cfg.show&&!sh.dataset.h){sh.dataset.h=1;sh.innerHTML='<div class="ph">📸 Photo masquée…<br>Réponds vite !</div>'}
+  if(sh&&L.cur&&L.cur.r===S.r&&!sh.dataset.p&&el>=0&&el<S.cfg.show){sh.dataset.p=1;sh.innerHTML=media(L.cur)}
+},100);
+
+/* ---------- événements ---------- */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
+  if(a==="create")enter(true);else if(a==="join")enter(false);
+  else if(a==="copy"){const u=location.origin+location.pathname+"?c="+code;try{await navigator.clipboard.writeText(u);toast("Lien copié")}catch(x){prompt("Lien :",u)}}
+  else if(a==="leave"){R&&R.leave();location.href=location.pathname}
+  else if(a==="pick")$("#files").click();
+  else if(a==="dir")$("#dir").click();
+  else if(a==="redraw"){if(L.pool&&L.pool.length)addFiles(L.pool,null,true);else $("#files").click()}
+  else if(a==="plant"){const t=$("#plto").value;if(!t)return toast("Aucun joueur à cibler");L.plantTo=t;$("#plfile").click()}
+  else if(a==="r-"||a==="r+")send({k:"cfg",cfg:{rounds:Math.max(5,Math.min(30,S.cfg.rounds+(a==="r+"?1:-1)))}});
+  else if(a==="show")send({k:"cfg",cfg:{show:+b.dataset.v}});
+  else if(a==="mode")send({k:"cfg",cfg:{media:b.dataset.v}});
+  else if(a==="pl")send({k:"cfg",cfg:{plant:b.dataset.v==="true"}});
+  else if(a==="start")send({k:"start"});
+  else if(a==="next")send({k:"next"});
+  else if(a==="again")send({k:"again"});
+  else if(a==="again-video"){send({k:"again",media:"video"})}
+  else if(a==="again-show"){const sh=$("#shot");const c=L.cur;if(sh&&c){sh.innerHTML=media(c,true);setTimeout(()=>{sh.innerHTML=media(c,true)},0)}}
+  else if(a==="ans"&&!L.ans&&S.ph==="round"){
+    const owner=isHost&&H.cur?H.cur.owner:null;if(owner===ME||L.owner===S.r)return;
+    L.ans=b.dataset.id;L.ansR=S.r;const ms=Math.round(Net.now()-S.t0);
+    $$("#opts .pick").forEach(x=>{x.disabled=true;x.classList.toggle("on",x===b)});
+    send({k:"ans",c:b.dataset.id,ms:Math.max(0,ms)});
+  }
+});
+$("#files").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
+$("#dir").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
+$("#plfile").addEventListener("change",e=>{addFiles(e.target.files,L.plantTo);e.target.value=""});
+{const c=new URLSearchParams(location.search).get("c");if(c)$("#pcode").value=c.toUpperCase()}
+addEventListener("beforeunload",()=>R&&R.leave());
+</script></body></html>
