@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Poker Face</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<style>
+html[data-theme],html[data-theme="light"],html[data-theme="dark"]{color-scheme:dark;--bg:#09090d;--surface:#15151d;--ink:#fff;--muted:#a9a3b8;--edge:#ff2a4d;--sh:#5b0b1b;--violet:#ff2a4d;--teal:#27e08a;--pink:#ff2a4d}
+body{background:radial-gradient(ellipse at 50% -10%,#3a0612 0%,#09090d 60%)}
+.wrap{max-width:980px}
+h1.neon{text-shadow:0 0 12px #ff2a4d,0 0 30px #ff2a4d88;letter-spacing:.04em;text-transform:uppercase}
+.btn{box-shadow:0 0 0 0 #0000,3px 3px 0 var(--sh)}.btn.primary{box-shadow:0 0 18px #ff2a4d66,3px 3px 0 var(--sh)}
+#tiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:12px 0}
+.tile{position:relative;width:min(44vw,210px);aspect-ratio:4/3;background:#000;border:3px solid #666;border-radius:14px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.tile video{width:100%;height:100%;object-fit:cover;display:block}
+.tile.me video{transform:scaleX(-1)}
+.tile .nm{position:absolute;left:0;right:0;bottom:0;background:#000b;padding:2px 8px;font-weight:800;font-size:.85rem;display:flex;justify-content:space-between}
+.tile.alive{border-color:var(--teal);box-shadow:0 0 14px #27e08a55}
+.tile.out{border-color:#ff1a40;box-shadow:0 0 28px #ff1a40,inset 0 0 40px #ff1a4088;animation:shake .4s}
+.tile.out::after{content:"ÉLIMINÉ";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#ff1a4066;font-weight:800;font-size:1.2rem;letter-spacing:.1em}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.stage{position:relative;background:#000;border:3px solid var(--edge);border-radius:18px;box-shadow:0 0 30px #ff2a4d55;aspect-ratio:16/9;max-height:60vh;margin:0 auto;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.stage video,.stage img,.stage iframe{width:100%;height:100%;object-fit:contain;border:0;background:#000}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#000c;font-weight:800;z-index:3}
+.ov b{font-size:5rem;color:#ff2a4d;text-shadow:0 0 20px #ff2a4d;display:block}
+.ov.lost{background:#ff1a4099;font-size:clamp(1.8rem,8vw,3.4rem);animation:fin .3s}
+.ok{color:var(--teal)}.status{font-weight:800}.status.bad{color:#ff6b86}
+.rank td,.rank th{padding:6px 8px;text-align:left}.rank{width:100%;border-collapse:collapse}.rank tr{border-top:1px dashed #5b0b1b}
+.qrbox{background:#fff;padding:12px;border-radius:12px;display:inline-block;margin:8px 0}
+.mod{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}.mod .card{max-width:520px;max-height:85vh;overflow:auto}
+</style></head><body>
+<main class="wrap">
+<div class="top"><a href="/">← Hub</a><span id="who" class="hint"></span></div>
+
+<section id="s-home">
+ <header class="hero"><div class="logo">🎭</div><h1 class="neon">Poker Face</h1><p>Regarde des vidéos et des photos sans la moindre réaction. Si ton visage craque, tu perds la manche. 2 à 8 joueurs.</p></header>
+ <div class="card"><h2>Ton pseudo</h2><input type="text" id="pname" maxlength="14" placeholder="Pseudo" autocomplete="off">
+  <button class="btn primary big" data-a="create">🎮 JOUER</button>
+  <button class="btn big" data-a="create">Créer une partie</button></div>
+ <div class="card"><h2>Rejoindre une partie</h2><div class="row"><input type="text" id="pcode" maxlength="4" placeholder="CODE" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn primary" data-a="join">Rejoindre</button></div></div>
+ <button class="btn big" data-a="rules">📜 Règles du jeu</button>
+ <p id="hmsg" class="hint center" role="status"></p>
+</section>
+
+<section id="s-phone" hidden>
+ <header class="hero"><div class="logo">📱</div><h1 class="neon">Caméra téléphone</h1><p>Ce téléphone devient la caméra de ton ordinateur dans Poker Face : image plus nette, visage mieux détecté.</p></header>
+ <div class="card center"><video id="pv" autoplay playsinline muted style="width:100%;border-radius:14px;background:#000;max-height:50vh"></video>
+  <p id="pst" class="status">Appuie sur le bouton pour démarrer.</p>
+  <button class="btn primary big" data-a="pstart">Démarrer la caméra</button><button class="btn big" data-a="pflip">🔄 Changer de caméra</button></div>
+ <p class="hint center">Pose le téléphone face à ton visage, bien éclairé, et laisse cette page ouverte. Rien n’est enregistré.</p>
+</section>
+
+<section id="s-lobby" hidden>
+ <div class="card center"><h2>Code de la partie</h2><div class="code" id="lcode"></div><button class="btn" data-a="copy">🔗 Copier le lien</button></div>
+ <div class="card"><h2>Caméras <span id="pc" class="hint" style="display:inline"></span></h2><div id="tl-lobby"></div>
+  <p id="faceStat" class="status">Chargement de l’IA…</p>
+  <div class="srow"><span><b>Ma caméra</b><small>Choisis la bonne si besoin (OBS, webcam externe…)</small></span><select id="camsel" style="width:170px"></select></div>
+  <button class="btn" data-a="phone" id="phoneBtn">📱 Utiliser mon téléphone comme caméra</button>
+  <div class="srow"><span><b>Ma sensibilité</b><small>Plus haut = tu craques plus facilement</small></span><input type="range" id="sens" min="0" max="100" style="width:140px"></div></div>
+ <div class="card"><h2>🎬 Contenus <span id="ic" class="hint" style="display:inline"></span></h2>
+  <div class="row"><input type="text" id="url" placeholder="Lien YouTube ou vidéo (.mp4)"><button class="btn" data-a="addurl">Ajouter</button></div>
+  <input type="file" id="fimg" accept="image/*" hidden><input type="file" id="fvid" accept="video/*" hidden>
+  <div class="row" style="margin-top:8px"><button class="btn" data-a="pimg">📷 Photo</button><button class="btn" data-a="pvid">🎞️ Vidéo</button></div>
+  <p class="hint">Photos réduites automatiquement, vidéos de 8 Mo maximum. Pour YouTube, la vidéo doit autoriser l’intégration.</p>
+  <div id="items"></div></div>
+ <div class="card"><h2>Classement</h2><div id="rank-l"></div></div>
+ <div id="hostcfg" class="card" hidden><h2>La partie</h2>
+  <div class="srow"><span><b>Manches</b></span><div class="pills" id="roundsp"></div></div>
+  <div class="srow"><span><b>Durée max d’une manche</b></span><div class="pills" id="durp"></div></div>
+  <button class="btn primary big" data-a="start" id="startb">Lancer la manche 🔥</button></div>
+ <p id="waith" class="hint center" hidden>En attente de l’hôte…</p>
+ <button class="link" data-a="leave">Quitter</button>
+</section>
+
+<section id="s-round" hidden>
+ <div class="rn center hint" id="rinfo"></div>
+ <div class="bar" style="margin:6px 0"><i id="tb" style="width:100%"></i></div>
+ <div class="stage" id="stage"><div id="media" style="width:100%;height:100%"></div><div class="ov" id="ov"></div><div class="ov lost" id="lost" hidden>TU AS CRAQUÉ !</div></div>
+ <div id="tl-round"></div>
+ <p id="roundFace" class="status center"></p>
+ <div class="center"><button class="btn danger" data-a="crack">😂 J’ai craqué</button></div>
+ <div class="card"><div id="rank-r"></div></div>
+</section>
+
+<section id="s-result" hidden>
+ <div class="center"><div class="big-emoji">🎭</div><h1 class="neon" id="rtitle"></h1><p id="rsub"></p></div>
+ <div class="card"><div id="rank-x"></div></div>
+ <div id="resbtn"></div>
+</section>
+
+<section id="s-end" hidden>
+ <div class="center"><div class="big-emoji">🏆</div><h1 class="neon">Le grand gagnant</h1><div class="word" id="champ" style="font-size:2.4rem;font-weight:800"></div></div>
+ <div class="card"><div id="rank-e"></div></div>
+ <div id="endbtn"></div>
+</section>
+</main>
+<div id="tiles"></div>
+<script src="/shared/net.js"></script>
+<script>
+"use strict";
+const MIN=2,MAX=8,AI_VER="0.10.14";
+let R=null,S=null,isHost=false,code="";
+let H={data:{},used:[],ended:false};
+const L={stream:null,lm:null,aiState:"load",face:false,sens:+(localStorage.getItem("soiree:pf_sens")||50),base:null,cal:[],streak:0,out:false,pcs:{},q:{},tiles:{},cur:null,key:"",started:false,name:""};
+const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
+const view=id=>["home","lobby","round","result","end"].forEach(x=>$("#s-"+x).hidden=x!==id);
+const msg=t=>$("#hmsg").textContent=t;
+const bc=()=>{if(isHost&&R)R.emit("st",S).catch(()=>{})};
+const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
+try{$("#pname").value=localStorage.getItem("soiree:name")||"";$("#sens").value=L.sens}catch(e){}
+
+/* ---------- tuiles webcam (persistantes) ---------- */
+function tile(id){
+ if(L.tiles[id])return L.tiles[id];
+ const d=document.createElement("div");d.className="tile"+(id===ME?" me":"");
+ d.innerHTML='<video autoplay playsinline '+(id===ME?"muted":"")+'></video><div class="nm"><span></span><span></span></div>';
+ if(id===ME&&L.stream)d.querySelector("video").srcObject=L.stream;
+ $("#tiles").append(d);return L.tiles[id]=d;
+}
+function updTiles(){
+ if(!S)return;const on=new Set([...(S.on||[]),ME]);
+ S.pl.forEach(p=>{const t=tile(p.id);t.querySelector(".nm span").textContent=p.n;
+  t.querySelector(".nm span:last-child").textContent=p.sc+" pt";
+  t.classList.toggle("out",S.ph==="round"&&!!p.out);t.classList.toggle("alive",S.ph==="round"&&!p.out&&on.has(p.id))});
+ for(const id in L.tiles)if(!S.pl.some(p=>p.id===id)){L.tiles[id].remove();delete L.tiles[id]}
+}
+const place=id=>{const c=$("#"+id);if(c&&$("#tiles").parentNode!==c)c.append($("#tiles"))};
+
+/* ---------- caméra + IA ---------- */
+async function getCam(){
+ let saved="";try{saved=localStorage.getItem("soiree:pf_cam")||""}catch(e){}
+ const dim={width:{ideal:480},height:{ideal:360}};
+ try{
+  if(saved){try{L.stream=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:saved},...dim},audio:false});listCams();return true}catch(e){}}
+  L.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",...dim},audio:false});listCams();return true}
+ catch(e){msg(e&&e.name==="NotAllowedError"?"Caméra refusée : autorise-la dans ton navigateur pour jouer (elle sert uniquement à l’analyse locale, rien n’est enregistré).":"Caméra introuvable ou indisponible.");return false}
+}
+async function listCams(){
+ try{const sel=$("#camsel");if(!sel)return;
+  const d=(await navigator.mediaDevices.enumerateDevices()).filter(x=>x.kind==="videoinput");
+  const t=L.stream&&L.stream.getVideoTracks()[0],cur=t&&t.getSettings&&t.getSettings().deviceId;
+  sel.innerHTML=d.map((x,i)=>`<option value="${esc(x.deviceId)}" ${x.deviceId===cur?"selected":""}>${esc(x.label||"Caméra "+(i+1))}</option>`).join("")}catch(e){}
+}
+async function switchCam(id){
+ try{const s=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:id},width:{ideal:480},height:{ideal:360}},audio:false});
+  try{localStorage.setItem("soiree:pf_cam",id)}catch(e){}
+  if(L.phoneOn){L.phoneOn=false;if(pcPh){try{pcPh.close()}catch(e){}pcPh=null}}
+  applyStream(s);L.base=null;L.cal=[];toast("Caméra changée 📷")}
+ catch(e){toast("Cette caméra ne répond pas (déjà utilisée ?)")}
+ listCams();
+}
+if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener("devicechange",listCams);
+$("#camsel").addEventListener("change",e=>switchCam(e.target.value));
+async function initAI(){
+ try{
+  const m=await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@"+AI_VER+"/vision_bundle.mjs");
+  const fs=await m.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@"+AI_VER+"/wasm");
+  L.lm=await m.FaceLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",delegate:"GPU"},runningMode:"VIDEO",numFaces:1,outputFaceBlendshapes:true});
+  L.aiState="ok";
+ }catch(e){L.aiState="err"}
+}
+const sc=m=>({
+ smile:(m.mouthSmileLeft+m.mouthSmileRight)/2*1.3,
+ laugh:m.jawOpen,
+ surprise:Math.max(m.browInnerUp,(m.eyeWideLeft+m.eyeWideRight)/2),
+ grimace:Math.max((m.mouthFrownLeft+m.mouthFrownRight)/2,(m.noseSneerLeft+m.noseSneerRight)/2,(m.mouthStretchLeft+m.mouthStretchRight)/2),
+ lips:Math.max(m.mouthPucker,m.mouthFunnel,(m.mouthLowerDownLeft+m.mouthLowerDownRight)/2)});
+function analyse(){
+ if(!L.lm||!L.stream)return;
+ const v=L.tiles[ME]&&L.tiles[ME].querySelector("video");if(!v||v.readyState<2)return;
+ let r;try{r=L.lm.detectForVideo(v,performance.now())}catch(e){return}
+ const cat=r&&r.faceBlendshapes&&r.faceBlendshapes[0]&&r.faceBlendshapes[0].categories;
+ L.face=!!cat;
+ const lobby=!S||S.ph==="lobby";
+ const fs=$("#faceStat");
+ if(lobby&&fs){fs.textContent=L.face?"✔ Visage détecté : tu es prêt !":"⚠ Visage non détecté : place-toi face à la caméra, avec de la lumière.";fs.className="status "+(L.face?"ok":"bad")}
+ if(!S||S.ph!=="round")return;
+ const rf=$("#roundFace");if(rf)rf.textContent=L.face?"":"⚠ Visage non détecté";
+ if(!cat)return;
+ const m={};cat.forEach(c=>m[c.categoryName]=c.score);const s=sc(m),now=Net.now();
+ if(now<S.t0){L.cal.push(s);return}
+ if(!L.base){L.base={};for(const k in s)L.base[k]=L.cal.length?L.cal.reduce((a,x)=>a+x[k],0)/L.cal.length:0}
+ if(L.out)return;
+ const thr=0.42-0.0035*L.sens;let hit=false;
+ for(const k in s)if(s[k]-L.base[k]>thr)hit=true;
+ L.streak=hit?L.streak+1:0;
+ if(L.streak>=5)crack();
+}
+function crack(){if(L.out||!S||S.ph!=="round"||Net.now()<S.t0)return;L.out=true;$("#lost").hidden=false;if(navigator.vibrate)navigator.vibrate(200);send({k:"out"})}
+setInterval(analyse,70);
+
+/* ---------- WebRTC ---------- */
+function pcFor(id){
+ if(L.pcs[id])return L.pcs[id];
+ const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});L.pcs[id]=pc;
+ L.stream.getTracks().forEach(t=>pc.addTrack(t,L.stream));
+ pc.onicecandidate=e=>{if(e.candidate)R.emit("sig",{f:ME,t:"ice",c:e.candidate},id)};
+ pc.ontrack=e=>{tile(id).querySelector("video").srcObject=e.streams[0]};
+ return pc;
+}
+async function offer(id){const pc=pcFor(id);await pc.setLocalDescription(await pc.createOffer());R.emit("sig",{f:ME,t:"offer",s:pc.localDescription},id)}
+async function onSig(d){
+ if(!L.stream||!d||d.f===ME)return;const id=d.f;
+ if(d.t==="hi"){const pc=pcFor(id);if(ME<id&&!pc.off){pc.off=1;offer(id)}else if(ME>id&&!pc.rep){pc.rep=1;R.emit("sig",{f:ME,t:"hi"},id)}}
+ else if(d.t==="offer"){const pc=pcFor(id);await pc.setRemoteDescription(d.s);await pc.setLocalDescription(await pc.createAnswer());R.emit("sig",{f:ME,t:"answer",s:pc.localDescription},id);flush(id)}
+ else if(d.t==="answer"){const pc=pcFor(id);if(pc.signalingState==="have-local-offer"){await pc.setRemoteDescription(d.s);flush(id)}}
+ else if(d.t==="ice"){const pc=pcFor(id);if(pc.remoteDescription)pc.addIceCandidate(d.c).catch(()=>{});else(L.q[id]=L.q[id]||[]).push(d.c)}
+}
+function flush(id){const pc=L.pcs[id];(L.q[id]||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));L.q[id]=[]}
+setInterval(()=>{ if(!R||!L.stream||!S)return;
+ for(const id in L.pcs){const st=L.pcs[id].connectionState;if(st==="failed"||st==="closed"){try{L.pcs[id].close()}catch(e){}delete L.pcs[id]}}
+ if(S.pl.some(p=>p.id!==ME&&!L.pcs[p.id]||p.id!==ME&&L.pcs[p.id]&&L.pcs[p.id].connectionState!=="connected"))R.emit("sig",{f:ME,t:"hi"});
+},3500);
+
+/* ---------- connexion ---------- */
+async function enter(create){
+ const name=$("#pname").value.trim().slice(0,14);if(!name)return msg("Choisis un pseudo 🙂");
+ const c=create?mkCode():$("#pcode").value.trim().toUpperCase();
+ if(!/^[A-Z0-9]{4}$/.test(c))return msg("Le code a 4 caractères.");
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return msg("Ton navigateur ne gère pas la caméra (il faut HTTPS).");
+ msg("Autorise la caméra…");if(!(await getCam()))return;
+ L.name=name;try{localStorage.setItem("soiree:name",name)}catch(e){}
+ code=c;
+ try{R=await Net.join("pf-"+code)}catch(e){return msg(e.message)}
+ isHost=R.host;if(create&&!isHost){R.leave();return enter(true)}
+ R.on("st",d=>{S=d;route()});
+ R.on("sig",onSig);
+ R.on("content",d=>{L.cur=d;L.started=false});
+ if(isHost){R.on("act",hostAct);
+  S={ph:"lobby",host:ME,pl:[],items:[],r:0,cfg:{rounds:5,dur:30}};
+  hostAct({k:"join",p:ME,n:name});setInterval(tick,250);setInterval(bc,2500)}
+ else{const hello=()=>{if(!S||!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:name},"host")};hello();setInterval(hello,2000)}
+ tile(ME);$("#lcode").textContent=code;$("#who").textContent="Salon "+code;view("lobby");route();initAI();
+}
+
+/* ---------- logique hôte ---------- */
+function hostAct(d){
+ if(!isHost||!S)return;const p=d.p,pp=S.pl.find(x=>x.id===p);
+ if(d.k==="join"){if(!pp&&S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,14),sc:0,w:0,o:0,out:false})}
+ else if(d.k==="item"&&pp&&S.items.length<40&&(d.data||"").length<12e6){
+  const id=Math.random().toString(36).slice(2,8);
+  S.items.push({id,kind:d.kind,label:String(d.label||"").slice(0,60),ref:d.ref||"",by:p});if(d.data)H.data[id]=d.data}
+ else if(d.k==="rm"){const it=S.items.find(i=>i.id===d.id);if(it&&(it.by===p||p===S.host)){S.items=S.items.filter(i=>i.id!==d.id);delete H.data[d.id]}}
+ else if(d.k==="cfg"&&p===ME&&S.ph==="lobby")Object.assign(S.cfg,d.cfg);
+ else if(d.k==="start"&&p===ME&&S.ph==="lobby")startRound();
+ else if(d.k==="out"&&pp&&S.ph==="round"&&!pp.out&&Net.now()>=S.t0-300){pp.out=true;pp.o++}
+ else if(d.k==="next"&&p===ME&&S.ph==="result"){S.ph=S.r>=S.cfg.rounds?"end":"lobby"}
+ else if(d.k==="again"&&p===ME&&S.ph==="end"){S.pl.forEach(x=>{x.sc=0;x.w=0;x.o=0});S.r=0;S.ph="lobby"}
+ S.on=[...R.peers(),ME];bc();route();
+}
+function startRound(){
+ if(S.pl.length<MIN)return toast("Il faut au moins 2 joueurs");
+ if(!S.items.length)return toast("Ajoute au moins un contenu");
+ let pool=S.items.filter(i=>!H.used.includes(i.id));if(!pool.length){H.used=[];pool=S.items}
+ const it=pickR(pool);H.used.push(it.id);H.ended=false;
+ S.r++;S.cur={id:it.id,kind:it.kind,label:it.label,ref:it.ref};
+ S.pl.forEach(x=>x.out=false);S.res=null;S.dur=S.cfg.dur;S.t0=Net.now()+3500;S.ph="round";
+ const c={id:it.id,kind:it.kind,ref:it.ref,data:H.data[it.id]||""};L.cur=c;L.started=false;
+ R.emit("content",c);
+}
+function tick(){
+ if(!isHost||!S||S.ph!=="round")return;
+ const now=Net.now(),on=new Set([...R.peers(),ME]);
+ const alive=S.pl.filter(p=>!p.out&&on.has(p.id));
+ if(now>S.t0+S.dur*1000||H.ended||(now>S.t0+1500&&!alive.length))endRound();
+}
+function endRound(){
+ const on=new Set([...R.peers(),ME]);
+ const win=S.pl.filter(p=>!p.out&&on.has(p.id)).map(p=>p.id);
+ S.pl.forEach(p=>{if(win.includes(p.id)){p.sc++;p.w++}});
+ S.res={win};S.ph="result";bc();route();
+}
+
+/* ---------- rendu ---------- */
+function rank(el,extra){
+ const r=[...S.pl].sort((a,b)=>b.sc-a.sc||b.w-a.w);
+ $(el).innerHTML='<table class="rank"><tr><th>#</th><th>Joueur</th><th>Pts</th><th>🏅</th><th>💀</th></tr>'+r.map((p,i)=>`<tr><td>${i+1}</td><td>${esc(p.n)}${p.id===ME?" (toi)":""}${extra&&extra(p)||""}</td><td><b>${p.sc}</b></td><td>${p.w}</td><td>${p.o}</td></tr>`).join("")+"</table>";
+}
+function route(){
+ if(!S)return;updTiles();
+ if(S.ph==="lobby")return lobby();
+ if(S.ph==="round")return round();
+ if(S.ph==="result")return result();
+ if(S.ph==="end")return end();
+}
+function lobby(){
+ view("lobby");place("tl-lobby");L.key="";L.out=false;$("#lost").hidden=true;
+ $("#pc").textContent=S.pl.length+"/"+MAX;$("#ic").textContent=S.items.length?"("+S.items.length+")":"";
+ const ic={yt:"▶️",vurl:"🎞️",iurl:"🖼️",img:"📷",vid:"🎞️"};
+ $("#items").innerHTML=S.items.map(i=>`<div class="prow"><span>${ic[i.kind]||"🎬"} ${esc(i.label)} <small class="hint">· ${esc(nm(i.by))}</small></span>${i.by===ME||isHost?`<button class="btn" style="margin-left:auto;padding:2px 10px" data-a="rm" data-id="${i.id}">✕</button>`:""}</div>`).join("")||'<p class="hint">Aucun contenu pour le moment.</p>';
+ rank("#rank-l");
+ $("#hostcfg").hidden=!isHost;$("#waith").hidden=isHost;
+ if(isHost){$("#roundsp").innerHTML=[3,5,8].map(v=>`<button class="pill ${S.cfg.rounds===v?"on":""}" data-a="rounds" data-v="${v}">${v}</button>`).join("");
+  $("#durp").innerHTML=[20,30,45,60].map(v=>`<button class="pill ${S.cfg.dur===v?"on":""}" data-a="dur" data-v="${v}">${v} s</button>`).join("");
+  $("#startb").disabled=S.pl.length<MIN;$("#startb").textContent=S.r?`Manche ${S.r+1} 🔥`:"Lancer la manche 🔥"}
+}
+function round(){
+ view("round");place("tl-round");
+ const key="r"+S.r;
+ if(key!==L.key){L.key=key;L.started=false;L.base=null;L.cal=[];L.streak=0;L.out=false;$("#lost").hidden=true;$("#media").innerHTML="";
+  if(!isHost&&(!L.cur||L.cur.id!==S.cur.id))R.emit("act",{k:"needc",p:ME},"host")}
+ $("#rinfo").textContent=`Manche ${S.r}/${S.cfg.rounds}`;rank("#rank-r",p=>p.out?" 💀":"");
+}
+function result(){
+ view("result");place("tl-round");
+ const w=S.res?S.res.win:[];
+ $("#rtitle").textContent=w.length?"Poker Face validé !":"Tout le monde a craqué 😂";
+ $("#rsub").textContent=w.length?"Bravo : "+w.map(nm).join(", ")+" (+1 point)":"Personne ne gagne de point.";
+ rank("#rank-x",p=>w.includes(p.id)?" ✅":" 💀");
+ $("#resbtn").innerHTML=isHost?`<button class="btn primary big" data-a="next">${S.r>=S.cfg.rounds?"Résultats finaux 🏆":"Continuer →"}</button>`:'<p class="hint center">L’hôte continue…</p>';
+ $("#media").innerHTML="";
+}
+function end(){
+ view("end");const r=[...S.pl].sort((a,b)=>b.sc-a.sc||b.w-a.w);
+ $("#champ").textContent=r[0]?r[0].n:"";rank("#rank-e");
+ $("#endbtn").innerHTML=(isHost?'<button class="btn primary big" data-a="again">Rejouer</button>':'<p class="hint center">L’hôte peut rejouer.</p>')+'<button class="btn big" data-a="leave">Nouvelle partie</button>';
+}
+
+/* ---------- contenu de la manche ---------- */
+function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m&&m[1]}
+function startContent(){
+ const c=L.cur;if(!c||!S||c.id!==S.cur.id)return;
+ if((c.kind==="img"||c.kind==="vid")&&!c.data)return;
+ L.started=true;const m=$("#media");m.innerHTML="";let el;
+ if(c.kind==="yt"){el=document.createElement("iframe");el.allow="autoplay; encrypted-media";el.src="https://www.youtube.com/embed/"+c.ref+"?autoplay=1&controls=0&rel=0&playsinline=1&modestbranding=1"}
+ else if(c.kind==="img"||c.kind==="iurl"){el=document.createElement("img");el.src=c.kind==="img"?c.data:c.ref}
+ else{el=document.createElement("video");el.playsInline=true;el.autoplay=true;el.src=c.kind==="vid"?c.data:c.ref;
+  el.onended=()=>{if(isHost){H.ended=true}};
+  el.play().catch(()=>{el.muted=true;el.play().catch(()=>{})});}
+ m.append(el);
+}
+setInterval(()=>{
+ if(!S||S.ph!=="round")return;
+ const el=(Net.now()-S.t0)/1000,ov=$("#ov");
+ if(el<0){ov.hidden=false;ov.innerHTML=`PRÉPAREZ VOTRE<br>POKER FACE<b>${Math.min(3,Math.ceil(-el))}</b><small class="hint">Garde un visage neutre…</small>`}
+ else{ov.hidden=true;if(!L.started)startContent();$("#tb").style.width=Math.max(0,100-el/S.dur*100)+"%"}
+ if(!isHost&&!L.cur&&Net.now()>S.t0-2500){R.emit("act",{k:"needc",p:ME},"host")}
+},150);
+
+/* ---------- ajout de contenus ---------- */
+function shrink(file){return new Promise(res=>{const img=new Image(),u=URL.createObjectURL(file);
+ img.onload=()=>{const k=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*k;c.height=img.height*k;c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.7))};
+ img.onerror=()=>res(null);img.src=u})}
+function readFile(f){return new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result);x.readAsDataURL(f)})}
+function addUrl(){
+ const u=$("#url").value.trim();if(!/^https?:\/\//i.test(u))return toast("Colle un lien complet (https://…)");
+ const y=ytId(u);let kind="vurl";
+ if(y)kind="yt";else if(/\.(png|jpe?g|gif|webp)(\?|$)/i.test(u))kind="iurl";
+ send({k:"item",kind,ref:y||u,label:y?"YouTube "+y:u.replace(/^https?:\/\//,"").slice(0,40)});$("#url").value="";
+}
+$("#fimg").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const d=await shrink(f);d?send({k:"item",kind:"img",label:f.name||"Photo",data:d}):toast("Photo illisible")});
+$("#fvid").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(f.size>8e6)return toast("Vidéo trop lourde (8 Mo max)");send({k:"item",kind:"vid",label:f.name||"Vidéo",data:await readFile(f)})});
+/* l'hôte renvoie le contenu à qui le demande */
+const _h=hostAct;hostAct=function(d){if(d.k==="needc"&&S&&S.ph==="round"){const it=S.cur,c={id:it.id,kind:it.kind,ref:it.ref,data:H.data[it.id]||""};R.emit("content",c,d.p);return}_h(d)};
+
+
+/* ---------- téléphone = caméra (QR code) ---------- */
+const CAM=new URLSearchParams(location.search).get("cam");
+const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
+let PR=null,pcPh=null,qPh=[];
+function applyStream(s){
+ const old=L.stream;L.stream=s;const t=tile(ME);t.querySelector("video").srcObject=s;
+ const vt=s.getVideoTracks()[0];
+ for(const id in L.pcs){const sn=L.pcs[id].getSenders().find(x=>x.track&&x.track.kind==="video");if(sn&&vt)sn.replaceTrack(vt).catch(()=>{})}
+ if(old&&old!==s&&!L.phoneOn)old.getTracks().forEach(x=>x.stop());
+}
+function loadQR(){return new Promise(r=>{if(window.QRCode)return r();const x=document.createElement("script");x.src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";x.onload=r;x.onerror=r;document.head.append(x)})}
+function phStatus(t,ok){const e=$("#qrst");if(e){e.textContent=t;e.className="status "+(ok?"ok":"")}const b=$("#phoneBtn");if(b)b.textContent=L.phoneOn?"📱 Téléphone connecté ✔":"📱 Utiliser mon téléphone comme caméra"}
+async function phonePair(){
+ let m=$("#qmod");if(m){m.hidden=false;return}
+ const tok=(mkCode()+mkCode()).slice(0,6),url=location.origin+location.pathname+"?cam="+tok;
+ m=document.createElement("div");m.className="mod";m.id="qmod";
+ m.innerHTML=`<div class="card center"><h2>📱 Caméra téléphone</h2><p class="hint" style="margin:0">Scanne ce QR code avec ton téléphone, puis appuie sur « Démarrer la caméra ».</p><div class="qrbox" id="qr"></div><p class="hint" style="word-break:break-all">${esc(url)}</p><p id="qrst" class="status">En attente du téléphone…</p><button class="btn" data-a="qback">↩️ Revenir à ma webcam</button> <button class="btn primary" data-a="qclose">Fermer</button></div>`;
+ document.body.append(m);
+ await loadQR();if(window.QRCode)new QRCode($("#qr"),{text:url,width:200,height:200,colorDark:"#000000",colorLight:"#ffffff"});else $("#qr").textContent="QR indisponible : ouvre le lien ci-dessous sur ton téléphone.";
+ try{PR=await Net.join("pfc-"+tok)}catch(e){return phStatus("Connexion impossible : "+e.message)}
+ PR.on("csig",async d=>{
+  if(!d||d.f===ME)return;
+  if(d.t==="offer"){
+   if(pcPh)try{pcPh.close()}catch(e){}
+   const pc=pcPh=new RTCPeerConnection(ICE);qPh=[];
+   pc.onicecandidate=e=>{if(e.candidate)PR.emit("csig",{f:ME,t:"ice",c:e.candidate})};
+   pc.ontrack=e=>{L.phoneOn=true;applyStream(e.streams[0]);phStatus("✔ Téléphone connecté : ta caméra est maintenant celle du téléphone",true);toast("Caméra téléphone active 📱")};
+   await pc.setRemoteDescription(d.s);await pc.setLocalDescription(await pc.createAnswer());
+   PR.emit("csig",{f:ME,t:"answer",s:pc.localDescription});qPh.forEach(c=>pc.addIceCandidate(c).catch(()=>{}));qPh=[];
+  }else if(d.t==="ice"){if(pcPh&&pcPh.remoteDescription)pcPh.addIceCandidate(d.c).catch(()=>{});else qPh.push(d.c)}
+ });
+}
+async function phoneBack(){
+ L.phoneOn=false;if(pcPh){try{pcPh.close()}catch(e){}pcPh=null}
+ const old=L.stream;if(await getCam()){const s=L.stream;L.stream=old;applyStream(s);old.getTracks().forEach(x=>x.stop());phStatus("Webcam de l’ordinateur rétablie",true)}
+}
+/* côté téléphone */
+const PH={stream:null,pc:null,face:"user",q:[],t:0};
+function phoneInit(){
+ ["home","lobby","round","result","end"].forEach(x=>$("#s-"+x).hidden=true);$("#s-phone").hidden=false;
+}
+async function phoneStart(){
+ const st=$("#pst");
+ try{PH.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:PH.face,width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false})}
+ catch(e){return st.textContent="Caméra refusée : autorise-la dans ton navigateur."}
+ $("#pv").srcObject=PH.stream;try{await navigator.wakeLock.request("screen")}catch(e){}
+ if(!PR){st.textContent="Connexion à l’ordinateur…";
+  try{PR=await Net.join("pfc-"+CAM)}catch(e){return st.textContent="Code expiré : rescanne le QR code sur l’ordinateur."}
+  PR.on("csig",async d=>{if(!d||d.f===ME||!PH.pc)return;
+   if(d.t==="answer"&&PH.pc.signalingState==="have-local-offer"){await PH.pc.setRemoteDescription(d.s);PH.q.forEach(c=>PH.pc.addIceCandidate(c).catch(()=>{}));PH.q=[]}
+   else if(d.t==="ice"){if(PH.pc.remoteDescription)PH.pc.addIceCandidate(d.c).catch(()=>{});else PH.q.push(d.c)}})}
+ phoneConnect();
+}
+async function phoneConnect(){
+ if(PH.pc)try{PH.pc.close()}catch(e){}
+ const pc=PH.pc=new RTCPeerConnection(ICE);PH.q=[];
+ PH.stream.getTracks().forEach(t=>pc.addTrack(t,PH.stream));
+ pc.onicecandidate=e=>{if(e.candidate)PR.emit("csig",{f:ME,t:"ice",c:e.candidate})};
+ pc.onconnectionstatechange=()=>{if(pc.connectionState==="connected")$("#pst").textContent="✔ Connecté à l’ordinateur : laisse cette page ouverte.";$("#pst").className="status "+(pc.connectionState==="connected"?"ok":"")};
+ await pc.setLocalDescription(await pc.createOffer());
+ PR.emit("csig",{f:ME,t:"offer",s:pc.localDescription});
+ $("#pst").textContent="Connexion en cours…";
+ clearTimeout(PH.t);PH.t=setTimeout(()=>{if(pc.connectionState!=="connected")phoneConnect()},8000);
+}
+async function phoneFlip(){
+ if(!PH.stream)return;PH.face=PH.face==="user"?"environment":"user";
+ const old=PH.stream;
+ try{PH.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:PH.face,width:{ideal:1280},height:{ideal:720}},audio:false})}catch(e){PH.stream=old;return}
+ old.getTracks().forEach(t=>t.stop());$("#pv").srcObject=PH.stream;
+ const sn=PH.pc&&PH.pc.getSenders().find(x=>x.track&&x.track.kind==="video"||!x.track);if(sn)sn.replaceTrack(PH.stream.getVideoTracks()[0]).catch(()=>{});
+}
+
+/* ---------- événements ---------- */
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
+ if(a==="create")enter(true);else if(a==="join")enter(false);
+ else if(a==="rules"){const m=document.createElement("div");m.className="mod";m.innerHTML='<div class="card"><h2>📜 Règles</h2><p>Chaque manche, un contenu (vidéo ou photo) est choisi au hasard parmi ceux proposés par les joueurs.</p><p>Ta webcam est analysée <b>dans ton navigateur</b> (rien n’est enregistré ni envoyé) : sourire, rire, grimace, surprise… Si tu réagis, tu es <b>éliminé</b> de la manche.</p><p>Ceux qui gardent leur Poker Face gagnent <b>1 point</b>. Le meilleur total gagne la partie.</p><button class="btn primary big" onclick="this.closest(\'.mod\').remove()">Compris</button></div>';document.body.append(m)}
+ else if(a==="copy"){const u=location.origin+location.pathname+"?c="+code;try{await navigator.clipboard.writeText(u);toast("Lien copié")}catch(x){prompt("Lien :",u)}}
+ else if(a==="leave"){R&&R.leave();location.href=location.pathname}
+ else if(a==="addurl")addUrl();
+ else if(a==="pimg")$("#fimg").click();else if(a==="pvid")$("#fvid").click();
+ else if(a==="rm")send({k:"rm",id:b.dataset.id});
+ else if(a==="rounds")send({k:"cfg",cfg:{rounds:+b.dataset.v}});
+ else if(a==="dur")send({k:"cfg",cfg:{dur:+b.dataset.v}});
+ else if(a==="start")send({k:"start"});
+ else if(a==="next")send({k:"next"});
+ else if(a==="again")send({k:"again"});
+ else if(a==="crack")crack();
+ else if(a==="phone")phonePair();
+ else if(a==="qclose"){const m=$("#qmod");if(m)m.hidden=true}
+ else if(a==="qback")phoneBack();
+ else if(a==="pstart")phoneStart();
+ else if(a==="pflip")phoneFlip();
+});
+$("#sens").addEventListener("input",e=>{L.sens=+e.target.value;try{localStorage.setItem("soiree:pf_sens",L.sens)}catch(x){}});
+{const c=new URLSearchParams(location.search).get("c");if(c)$("#pcode").value=c.toUpperCase()}
+addEventListener("beforeunload",()=>{R&&R.leave();PR&&PR.leave()});
+if(CAM)phoneInit();
+</script></body></html>
