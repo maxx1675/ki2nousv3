@@ -1,0 +1,99 @@
+@import url("https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Caveat:wght@600;700&display=swap");
+
+/* ==========================================================
+   PHOTO ROULETTE  —  DA « Polaroïd / pellicule rétro »
+   Papier kraft, cartes scotchées légèrement penchées, photo dans
+   un cadre polaroïd, écriture au feutre, perforations de pellicule.
+   Chargé APRÈS le <style> de la page.
+   ========================================================== */
+
+html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+  color-scheme:light;
+  --bg:#efe2c6;--surface:#fffaf0;--ink:#2b2118;--muted:#7a6650;
+  --edge:#2b2118;--sh:rgba(43,33,24,.4);
+  --violet:#e4572e;--pink:#e4572e;--amber:#f6b93b;--teal:#47b5a8;--danger:#c0392b;
+}
+
+/* fond : papier kraft légèrement rayé */
+body{
+  background-color:#efe2c6;
+  background-image:
+    radial-gradient(ellipse at 50% 0,rgba(255,255,255,.5),transparent 65%),
+    repeating-linear-gradient(0deg,rgba(120,90,50,.05) 0 2px,transparent 2px 5px);
+}
+
+/* typographie feutre */
+h1{
+  font-family:"Permanent Marker",cursive;font-weight:400;letter-spacing:.01em;
+  color:#e4572e;text-shadow:3px 3px 0 #f6b93b;transform:rotate(-2deg);
+}
+h2{font-family:"Caveat",cursive;font-weight:700;font-size:1.7rem;line-height:1.1}
+.hint,.rn,.title small{font-family:"Caveat",cursive;font-weight:600;font-size:1.2rem;line-height:1.2}
+.code{font-family:"Permanent Marker",cursive;font-weight:400;color:#e4572e;letter-spacing:.18em}
+.logo{filter:drop-shadow(2px 3px 0 rgba(43,33,24,.35))}
+
+/* cartes : papier + scotch */
+.card{
+  position:relative;margin-top:24px;border:0;border-radius:3px;background:#fffaf0;
+  box-shadow:0 1px 0 rgba(0,0,0,.08),0 10px 22px rgba(60,40,10,.22);
+}
+.card::before{
+  content:"";position:absolute;top:-11px;left:50%;width:84px;height:24px;margin-left:-42px;
+  background:rgba(246,185,59,.6);border:1px solid rgba(43,33,24,.15);transform:rotate(-3deg);
+}
+.card:nth-of-type(even)::before{transform:rotate(2deg);background:rgba(71,181,168,.55)}
+html:not([data-anim="off"]) .card:nth-of-type(odd){transform:rotate(-.5deg)}
+html:not([data-anim="off"]) .card:nth-of-type(even){transform:rotate(.5deg)}
+.title{border:0;border-radius:3px;background:#fffaf0;box-shadow:0 6px 14px rgba(60,40,10,.2);transform:rotate(-.4deg)}
+
+/* boutons : déclencheur d'appareil photo */
+.btn,.pick,.pill{border-width:2px}
+.btn{border-radius:10px;box-shadow:0 4px 0 rgba(43,33,24,.85)}
+.btn.primary{background:#e4572e;color:#fff}
+.btn.danger{background:#c0392b;color:#fff}
+.btn:active:not(:disabled){transform:translateY(4px);box-shadow:none}
+.pick{border-radius:10px;box-shadow:0 4px 0 rgba(43,33,24,.5)}
+
+/* la photo = un polaroïd */
+.shot{
+  max-width:440px;background:#fff;border:1px solid rgba(43,33,24,.18);border-radius:3px;
+  padding:12px 12px 58px;box-shadow:0 14px 30px rgba(60,40,10,.38);transform:rotate(-1.2deg);
+}
+.shot::after{
+  content:"à qui est-ce ?";position:absolute;left:0;right:0;bottom:15px;text-align:center;
+  font:700 1.5rem/1 "Caveat",cursive;color:#2b2118;transform:rotate(-1deg);
+}
+.shot img,.shot video{background:#1d1610}
+.shot .ph{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  background:#1d1610;color:#efe2c6;font-family:"Permanent Marker",cursive;font-weight:400;
+}
+
+/* vignettes de la pellicule du joueur */
+.thumbs img,.thumbs video{
+  width:72px;height:82px;border:5px solid #fff;border-bottom-width:15px;border-radius:2px;
+  box-shadow:0 4px 10px rgba(60,40,10,.3);transform:rotate(-2deg);
+}
+.thumbs .t:nth-child(even) img,.thumbs .t:nth-child(even) video{transform:rotate(2deg)}
+
+/* barre de temps = bande de pellicule */
+.tbar{background:var(--bg)}
+.bar{height:16px;border-radius:3px}
+.bar i{background:repeating-linear-gradient(90deg,#f6b93b 0 14px,#e4572e 14px 28px)}
+
+/* joueurs */
+.prow{border-width:2px;border-radius:6px;box-shadow:0 3px 0 rgba(43,33,24,.5)}
+.prow .pts{background:#f6b93b;color:#2b2118}
+.pill.on{background:#e4572e;color:#fff}
+
+/* perforations de pellicule sur les côtés (écrans larges seulement) */
+@media (min-width:760px){
+  body::before,body::after{
+    content:"";position:fixed;top:0;bottom:0;width:30px;z-index:0;pointer-events:none;
+    background-color:#1d1610;
+    background-image:linear-gradient(180deg,transparent 0 9px,#efe2c6 9px 25px,transparent 25px 34px);
+    background-size:12px 34px;background-repeat:repeat-y;background-position:9px 0;
+  }
+  body::before{left:0;right:auto}
+  body::after{right:0;left:auto}
+}

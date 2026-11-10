@@ -1,0 +1,107 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600;1,800&family=Lora:wght@500;700&display=swap");
+
+/* ==========================================================
+   LES PETITES VÉRITÉS  —  DA « Boudoir / velours & or »
+   Bordeaux profond, filets dorés, serif élégant, lueur de bougie,
+   cartes façon cartes à jouer, vérités sur papier crème.
+   Chargé APRÈS le <style> de la page.
+   ========================================================== */
+
+html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#16060e;--surface:#2a0f1d;--ink:#f7ead9;--muted:#cfaea5;
+  --edge:#c9a24d;--sh:#000000;
+  --violet:#a3123f;--pink:#ff5c8a;--amber:#e3c06f;--teal:#d9b25f;--danger:#ff6b87;
+}
+
+/* fond : velours + halos de bougies */
+body{
+  font-family:"Lora",Georgia,serif;
+  background:radial-gradient(ellipse at 50% -10%,#5b1535 0%,#2a0a1a 45%,#16060e 100%);
+}
+body::before{
+  background:
+    radial-gradient(circle at 12% 18%,rgba(227,192,111,.16) 0 60px,transparent 62px),
+    radial-gradient(circle at 88% 30%,rgba(255,92,138,.12) 0 90px,transparent 92px),
+    radial-gradient(circle at 70% 85%,rgba(227,192,111,.10) 0 70px,transparent 72px);
+}
+
+/* typographie */
+h1,h2,.reveal-big,.qcard .q,.truth,.timer{font-family:"Playfair Display",Georgia,serif}
+h1{font-style:italic;font-weight:800;color:#f3d9a0;text-shadow:0 0 26px rgba(227,192,111,.45);transform:none;letter-spacing:0}
+h2{font-weight:600;color:#f3d9a0;letter-spacing:.02em}
+.hero p{font-style:italic}
+.logo{filter:drop-shadow(0 0 14px rgba(227,192,111,.5))}
+.hint{font-style:italic}
+
+/* cartes : cadre doré double filet */
+.card,.qcard{
+  background:linear-gradient(180deg,#341326,#241019);
+  border:1px solid #c9a24d;border-radius:6px;
+  box-shadow:0 14px 30px rgba(0,0,0,.45),inset 0 0 0 4px #241019,inset 0 0 0 5px rgba(201,162,77,.55);
+}
+.qcard{box-shadow:0 0 44px rgba(163,18,63,.4),inset 0 0 0 5px #2a0f1d,inset 0 0 0 6px rgba(201,162,77,.75)}
+.qcard .sub{color:#e3c06f;letter-spacing:.18em}
+
+/* la vérité : un mot manuscrit sur papier crème */
+.truth{
+  background:#f1e2c6;color:#2a1118;font-style:italic;
+  border:1px solid #c9a24d;border-radius:3px;transform:rotate(-.6deg);
+  box-shadow:0 10px 24px rgba(0,0,0,.5);
+}
+
+/* éléments de liste */
+.srow{border-top:1px dashed rgba(201,162,77,.4)}
+.prow,.readrow,.statcard,.mode{border-width:1px;border-radius:4px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.prow.top1{background:rgba(227,192,111,.18)}
+.prow .pts{background:#d9b25f;color:#2a1118;border-width:1px}
+.readrow.done{background:rgba(227,192,111,.14)}
+.readrow.cur{box-shadow:0 0 0 1px #e3c06f,0 0 16px rgba(227,192,111,.3)}
+.mode.on{background:rgba(227,192,111,.16);box-shadow:inset 0 0 0 1px #e3c06f}
+.chip{background:#3a1526;color:#f3d9a0;border-width:1px}
+.chip.ok{background:#d9b25f;color:#2a1118}
+.chip.dim{background:transparent;color:var(--muted)}
+
+/* champs */
+input[type=text],textarea{border-width:1px;border-radius:4px;background:#16060e;color:#f7ead9}
+
+/* boutons : petits caps espacés, filet doré */
+.btn,.pill,.pick,.stepper button{border-width:1px;border-radius:3px;box-shadow:0 2px 0 #000,0 6px 14px rgba(0,0,0,.35)}
+.btn{font-family:"Lora",serif;font-size:.92rem;text-transform:uppercase;letter-spacing:.08em}
+.btn.primary{background:linear-gradient(180deg,#c2184f,#8e0f36);color:#fff3e0;border-color:#e3c06f}
+.btn.danger{background:#5b0a1f;color:#ffd7de}
+.btn:active:not(:disabled){transform:translateY(2px);box-shadow:none}
+.pill.on{background:#a3123f;color:#fff3e0}
+.pick.on{background:#d9b25f;color:#2a1118}
+.stepper button{border-radius:50%}
+
+/* minuteur */
+.timer{color:#f3d9a0;text-shadow:0 0 26px rgba(227,192,111,.5)}
+.timer.low{color:#ff6b87;text-shadow:0 0 22px rgba(255,107,135,.6)}
+.bar{border-width:1px;background:#1b0912}
+.bar i{background:linear-gradient(90deg,#a3123f,#e3c06f)}
+
+/* échange secret + mélange = cartes à jouer */
+.swapped{
+  background:#7a0f33;color:#ffe9d2;border:1px solid #e3c06f;border-radius:4px;
+  box-shadow:inset 0 0 0 3px #7a0f33,inset 0 0 0 4px rgba(227,192,111,.6);
+}
+.mixcards span{
+  background:repeating-linear-gradient(45deg,#7a0f33 0 6px,#5a0a26 6px 12px);
+  border:1px solid #e3c06f;border-radius:6px;box-shadow:0 4px 10px rgba(0,0,0,.6);
+}
+
+/* avertissement 18+ */
+.warn18{background:#5b0a1f;color:#ffe9d2;border:1px solid #e3c06f;border-radius:4px;box-shadow:none}
+.badge18{background:#e3c06f;color:#2a0f1d;border:0;border-radius:3px;font-family:"Playfair Display",serif}
+.warnmsg{background:#e3c06f;color:#2a0f1d;border-width:1px}
+
+/* barre hôte, boutons flottants, réglages */
+.adminbar{border-width:1px;border-radius:6px;background:rgba(42,15,29,.94);box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.homelink,.setbtn{background:#2a0f1d;border:1px solid #c9a24d;box-shadow:0 3px 10px rgba(0,0,0,.6)}
+.setpanel{background:rgba(10,2,6,.72)}
+.setbox{background:#2a0f1d;border:1px solid #c9a24d;box-shadow:0 -6px 24px rgba(0,0,0,.6)}
+
+/* le style est propre au jeu : on masque le choix clair/sombre */
+.setbox .srow:has(+ .pills [data-act="theme"]),
+.setbox .pills:has([data-act="theme"]){display:none}

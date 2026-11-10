@@ -1,0 +1,78 @@
+@import url("https://fonts.googleapis.com/css2?family=Bangers&display=swap");
+
+/* ==========================================================
+   QUI DE NOUS ?  —  DA « Pop-art / BD »
+   Jaune moutarde, trame de points (halftone), cases de BD,
+   bulles de dialogue, gros contours noirs, titres Bangers.
+   Chargé APRÈS le <style> de la page : il surcharge les variables.
+   ========================================================== */
+
+/* palette fixe (ignore le réglage clair/sombre du hub) */
+html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+  color-scheme:light;
+  --bg:#ffd23f;--surface:#ffffff;--ink:#111111;--muted:#3b3b3b;
+  --edge:#111111;--sh:#111111;
+  --violet:#1f5bff;--pink:#ff2e63;--amber:#ffe66d;--teal:#27d3b8;--danger:#ff2e63;
+}
+
+/* fond : jaune + trame de points BD */
+body{
+  background-color:#ffd23f;
+  background-image:radial-gradient(rgba(17,17,17,.16) 1.7px,transparent 2px);
+  background-size:16px 16px;
+}
+body::before{background:radial-gradient(ellipse at 50% 0,rgba(255,255,255,.55),transparent 62%)}
+
+/* titres */
+h1,h2{font-family:"Bangers","Bricolage Grotesque",system-ui,sans-serif;font-weight:400;text-transform:uppercase}
+h1{
+  font-size:clamp(2.6rem,11vw,4rem);line-height:.95;letter-spacing:.05em;
+  color:#fff;-webkit-text-stroke:2.5px #111;paint-order:stroke fill;
+  text-shadow:4px 4px 0 #111;transform:rotate(-2.5deg);
+}
+h2{font-size:1.5rem;letter-spacing:.06em}
+.hero p{color:#111;font-weight:700}
+.logo{filter:drop-shadow(3px 3px 0 #111)}
+
+/* cases de BD */
+.card{background:#fff;border-width:3.5px;border-radius:10px;box-shadow:8px 8px 0 #111}
+html:not([data-anim="off"]) .card:nth-of-type(odd){transform:rotate(-.5deg)}
+html:not([data-anim="off"]) .card:nth-of-type(even){transform:rotate(.4deg)}
+
+/* carte de manche = bulle de dialogue avec sa queue */
+.rcard{position:relative;border-width:3.5px;border-radius:30px;margin-bottom:38px;box-shadow:8px 8px 0 var(--tc)}
+.rcard::before{
+  content:"";position:absolute;left:38px;bottom:-27px;width:0;height:0;
+  border-left:15px solid transparent;border-right:15px solid transparent;border-top:27px solid #111;
+}
+.rcard::after{
+  content:"";position:absolute;left:41px;bottom:-19px;width:0;height:0;
+  border-left:12px solid transparent;border-right:12px solid transparent;border-top:22px solid #fff;
+}
+.badge{
+  font-family:"Bangers",system-ui,sans-serif;font-weight:400;font-size:1.1rem;letter-spacing:.06em;
+  text-transform:uppercase;border-width:2.5px;border-radius:4px;transform:rotate(-3deg);box-shadow:2px 2px 0 #111;
+}
+.txt{background:#fff8d6;border-width:3px;border-radius:8px}
+
+/* boutons */
+.btn,.bubble,.pick,.pk,.sq,.rb{border-width:3px;border-radius:9px}
+.btn{text-transform:uppercase;letter-spacing:.04em;box-shadow:4px 4px 0 #111}
+.btn.primary{background:#1f5bff;color:#fff}
+.btn.danger{background:#ff2e63;color:#fff}
+.btn:active:not(:disabled){transform:translate(4px,4px);box-shadow:none}
+.bubble{box-shadow:4px 4px 0 #111}
+
+/* barres de progression / sondage */
+.prog{height:18px;border-width:3px}
+.prog i{background:repeating-linear-gradient(45deg,#ff2e63 0 10px,#ff7a98 10px 20px)}
+.bar{border-width:3px;border-radius:8px}
+
+/* boutons flottants + réglages */
+.homelink,.setbtn{border-width:3px;box-shadow:4px 4px 0 #111}
+.setbox{background:#fff;border-width:3px;box-shadow:0 -6px 0 #111}
+.setpanel{background:rgba(17,17,17,.55)}
+
+/* le style est propre au jeu : on masque le choix clair/sombre */
+.setbox .srow:has(+ .bubbles [data-act="theme"]),
+.setbox .bubbles:has([data-act="theme"]){display:none}
