@@ -28,7 +28,27 @@ input,textarea,select{font:inherit;padding:10px;border-radius:10px;border:2px so
 .bk{transform:rotateY(180deg);color:#fff;border:3px solid #0003;align-items:center!important}
 .bk span{font-weight:900;font-size:clamp(.5rem,1.9vw,1.05rem);text-transform:uppercase}
 .k-r{background:linear-gradient(#e2452c,#a8281a)}.k-b{background:linear-gradient(#2aaed3,#17708c)}.k-n{background:linear-gradient(#e7d6b0,#c9b588);color:var(--ink)}.k-a{background:linear-gradient(#444,#000)}
-.hint-r .f{border-color:#e2452c;background:#f9d3c8}.hint-b .f{border-color:#2aaed3;background:#cdeaf3}.hint-n .f{background:#efe3c8}.hint-a .f{background:#555;color:#fff;border-color:#000}.hint-a .f span{color:#000}
+.hint-r .f{background:linear-gradient(#ff4a2e,#e0120a);border-color:#ff9a8a;box-shadow:0 0 14px #ff2a1acc,0 3px 0 #0006}
+.hint-b .f{background:linear-gradient(#27c6ff,#0072ff);border-color:#9be3ff;box-shadow:0 0 14px #00b7ffcc,0 3px 0 #0006}
+.hint-n .f{background:linear-gradient(#f3e3b8,#d8c28a);border-color:#fff1c8}
+.hint-a .f{background:linear-gradient(#2a2a2a,#000);border-color:#ff2b2b;box-shadow:0 0 16px #ff0000,0 3px 0 #000}
+.hint-a .f::before{content:"☠️";position:absolute;top:4%;left:0;right:0;text-align:center;font-size:clamp(.9rem,3vw,1.6rem)}
+.hint-r .f span,.hint-b .f span,.hint-a .f span{background:#fff;color:#111;box-shadow:0 2px 0 #0005}
+.cd.hint-r,.cd.hint-b{filter:saturate(1.25)}
+#clueov{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;cursor:pointer;background:radial-gradient(circle,#000a,#000e);animation:ovin .35s both}
+#clueov.out{animation:ovout .45s forwards}
+@keyframes ovin{from{opacity:0}to{opacity:1}}@keyframes ovout{to{opacity:0;transform:scale(1.15)}}
+#clueov .lbl{font-weight:800;letter-spacing:.3em;text-transform:uppercase;font-size:clamp(.8rem,3vw,1.2rem);opacity:0;animation:fup .5s .1s forwards}
+#clueov .wd{display:flex;flex-wrap:wrap;justify-content:center;max-width:96vw;font-weight:900;text-transform:uppercase;font-size:clamp(2.4rem,15vw,9rem);line-height:1.05;margin:.1em 0;color:#fff;text-shadow:0 0 30px var(--tc),0 6px 0 #0008}
+#clueov .wd i{font-style:normal;display:inline-block;opacity:0;animation:drop .7s cubic-bezier(.2,1.5,.4,1) forwards}
+#clueov .nb{font-weight:900;font-size:clamp(3rem,16vw,8rem);color:var(--yel);background:var(--tc);border:6px solid #fff;border-radius:50%;width:1.7em;height:1.7em;display:flex;align-items:center;justify-content:center;opacity:0;animation:pop2 .8s .9s cubic-bezier(.2,1.8,.4,1) forwards;box-shadow:0 0 40px var(--tc);margin-top:.2em;font-size:clamp(2.4rem,13vw,6rem)}
+#clueov .sub{margin-top:.6em;font-weight:800;font-size:clamp(.9rem,3.5vw,1.4rem);opacity:0;animation:fup .5s 1.2s forwards}
+#clueov .ring{position:absolute;left:50%;top:50%;width:20px;height:20px;border:4px solid var(--tc);border-radius:50%;transform:translate(-50%,-50%);animation:ring 1.6s ease-out infinite;opacity:0}
+#clueov .ring:nth-of-type(2){animation-delay:.5s}#clueov .ring:nth-of-type(3){animation-delay:1s}
+@keyframes drop{0%{opacity:0;transform:translateY(-120px) scale(2.2) rotate(-25deg)}100%{opacity:1;transform:none}}
+@keyframes pop2{0%{opacity:0;transform:scale(0) rotate(-180deg)}100%{opacity:1;transform:none}}
+@keyframes fup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes ring{0%{opacity:.9;width:20px;height:20px}100%{opacity:0;width:140vmin;height:140vmin}}
 .cd.sel .f{outline:5px solid var(--grn);outline-offset:-1px;box-shadow:0 0 22px var(--grn);animation:pop .3s}
 @keyframes pop{50%{transform:scale(1.07)}}
 .cd.bad{animation:shk .5s}@keyframes shk{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
@@ -72,6 +92,7 @@ input,textarea,select{font:inherit;padding:10px;border-radius:10px;border:2px so
  <div class="box" id="logw"><b>Journal</b><div class="log" id="log"></div></div>
  <div class="bar"><button class="btn dk sm" id="logb" data-a="log">📜 Journal</button><button class="btn dk sm" data-a="leave">Quitter</button></div>
 </section>
+<div id="clueov" hidden></div>
 <div id="toast" hidden></div>
 <script src="/shared/net.js"></script>
 <script>
@@ -157,7 +178,7 @@ function hostAct(d){
  else if(d.k==="close"&&h)closeRoom();
  else if(d.k==="toLobby"&&h&&S.ph!=="lobby"){S.ph="lobby";S.b=[];S.win=null;S.clue=null;S.paused=false;S.pl.forEach(x=>x.spy=false)}
  else if(S.ph==="play"&&!S.paused&&pp.t===S.turn){
-  if(d.k==="clue"&&pp.spy&&!S.clue){const w=String(d.w||"").trim().split(/\s+/)[0].slice(0,24),n=+d.n;if(w&&n>=0&&n<=9){S.clue={w,n};L2(pp.n+" a donné l’indice "+w.toUpperCase()+" "+n)}}
+  if(d.k==="clue"&&pp.spy&&!S.clue){const w=String(d.w||"").trim().split(/\s+/)[0].slice(0,24),n=+d.n;if(w&&n>=0&&n<=9){S.clue={w,n,t:Date.now()};L2(pp.n+" a donné l’indice "+w.toUpperCase()+" "+n)}}
   else if(!pp.spy&&S.clue){
    const c=S.b[d.i];if(c&&!c.rv){
     if(d.k==="sel")c.sel=!c.sel;
@@ -215,6 +236,8 @@ function game(){
   if(c.rv&&!was&&c.rv!==S.turn&&S.ph==="play")e.classList.add("bad");else e.classList.remove("bad");
   if(c.rv&&c.rv==="a"){e.querySelector(".bk").className="bk k-a"}});
  const st=Q("#stat");st.textContent=S.ph==="end"?"🏆 Victoire des "+(S.win==="r"?"rouges":"bleus")+" !":S.paused?"⏸ Partie en pause":"Tour : "+(S.turn==="r"?"🔴 Rouges":"🔵 Bleus")+(S.clue?"":" — en attente de l’indice");
+ if(S.clue&&S.clue.t&&S.clue.t!==game.ct){game.ct=S.clue.t;if(Date.now()-S.clue.t<15000)showClue(S.clue,S.turn)}
+ if(!S.clue)game.ct=0;
  const cl=Q("#cl");cl.hidden=!S.clue;if(S.clue)cl.textContent=S.clue.w.toUpperCase()+" · "+S.clue.n;
  const sf=Q("#spyf");sf.hidden=!spy;sf.textContent=spy?"Tu es maître-espion : les couleurs te sont visibles":"";
  let a="";
@@ -230,6 +253,13 @@ function game(){
  Q("#log").innerHTML=[...S.log].reverse().map(l=>`<div>${eh(l.t)}</div>`).join("");
 }
 
+function showClue(c,t){
+ const o=Q("#clueov");clearTimeout(showClue.t);o.className="";o.hidden=false;
+ o.style.setProperty("--tc",t==="r"?"#e8261a":"#0a8cff");
+ o.innerHTML=`<div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="lbl">🕵️ Indice des ${t==="r"?"🔴 Rouges":"🔵 Bleus"}</div><div class="wd">${[...c.w].map((ch,i)=>`<i style="animation-delay:${.25+i*.07}s">${eh(ch)}</i>`).join("")}</div><div class="nb">${eh(c.n)}</div><div class="sub">${c.n==0?"Aucune carte liée à cet indice":"carte"+(c.n>1?"s":"")+" à trouver"}</div>`;
+ const close=()=>{clearTimeout(showClue.t);o.classList.add("out");setTimeout(()=>{o.hidden=true;o.className=""},450)};
+ o.onclick=close;showClue.t=setTimeout(close,4500);
+}
 /* ----- événements ----- */
 const ask=(t,f)=>{if(confirm(t))f()};
 document.addEventListener("click",async e=>{
