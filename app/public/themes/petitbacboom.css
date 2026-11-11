@@ -2,77 +2,93 @@
 
 /* ==========================================================
    PETIT BAC BOOM  —  DA « Arcade néon / synthwave »
-   Nuit violette, grille de sol fuyante, néons rose et cyan,
-   typo Bungee, afficheur LCD fluo pour la syllabe, bombe incandescente.
+   Ciel étoilé, soleil rayé, grille de sol en perspective, scanlines,
+   néons rose et cyan, bornes d'arcade (boutons gloss), bombe incandescente
+   et afficheur LCD fluo pour la syllabe.
    Chargé APRÈS le <style> de la page.
    ========================================================== */
 
 :root{--yel:#fff200;--ink:#12052e;--neon-p:#ff2fb4;--neon-c:#22f0ff}
 
-/* fond : ciel nuit + soleil + grille de sol */
+/* fond : ciel + étoiles */
 body{
-  font-family:"Orbitron",system-ui,sans-serif;font-weight:600;
-  background-color:#0b0220;
+  font-family:"Orbitron",system-ui,sans-serif;font-weight:600;background-color:#0b0220;
   background-image:
-    linear-gradient(transparent 62%,rgba(255,47,180,.35) 100%),
-    repeating-linear-gradient(90deg,rgba(34,240,255,.22) 0 2px,transparent 2px 60px),
-    repeating-linear-gradient(0deg,rgba(34,240,255,.22) 0 2px,transparent 2px 46px),
-    radial-gradient(circle at 50% 72%,#ff7a3c 0 70px,#ff2fb4 71px 120px,transparent 122px),
-    linear-gradient(180deg,#0b0220,#2a0a5e 70%,#4a0f6e);
+    radial-gradient(1.5px 1.5px at 12% 18%,#fff 98%,transparent),radial-gradient(1.5px 1.5px at 78% 12%,#fff 98%,transparent),
+    radial-gradient(1px 1px at 40% 30%,#cfe 98%,transparent),radial-gradient(1.5px 1.5px at 90% 40%,#fff 98%,transparent),
+    radial-gradient(1px 1px at 25% 55%,#fcf 98%,transparent),radial-gradient(1px 1px at 62% 24%,#fff 98%,transparent),
+    linear-gradient(180deg,#07011a 0,#1d0647 45%,#4a0f6e 78%,#a0237f 100%);
   background-attachment:fixed;
 }
-
-/* titres : néon */
-h1,h2{font-family:"Bungee",Impact,sans-serif;font-weight:400;letter-spacing:.04em}
-h1{
-  color:#fff;text-shadow:0 0 6px #fff,0 0 16px var(--neon-p),0 0 34px var(--neon-p),0 0 60px var(--neon-p);
-  animation:flick 4s infinite;
+/* soleil rayé */
+body::before{
+  content:"";position:fixed;left:50%;bottom:26vh;width:min(46vw,380px);aspect-ratio:1;transform:translateX(-50%);border-radius:50%;z-index:-2;pointer-events:none;
+  background:linear-gradient(180deg,#fff200 0,#ff7a3c 45%,#ff2fb4 100%);
+  -webkit-mask:repeating-linear-gradient(180deg,#000 0 14px,transparent 14px 18px);mask:repeating-linear-gradient(180deg,#000 0 14px,transparent 14px 18px);
+  -webkit-mask-size:100% 100%;filter:drop-shadow(0 0 40px rgba(255,47,180,.7));
 }
-@keyframes flick{0%,92%,100%{opacity:1}94%{opacity:.6}96%{opacity:1}98%{opacity:.7}}
-html[data-anim="off"] h1{animation:none}
+/* grille de sol + scanlines */
+body::after{
+  content:"";position:fixed;left:-60%;right:-60%;bottom:0;height:34vh;z-index:-1;pointer-events:none;
+  background:
+    repeating-linear-gradient(90deg,rgba(34,240,255,.55) 0 2px,transparent 2px 70px),
+    repeating-linear-gradient(0deg,rgba(34,240,255,.55) 0 2px,transparent 2px 38px),
+    linear-gradient(180deg,#1a0540,#2d0a5c);
+  transform:perspective(260px) rotateX(62deg);transform-origin:50% 100%;box-shadow:0 -12px 40px rgba(255,47,180,.6);
+}
+html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:60;background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+html[data-anim="off"] h1,html[data-anim="off"] .bomb{animation:none}
+
+/* titres */
+h1,h2{font-family:"Bungee",Impact,sans-serif;font-weight:400;letter-spacing:.04em}
+h1{color:#fff;text-shadow:0 0 6px #fff,0 0 16px var(--neon-p),0 0 34px var(--neon-p),0 0 64px var(--neon-p);animation:flick 4s infinite}
+@keyframes flick{0%,92%,100%{opacity:1}94%{opacity:.55}96%{opacity:1}98%{opacity:.7}}
+h2{color:var(--neon-c);text-shadow:0 0 10px var(--neon-c)}
 .hint{letter-spacing:.03em}
 
-/* panneaux : verre fumé + filet néon */
+/* panneaux : verre fumé + coins néon */
 .box,.mod .box{
-  background:rgba(14,4,40,.72);border:2px solid var(--neon-c);border-radius:14px;
-  box-shadow:0 0 14px rgba(34,240,255,.55),inset 0 0 18px rgba(34,240,255,.15);
-  backdrop-filter:blur(4px);
+  background:linear-gradient(180deg,rgba(20,6,60,.78),rgba(8,2,30,.82));border:2px solid var(--neon-c);border-radius:16px;
+  box-shadow:0 0 16px rgba(34,240,255,.6),inset 0 0 22px rgba(34,240,255,.14);backdrop-filter:blur(5px);
 }
 .mod .box{background:#120536}
+.box b{color:var(--neon-c);text-shadow:0 0 8px var(--neon-c);letter-spacing:.06em}
 
-/* code de salle : afficheur */
-.code{font-family:"Orbitron",monospace;font-weight:800;color:var(--neon-c);background:#050116;border:2px solid var(--neon-c);border-radius:8px;text-shadow:0 0 12px var(--neon-c);box-shadow:0 0 18px rgba(34,240,255,.6)}
+/* code de salle */
+.code{font-family:"Orbitron",monospace;font-weight:800;color:var(--neon-c);background:#050116;border:2px solid var(--neon-c);border-radius:10px;text-shadow:0 0 14px var(--neon-c);box-shadow:0 0 20px rgba(34,240,255,.65),inset 0 0 14px rgba(34,240,255,.25)}
 
-/* boutons : tubes néon */
+/* boutons : bornes d'arcade glossy */
 .btn{
-  font-family:"Bungee",Impact,sans-serif;font-weight:400;font-size:.95rem;letter-spacing:.04em;
-  background:var(--neon-p);color:#fff;border:2px solid #ffd1f1;
-  box-shadow:0 0 16px var(--neon-p),0 4px 0 #8a0a62;text-shadow:0 0 8px #fff8;
+  font-family:"Bungee",Impact,sans-serif;font-weight:400;font-size:.95rem;letter-spacing:.04em;color:#fff;border:2px solid #ffd1f1;
+  background:linear-gradient(180deg,rgba(255,255,255,.4),transparent 52%),var(--neon-p);
+  box-shadow:0 0 18px var(--neon-p),0 5px 0 #8a0a62;text-shadow:0 0 8px #fff8;
 }
-.btn:active{box-shadow:0 0 8px var(--neon-p);transform:translateY(4px)}
-.btn.dk{background:#1c0a58;border-color:var(--neon-c);color:var(--neon-c);box-shadow:0 0 12px rgba(34,240,255,.6),0 4px 0 #090227;text-shadow:0 0 8px var(--neon-c)}
-.btn.ok{background:#0fd46a;border-color:#c8ffe0;box-shadow:0 0 16px #0fd46a,0 4px 0 #07703a}
-.btn.no{background:#ff3b3b;border-color:#ffd0d0;box-shadow:0 0 16px #ff3b3b,0 4px 0 #8a1010}
-input,select,textarea{background:#0a0226;color:#fff;border:2px solid var(--neon-p);border-radius:10px;font-family:"Orbitron",sans-serif;box-shadow:0 0 10px rgba(255,47,180,.4)}
-input::placeholder{color:#b9a6e8}
+.btn:hover{filter:brightness(1.15)}.btn:active{box-shadow:0 0 8px var(--neon-p);transform:translateY(5px)}
+.btn.dk{background:linear-gradient(180deg,rgba(255,255,255,.18),transparent 52%),#1c0a58;border-color:var(--neon-c);color:var(--neon-c);box-shadow:0 0 12px rgba(34,240,255,.6),0 5px 0 #090227;text-shadow:0 0 8px var(--neon-c)}
+.btn.ok{background:linear-gradient(180deg,rgba(255,255,255,.4),transparent 52%),#0fd46a;border-color:#c8ffe0;box-shadow:0 0 18px #0fd46a,0 5px 0 #07703a}
+.btn.no{background:linear-gradient(180deg,rgba(255,255,255,.4),transparent 52%),#ff3b3b;border-color:#ffd0d0;box-shadow:0 0 18px #ff3b3b,0 5px 0 #8a1010}
+input,select,textarea{background:#0a0226;color:#fff;border:2px solid var(--neon-p);border-radius:10px;font-family:"Orbitron",sans-serif;box-shadow:0 0 12px rgba(255,47,180,.45),inset 0 0 10px rgba(255,47,180,.15)}
+input::placeholder{color:#b9a6e8}input:focus,select:focus{outline:0;border-color:var(--neon-c);box-shadow:0 0 16px var(--neon-c)}
 
-/* joueurs autour de la bombe : plaques néon */
-.pl{border-radius:8px;border:1px solid rgba(34,240,255,.5);background:rgba(34,240,255,.08)}
-.seat{background:#14063f;border:2px solid var(--neon-c);border-radius:10px;box-shadow:0 0 10px rgba(34,240,255,.55);font-family:"Orbitron",sans-serif;font-weight:800}
-.seat.act{border-color:#ff3b3b;background:#3a0a52;box-shadow:0 0 26px #ff3b3b,0 0 50px rgba(255,59,59,.5)}
+/* joueurs */
+.pl{border-radius:10px;border:1px solid rgba(34,240,255,.5);background:rgba(34,240,255,.08)}
+.seat{background:linear-gradient(180deg,#1c0a58,#0e0432);border:2px solid var(--neon-c);border-radius:12px;box-shadow:0 0 12px rgba(34,240,255,.6);font-family:"Orbitron",sans-serif;font-weight:800}
+.seat.act{border-color:#ff3b3b;background:linear-gradient(180deg,#5a0f5a,#2a0640);box-shadow:0 0 28px #ff3b3b,0 0 60px rgba(255,59,59,.55)}
 .seat.dead{opacity:.3}
 
-/* bombe incandescente + afficheur LCD */
+/* bombe incandescente */
 .bomb{
-  background:radial-gradient(circle at 32% 28%,#ffd36a,#ff4a1c 42%,#8a0f06 88%);
-  box-shadow:inset -10px -14px 30px #0009,0 0 40px rgba(255,74,28,.8),0 0 90px rgba(255,47,180,.5);
+  background:radial-gradient(circle at 30% 26%,#fff1b0 0,#ffb347 14%,#ff4a1c 46%,#7a0d05 90%);
+  border:4px solid #2a0a08;box-shadow:inset -12px -16px 32px #000a,inset 8px 8px 20px #ffd98a66,0 0 44px rgba(255,74,28,.85),0 0 100px rgba(255,47,180,.55);
 }
-.syl{font-family:"Orbitron",monospace;font-weight:800;background:#02140a;color:#4dff9a;border:2px solid #1b5a38;text-shadow:0 0 6px #4dff9a,0 0 18px #4dff9a;letter-spacing:.08em}
-.tm{font-family:"Orbitron",monospace;font-weight:800;text-shadow:0 0 10px #fff200,0 0 24px #ff7a00}
-.arrow::after{text-shadow:0 0 10px #ff2b2b,0 0 26px #ff2b2b,0 0 50px #f00}
-.boom{filter:drop-shadow(0 0 30px #ff7a00)}
+.syl{font-family:"Orbitron",monospace;font-weight:800;background:linear-gradient(180deg,#02170c,#032a16);color:#4dff9a;border:3px solid #1b5a38;border-radius:8px;text-shadow:0 0 6px #4dff9a,0 0 20px #4dff9a;letter-spacing:.08em;box-shadow:inset 0 0 14px #000,0 0 14px rgba(77,255,154,.45)}
+.tm{font-family:"Orbitron",monospace;font-weight:800;text-shadow:0 0 10px #fff200,0 0 26px #ff7a00}
+.arrow::after{text-shadow:0 0 10px #ff2b2b,0 0 28px #ff2b2b,0 0 56px #f00}
+.boom{filter:drop-shadow(0 0 34px #ff7a00)}
 
-/* historique */
-.hist{border:1px solid rgba(34,240,255,.4);font-family:"Orbitron",sans-serif;font-weight:600;background:rgba(5,1,22,.7)}
+/* contrôle du temps + historique */
+#ctl{border-color:var(--neon-p);box-shadow:0 0 16px rgba(255,47,180,.6),inset 0 0 20px rgba(255,47,180,.14)}
+#ctl b{color:var(--neon-p);text-shadow:0 0 8px var(--neon-p)}
+.hist{border:1px solid rgba(34,240,255,.4);font-family:"Orbitron",sans-serif;font-weight:600;background:rgba(5,1,22,.75);border-radius:10px}
 .hist b{color:var(--neon-p)}
-#toast{border:2px solid var(--neon-p);box-shadow:0 0 14px var(--neon-p)}
+#toast{border:2px solid var(--neon-p);box-shadow:0 0 16px var(--neon-p);font-family:"Bungee",sans-serif;font-weight:400}

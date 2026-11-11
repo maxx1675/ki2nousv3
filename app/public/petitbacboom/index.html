@@ -33,7 +33,7 @@ input,select,textarea{font:inherit;padding:11px;border-radius:12px;border:2px so
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000d;padding:10px 16px;border-radius:12px;z-index:99;font-weight:700}
 .mod{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:50;padding:12px}.mod .box{background:#2a0f6b;max-height:90vh;overflow:auto;width:100%}
 </style>
-<link rel="stylesheet" href="/theme/petitbacboom.css">
+<link rel="stylesheet" href="/themes/petitbacboom.css">
 </head><body>
 <div class="c"><h1>💣 PETIT BAC BOOM</h1><div class="hint" id="who"></div></div>
 
@@ -48,7 +48,7 @@ input,select,textarea{font:inherit;padding:11px;border-radius:12px;border:2px so
  <div class="box c"><div class="hint">Code de la partie</div><div class="code" id="lc"></div><div><button class="btn" data-a="copy">📋 Copier</button></div></div>
  <div class="box"><b>Joueurs</b><div id="plist"></div></div>
  <div class="box" id="cfg" hidden>
-  <div class="row"><div><label>Chrono</label><select id="c-dur"><option>5</option><option>10</option><option selected>15</option><option>20</option><option>30</option><option>45</option></select></div>
+  <div class="row"><div><label>Chrono (secondes, 3 à 120)</label><input id="c-dur" type="number" min="3" max="120" value="15" list="dl"><datalist id="dl"><option>5<option>10<option>15<option>20<option>30<option>45<option>60</datalist></div>
   <div><label>Vies par joueur</label><select id="c-lv"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
   <div><label>Difficulté des syllabes</label><select id="c-df"><option value="e">Facile</option><option value="m" selected>Moyenne</option><option value="h">Difficile (chrono -30 %)</option></select></div>
   <div><label>Validation</label><select id="c-val"><option value="a">Auto (syllabe + répétition)</option><option value="h">Par l’hôte</option><option value="f">Libre (aucune vérification)</option></select></div>
@@ -65,6 +65,7 @@ input,select,textarea{font:inherit;padding:11px;border-radius:12px;border:2px so
  <div id="arena"><div class="arrow" id="ar"></div><div class="bomb" id="bomb"><div class="syl" id="syl"></div><div class="tm" id="tm"></div></div></div>
  <div class="box c" id="inp" hidden><input id="w" autocomplete="off" autocapitalize="off" placeholder="Ton mot…" maxlength="40"><button class="btn" data-a="word">✔ Valider</button><div class="hint" id="inh"></div></div>
  <div class="box c" id="pend" hidden></div>
+ <div class="box c" id="ctl" hidden></div>
  <div class="box c" id="over" hidden></div>
  <div class="box"><b>Historique</b><div class="hist" id="hist"></div></div>
  <div class="c" id="hb"></div>
@@ -102,7 +103,7 @@ function bc(){if(!isHost||!S)return;const on=new Set([...R.peers(),ME]);S.pl.for
 const alive=()=>S.pl.filter(p=>p.lv>0);
 function nextTurn(from){const n=S.pl.length;for(let k=1;k<=n;k++){const i=(from+k*S.cfg.dir+n*n)%n;if(S.pl[i].lv>0)return i}return from}
 function newSyl(){const c=S.cfg;const pool=c.cu&&c.cu.length?c.cu:SYL[c.df];S.syl=pool[Math.floor(Math.random()*pool.length)]}
-function arm(){S.dl=Net.now()+S.cfg.dur*1000;S.pend=null}
+function arm(){S.dl=Net.now()+S.cfg.dur*1000;if(S.paused)S.left=S.cfg.dur*1000;S.pend=null}
 function hostAct(d){
  if(!isHost||!S||S.ph==="closed")return;const pp=S.pl.find(x=>x.id===d.p),h=d.p===TK;
  if(d.k==="join"){const x=pp||S.pl.find(y=>y.n.toLowerCase()===String(d.n).toLowerCase()&&!y.on&&y.id!==TK);
@@ -111,11 +112,16 @@ function hostAct(d){
  else if(!pp)return;
  else if(d.k==="start"&&h&&(S.ph==="lobby"||S.ph==="over")){
   if(S.pl.length<2)return say("Il faut au moins 2 joueurs");
-  const g=Q("#c-dur");if(S.ph==="lobby"&&g){const df=Q("#c-df").value;S.cfg={dur:Math.round(+Q("#c-dur").value*(df==="h"?.7:1)),lv:+Q("#c-lv").value,df,val:Q("#c-val").value,pos:Q("#c-pos").value,rep:Q("#c-rep").value==="y",cu:Q("#c-cu").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),dir:1}}
+  const g=Q("#c-dur");if(S.ph==="lobby"&&g){const df=Q("#c-df").value;S.cfg={dur:Math.max(3,Math.min(120,Math.round((+Q("#c-dur").value||15)*(df==="h"?.7:1)))),lv:+Q("#c-lv").value,df,val:Q("#c-val").value,pos:Q("#c-pos").value,rep:Q("#c-rep").value==="y",cu:Q("#c-cu").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),dir:1}}
   S.pl.forEach(p=>{p.lv=S.cfg.lv;p.bo=0});S.words=[];S.used=[];S.turn=Math.floor(Math.random()*S.pl.length);newSyl();arm();S.ph="play";S.paused=false;S.msg=""}
  else if(d.k==="word"&&S.ph==="play"&&!S.paused&&S.pl[S.turn]===pp&&!S.pend)submit(pp,String(d.w||"").trim().slice(0,40));
  else if(d.k==="judge"&&h&&S.pend){const w=S.pend;if(d.ok)accept(S.pl[S.turn],w);else{S.pend=null;S.msg="Mot refusé par l’hôte : "+w}}
  else if(d.k==="pause"&&h&&S.ph==="play"){if(!S.paused){S.left=S.dl-Net.now();S.paused=true}else{S.dl=Net.now()+S.left;S.paused=false}}
+ else if(h&&S.ph==="play"&&d.k==="skip"){S.turn=nextTurn(S.turn);newSyl();arm();S.msg="⏭ Tour passé par l’hôte"}
+ else if(h&&S.ph==="play"&&d.k==="syl"){newSyl();arm();S.msg="🔄 Nouvelle syllabe"}
+ else if(h&&S.ph==="play"&&d.k==="adj"){const ms=(+d.s||0)*1000;if(S.paused)S.left=Math.max(1000,S.left+ms);else S.dl=Math.max(Net.now()+1000,S.dl+ms)}
+ else if(h&&S.ph==="play"&&d.k==="dur"){const n=Math.max(3,Math.min(120,Math.round(+d.s||0)));if(n){S.cfg.dur=n;arm();S.msg="⏱ Chrono réglé sur "+n+" s"}}
+ else if(h&&S.ph==="play"&&d.k==="boom"){S.paused=false;S.dl=Net.now()-1}
  else if(d.k==="lobby"&&h){S.ph="lobby";S.pl.forEach(p=>p.lv=S.cfg.lv||3)}
  else if(d.k==="kick"&&h&&d.tp!==TK&&S.ph==="lobby")S.pl=S.pl.filter(x=>x.id!==d.tp);
  else if(d.k==="close"&&h){S.ph="closed";bc();try{localStorage.removeItem("pbb:snap:"+code)}catch(e){}return}
@@ -159,9 +165,11 @@ function game(){
  const mine_t=S.ph==="play"&&!S.paused&&cur&&mine&&cur.id===mine.id&&!S.pend;
  Q("#inp").hidden=!mine_t;Q("#inh").textContent=S.msg||({a:"Auto : vérifie la syllabe et les répétitions, pas l’orthographe.",h:"L’hôte valide ton mot.",f:"Mode libre : tout est accepté."}[S.cfg.val]||"");
  const pe=Q("#pend");pe.hidden=!(S.pend&&S.ph==="play");if(S.pend)pe.innerHTML=`<b>${eh(cur.n)}</b> propose : <b>${eh(S.pend)}</b>`+(isHost?`<div><button class="btn ok" data-a="ok">✔ Valider</button><button class="btn no" data-a="ko">✘ Refuser</button></div>`:` <span class="hint">(en attente de l’hôte)</span>`);
+ const ct=Q("#ctl");ct.hidden=!(isHost&&S.ph==="play");
+ if(!ct.hidden)ct.innerHTML=`<b>⏱ Contrôle du temps (hôte)</b><div><button class="btn dk sm" data-a="pause">${S.paused?"▶ Reprendre":"⏸ Pause"}</button><button class="btn dk sm" data-a="skip">⏭ Passer le joueur</button><button class="btn dk sm" data-a="syl">🔄 Autre syllabe</button><button class="btn dk sm" data-a="adj" data-s="-5">−5 s</button><button class="btn dk sm" data-a="adj" data-s="5">+5 s</button><button class="btn dk sm" data-a="dur">⏱ Chrono…</button><button class="btn dk sm" data-a="boom">💥 Boom</button></div><div class="hint">Chrono actuel : ${S.cfg.dur} s par tour</div>`;
  const ov=Q("#over");ov.hidden=S.ph!=="over";if(S.ph==="over")ov.innerHTML=`<h2>🏆 ${eh(S.winner)} gagne !</h2>`+(isHost?`<button class="btn" data-a="start">🔁 Rejouer</button><button class="btn dk" data-a="lobby">Réglages</button>`:"");
  Q("#hist").innerHTML=[...S.words].reverse().map(x=>`<div><b>${eh(x.n)}</b> : ${eh(x.w)} <span class="hint">(${eh(x.s)})</span></div>`).join("")+(S.msg?`<div class="hint">${eh(S.msg)}</div>`:"");
- Q("#hb").innerHTML=(isHost&&S.ph==="play"?`<button class="btn dk sm" data-a="pause">${S.paused?"▶ Reprendre":"⏸ Pause"}</button>`:"")+(isHost?`<button class="btn dk sm" data-a="closeroom">Fermer la salle</button>`:"")+`<button class="btn dk sm" data-a="leave">Quitter</button>`;
+ Q("#hb").innerHTML=(isHost?`<button class="btn dk sm" data-a="closeroom">Fermer la salle</button>`:"")+`<button class="btn dk sm" data-a="leave">Quitter</button>`;
  if(S.boom&&S.boom.t!==lastBoom){lastBoom=S.boom.t;if(Date.now()-S.boom.t<3000){const b=document.createElement("div");b.className="boom";b.textContent="💥";ar.append(b);setTimeout(()=>b.remove(),1000)}}
  if(mine_t&&document.activeElement!==Q("#w")&&!game.f){game.f=1;Q("#w").value="";Q("#w").focus()}if(!mine_t)game.f=0;
 }
@@ -176,6 +184,9 @@ document.addEventListener("click",async e=>{
  else if(a==="kick")send({k:"kick",tp:b.dataset.id});else if(a==="pause")send({k:"pause"});
  else if(a==="closeroom"){if(confirm("Fermer la salle pour tout le monde ?"))send({k:"close"})}
  else if(a==="word"){const w=Q("#w").value;if(w.trim()){send({k:"word",w});Q("#w").value=""}}
+ else if(a==="skip")send({k:"skip"});else if(a==="syl")send({k:"syl"});else if(a==="boom")send({k:"boom"});
+ else if(a==="adj")send({k:"adj",s:+b.dataset.s});
+ else if(a==="dur"){const v=prompt("Nouveau chrono par tour (secondes, 3 à 120) :",S.cfg.dur);if(v)send({k:"dur",s:+v})}
  else if(a==="ok")send({k:"judge",ok:1});else if(a==="ko")send({k:"judge",ok:0});
 });
 Q("#w").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();Q("[data-a=word]").click()}});
