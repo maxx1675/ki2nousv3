@@ -5,42 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Les Petites Vérités — tout le monde confie une vérité, deux joueurs échangent les leurs en secret. Défends la vérité de l'autre sans te faire griller. 18+">
 <title>Les Petites Vérités · 18+</title>
+<meta name="theme-color" content="#6a47ff">
+<link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/components.css">
 <style>
-:root{--bg:#ece7ff;--surface:#fffdf8;--ink:#1b1340;--muted:#5c5585;--edge:#1b1340;--sh:#1b1340;--violet:#6a47ff;--pink:#ff4f8b;--amber:#ffc531;--teal:#19c7b0;--danger:#e23a6e}
-html[data-theme="dark"]{color-scheme:dark;--bg:#121020;--surface:#231e39;--ink:#f7f3ff;--muted:#bdb4d8;--edge:#9d93bd;--sh:#080611;--violet:#9279ff;--pink:#ff659d;--amber:#ffc531;--teal:#32d7c0;--danger:#ff7298}
-*,*::before,*::after{box-sizing:border-box}
-[hidden]{display:none!important}
-html{height:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font:500 1rem/1.45 "Bricolage Grotesque",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-radial-gradient(circle at 50% 120%,transparent 0 90px,color-mix(in srgb,var(--ink) 4%,transparent) 90px 92px)}
-.wrap{position:relative;z-index:1;max-width:620px;margin:0 auto;padding:20px 16px 90px}
-.hero{text-align:center;padding:8px 0 4px}
-.logo{font-size:48px;display:inline-block;transform:rotate(-8deg)}
-h1{font-size:clamp(2rem,8.5vw,3rem);line-height:1.02;margin:.1em 0 .25em;font-weight:800;letter-spacing:-.02em;transform:rotate(-1.2deg)}
-.hero p{color:var(--muted);margin:0 auto;max-width:42ch}
-h2{font-size:1.12rem;margin:0 0 10px;font-weight:800}
-.card{background:var(--surface);border:2.5px solid var(--edge);border-radius:18px;padding:16px;margin:14px 0;box-shadow:5px 5px 0 var(--sh)}
-.row{display:flex;gap:8px;align-items:center}.between{justify-content:space-between}.center{text-align:center}
-input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--edge);border-radius:12px;padding:11px 13px}
 textarea{resize:vertical;min-height:84px}
-input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--pink);outline-offset:2px}
-.btn{font:inherit;font-weight:800;color:var(--ink);background:var(--surface);border:2.5px solid var(--edge);border-radius:12px;padding:11px 18px;cursor:pointer;box-shadow:3px 3px 0 var(--sh);transition:transform .1s,box-shadow .1s}
-.btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 var(--sh)}
-.btn.primary{background:var(--violet);color:#fff}
-.btn.danger{background:var(--danger);color:#fff}
 .btn.ghosty{background:transparent;box-shadow:none}
-.btn.big{width:100%;font-size:1.1rem;padding:15px;margin-top:10px}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.hint{color:var(--muted);font-size:.92rem;margin:10px 0 0}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .chip{display:inline-flex;align-items:center;gap:6px;background:var(--amber);border:2px solid var(--edge);border-radius:99px;padding:5px 13px;font-weight:800;color:#1b1340}
 .chip.dim{background:var(--surface);color:var(--muted)}
 .chip.ok{background:var(--teal)}
 .chip button{border:0;background:transparent;font:inherit;font-size:1.1rem;cursor:pointer;line-height:1;padding:0}
-.code{font-size:clamp(2.4rem,10vw,3.2rem);font-weight:800;letter-spacing:.22em;text-align:center;margin:4px 0;color:var(--violet)}
 .warn18{background:var(--pink);color:#fff;border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;font-weight:800;display:flex;gap:10px;align-items:flex-start;margin:14px 0;box-shadow:4px 4px 0 var(--sh)}
 .warn18 input{width:22px;height:22px;accent-color:var(--violet);flex:none;margin-top:2px}
 .warn18 small{display:block;font-weight:500;opacity:.92}
@@ -49,9 +27,6 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px soli
 .mode.on{background:color-mix(in srgb,var(--teal) 30%,var(--surface));border-color:var(--edge);box-shadow:3px 3px 0 var(--teal)}
 .mode .mi{font-size:1.4rem}
 .mode small{display:block;color:var(--muted);font-weight:500}
-.stepper{display:flex;align-items:center;gap:10px}
-.stepper button{width:42px;height:42px;border-radius:50%;border:2.5px solid var(--edge);background:var(--surface);color:var(--ink);font:inherit;font-size:1.3rem;font-weight:800;cursor:pointer}
-.stepper output{min-width:3.4ch;text-align:center;font-weight:800;font-size:1.25rem}
 .srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:2px dashed var(--edge)}
 .srow:first-of-type{border-top:0}
 .pills{display:flex;flex-wrap:wrap;gap:6px}
@@ -67,8 +42,6 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px soli
 .counter.over{color:var(--danger)}
 .pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
 .pick{font:inherit;font-weight:800;color:var(--ink);background:var(--surface);border:2.5px solid var(--edge);border-radius:12px;padding:13px 8px;cursor:pointer;box-shadow:3px 3px 0 var(--sh);text-align:center;word-break:break-word;line-height:1.15}
-.pick.on{background:var(--teal)}
-.pick:disabled{opacity:.45;cursor:not-allowed}
 .timer{font-size:clamp(3.4rem,16vw,5.5rem);font-weight:800;text-align:center;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:6px 0;line-height:1}
 .timer.low{color:var(--danger)}
 .bar{height:14px;border-radius:9px;background:var(--surface);border:2px solid var(--edge);overflow:hidden;margin:8px 0 16px}
@@ -111,7 +84,6 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px soli
 @keyframes rise{from{opacity:0;transform:translateY(12px)}}
 .badge18{display:inline-block;background:var(--pink);color:#fff;border:2px solid var(--edge);border-radius:99px;padding:2px 12px;font-weight:800;font-size:.85rem;transform:rotate(4deg)}
 @media (max-width:480px){.pick-grid{grid-template-columns:repeat(2,1fr)}}
-
 /* ===== Bouton et panneau de réglages (musique, animations) ===== */
 .setbtn{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:50;width:50px;height:50px;border-radius:50%;border:2.5px solid var(--edge);background:var(--surface);color:var(--ink);font-size:1.4rem;line-height:1;cursor:pointer;box-shadow:3px 3px 0 var(--sh);padding:0}
 .setpanel{position:fixed;inset:0;z-index:90;background:rgba(27,19,64,.5);display:flex;align-items:flex-end;justify-content:center}
@@ -119,7 +91,6 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px soli
 @media (min-width:700px){.setpanel{align-items:center}.setbox{border-radius:20px;box-shadow:6px 6px 0 var(--sh)}}
 .setbox .pills{margin:4px 0 8px}
 input[type=range]{width:100%;accent-color:var(--violet)}
-
 /* ===== Animations (réglables dans ⚙️) ===== */
 @keyframes pop{from{opacity:0;transform:scale(.92) rotate(-1.2deg)}}
 @keyframes wiggle{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(6deg) scale(1.1)}}
@@ -133,9 +104,8 @@ html:not([data-anim="off"]) .btn:hover:not(:disabled):not(:active){transform:tra
 html[data-anim="full"] .logo{animation:wiggle 3.2s ease-in-out infinite}
 html[data-anim="off"] *,html[data-anim="off"] *::before,html[data-anim="off"] *::after{animation:none!important;transition:none!important}
 </style>
-</style>
 <link rel="stylesheet" href="/themes/verites.css">
-</head>
+<link rel="stylesheet" href="/shared/widgets.css">
 </head>
 <body>
 <div id="bgfx" aria-hidden="true"></div>
@@ -179,7 +149,7 @@ html[data-anim="off"] *,html[data-anim="off"] *::before,html[data-anim="off"] *:
   <div class="card center">
     <h2>Code de la partie</h2>
     <div class="code" id="lcode"></div>
-    <button class="btn" data-act="copylink">🔗 Copier le lien d’invitation</button>
+    <div id="sw-share"></div>
     <p class="hint">Chaque joueur ouvre le lien, entre le code et son prénom.</p>
   </div>
   <div class="card">
@@ -253,6 +223,10 @@ html[data-anim="off"] *,html[data-anim="off"] *::before,html[data-anim="off"] *:
   </div>
 </div>
 
+<script src="/shared/net.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/gages.js"></script>
+<script src="/shared/party.js"></script>
 <script>
 "use strict";
 /* ================================================================
@@ -260,14 +234,6 @@ html[data-anim="off"] *,html[data-anim="off"] *::before,html[data-anim="off"] *:
    S = état public (diffusé par l'hôte, SANS les vérités)
    H = mémoire privée de l'hôte (vérités, attributions, votes)
    ================================================================ */
-const $ = s => document.querySelector(s);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
-const pickR = a => a[Math.floor(Math.random()*a.length)];
-const CH = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-const ME = (()=>{ let v=""; try{v=localStorage.getItem("lpv:id")||"";}catch(e){}
-  if(!v){ v=(Math.random().toString(36)+"00000000").slice(2,10); try{localStorage.setItem("lpv:id",v);}catch(e){} } return v; })();
-
 const TIMER_OPTS = [[60,"1:00"],[90,"1:30"],[120,"2:00"],[150,"2:30"],[180,"3:00"]];
 const GHOST_OPTS = [["jamais","Jamais"],["rares","Rares"],["parfois","Parfois"],["souvent","Souvent"]];
 const GHOST_RATE = {jamais:0, rares:0.15, parfois:0.32, souvent:0.5};
@@ -424,55 +390,15 @@ function bankFor(mode, round, rounds){
 let R=null, S=null, isHost=false, code="", lastSt=0, tk=0;
 let H=null;                 // privé hôte : {truths,assign,swap,ghost,votes,participants,stats}
 let L={ name:"", asg:null, vote:[], sent:false, rk:"" };
-let lastPhase="", clockOffset=0;
-const sharedNow = () => Date.now()+clockOffset;
-function syncClock(serverNow, startedAt){
-  if(!Number.isFinite(serverNow)) return;
-  const localNow=Date.now();
-  const estimatedLocal=startedAt===undefined?localNow:(startedAt+localNow)/2;
-  clockOffset=serverNow-estimatedLocal;
-}
+let lastPhase="";
+const sharedNow = () => Net.now();
 
-/* ---------- Transport (relais /api/rooms) ---------- */
-const ROOM = Promise.resolve({join: async roomName => {
-  const startedAt=Date.now();
-  const jr = await fetch("/api/rooms/join",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({room:roomName,cid:ME})});
-  const j = await jr.json().catch(()=>({}));
-  if(!jr.ok || !j.ok) throw new Error(j.error || "Salon introuvable");
-  syncClock(j.serverNow,startedAt);
-  const conn = j.conn;
-  isHost = !!j.host;
-  const peers = new Map();
-  const callbacks = new Map();
-  const es = new EventSource("/api/rooms/stream?room="+encodeURIComponent(roomName)+"&cid="+encodeURIComponent(ME)+"&conn="+encodeURIComponent(conn));
-  es.addEventListener("peers", e => {
-    peers.clear();
-    try{ JSON.parse(e.data).forEach(id => { if(id!==ME) peers.set(id,{presence:{id}}); }); }catch(err){}
-    const fn = callbacks.get("__peers"); if(fn) fn();
-  });
-  es.addEventListener("evt", e => {
-    let m=null; try{ m=JSON.parse(e.data); }catch(err){}
-    if(!m) return;
-    syncClock(m.serverNow);
-    const fn = callbacks.get(m.topic); if(fn) fn({data:m.data});
-  });
-  return {
-    on: (t,fn)=>callbacks.set(t,fn),
-    onPeers: fn=>callbacks.set("__peers",fn),
-    peers: ()=>[...peers.values()],
-    emit: (topic,data,to)=>fetch("/api/rooms/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({room:roomName,conn,topic,data,to:to||""})}).then(r=>r.json()).catch(()=>({ok:false})),
-    leave: ()=>{ try{es.close();}catch(e){}
-      try{ navigator.sendBeacon("/api/rooms/leave", new Blob([JSON.stringify({room:roomName,conn})],{type:"application/json"})); }catch(e){}
-      return Promise.resolve(); }
-  };
-}});
-
-const online = () => new Set([ME, ...(R?R.peers().map(p=>p.presence&&p.presence.id):[]).filter(Boolean)]);
+const online = () => new Set([ME, ...(R?R.peers():[])]);
 const nm = id => (S && S.pl.find(p=>p.id===id)||{n:"?"}).n;
 const msg = t => { $("#hmsg").textContent=t; };
 const fmtT = s => Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
 
-/* ---------- Persistance hôte (survit à un rechargement) ---------- */
+/* ---------- Persistance hôte : le relais garde une « photo » de la partie (R.snap) ; copie locale en secours ---------- */
 function saveHost(){
   if(!isHost||!S) return;
   try{ localStorage.setItem("lpv:host:"+code, JSON.stringify({S,H})); }catch(e){}
@@ -483,10 +409,9 @@ function loadHost(){
   return false;
 }
 /* ---------- Reprise de session (quitter la page sans perdre sa place) ---------- */
-function saveSess(){ try{ localStorage.setItem("lpv:sess", JSON.stringify({code, name:L.name, ts:Date.now()})); }catch(e){} }
-function clearSess(){ try{ localStorage.removeItem("lpv:sess"); }catch(e){} }
-function getSess(){ try{ const s=JSON.parse(localStorage.getItem("lpv:sess")||"null");
-  return s && /^[A-Z0-9]{4}$/.test(s.code||"") ? s : null; }catch(e){ return null; } }
+function saveSess(){ Sess.save("vt",{code, name:L.name, host:isHost}); }
+function clearSess(){ Sess.clear("vt"); }
+function getSess(){ return Sess.load("vt"); }
 function showRejoin(){
   const s=getSess(); if(!s) return;
   $("#rejoin").hidden=false;
@@ -494,42 +419,38 @@ function showRejoin(){
 }
 
 /* ---------- Diffusion ---------- */
-function bc(){ if(!isHost||!R||!S) return; if(S.ph==="lobby") S.cfg=L.cfg; R.emit("st",S).catch(()=>{}); saveHost(); }
+function bc(){ if(!isHost||!R||!S) return; if(S.ph==="lobby") S.cfg=L.cfg; R.emit("st",S).catch(()=>{}); R.snap({S,H}); saveHost(); }
 function send(d){ d.p=ME; if(isHost) return hostAct(d); if(R) R.emit("act",d,"host").catch(()=>{}); }
 
 /* ---------- Configuration ---------- */
 L.cfg = { mode:"classique", rounds:5, timer:90, ghost:"rares" };
 
 /* ---------- Cycle de vie ---------- */
-async function enter(create){
-  const name = $("#pname").value.trim().slice(0,16);
-  if(!$("#age18").checked) return msg("Confirme d’abord que tout le monde a 18 ans ou plus. 🔞");
-  if(!name) return msg("Entre ton prénom d’abord 🙂");
-  code = create ? Array.from({length:4},()=>CH[Math.floor(Math.random()*CH.length)]).join("")
-                : $("#pcode").value.trim().toUpperCase();
-  if(!create && !/^[A-Z0-9]{4}$/.test(code)) return msg("Entre le code à 4 lettres du salon.");
+async function enter(create,o){
+  o=o||{};
+  let name=o.name;
+  if(!name){
+    const ps = $("#pname").value.trim().slice(0,16);
+    if(!$("#age18").checked) return msg("Confirme d’abord que tout le monde a 18 ans ou plus. 🔞");
+    if(!ps) return msg("Entre ton prénom d’abord 🙂");
+    Profile.set({name:ps}); name=Profile.tag(ps);
+  }
+  const jc = o.joinCode || $("#pcode").value.trim().toUpperCase();
+  if(!create && !/^[A-Z0-9]{4}$/.test(jc)) return msg("Entre le code à 4 lettres du salon.");
   L.name = name;
-  try{ localStorage.setItem("lpv:name",name); }catch(e){}
-  try{
-    const ns = await ROOM;
-    R = await ns.join(code);
-    if(create && !isHost){ // collision improbable : un salon existe déjà avec ce code
-      R.leave(); R=null;
-      code = Array.from({length:4},()=>CH[Math.floor(Math.random()*CH.length)]).join("");
-      R = await ns.join(code);
-    }
-  }catch(e){ return msg(e.message||"Salon introuvable"); }
+  const x = await Net.enter({game:"vt", room:c=>"vt-"+c, create, code:o.code, joinCode:jc, resume:o.resume, wasHost:o.wasHost, retry:o.retry, onMsg:msg});
+  if(!x) { if(o.resume) showRejoin(); return; }
+  R=x.R; code=x.code; isHost=R.host;
   bind();
+  setInterval(()=>Sess.touch("vt"),20000);
   if(isHost){
-    if(!loadHost()){
-      S = { ph:"lobby", host:ME, pl:[], cfg:{...L.cfg}, round:0, q:"", ch:3,
-            submitted:[], noted:[], readOk:[], voted:[], order:[], end:0,
-            imp:null, votesN:{}, deltas:{}, ghostRound:false, parts:[] };
-      H = freshH();
+    const sn=R.initSnap;
+    if(sn&&sn.S){ S=sn.S; H=sn.H||freshH(); S.host=ME; }
+    else if(!loadHost()){
+      S = newS(); H = freshH();
     }
     hostAct({k:"join",p:ME,n:name});
-    bc();
-    saveSess();
+    bc(); saveSess();
     show("lobby"); render();
   } else {
     S = null;
@@ -538,18 +459,23 @@ async function enter(create){
     show("lobby"); renderLobby();
     send({k:"join",n:name});
   }
+  Share.mount("#sw-share",{code,title:"Les Petites Vérités",text:"Rejoins-moi aux Petites Vérités (18+) ! Code : "+code});
+  $("#rejoin").hidden=true;
 }
+const newS = () => ({ ph:"lobby", host:ME, pl:[], cfg:{...L.cfg}, round:0, q:"", ch:3,
+            submitted:[], noted:[], readOk:[], voted:[], order:[], end:0,
+            imp:null, votesN:{}, deltas:{}, ghostRound:false, parts:[] });
 function freshH(){ return { truths:{}, assign:{}, swap:null, ghost:false, votes:{}, participants:[], stats:{found:{},impWins:{},ghosts:0} }; }
 
 function bind(){
-  R.on("st", m => {
-    const d=m.data; if(isHost||!d||typeof d.host!=="string"||!Array.isArray(d.pl)) return;
+  R.on("st", d => {
+    if(isHost||!d||typeof d.host!=="string"||!Array.isArray(d.pl)) return;
     S=d; lastSt=Date.now();
     render();
   });
-  R.on("act", m => { if(isHost) hostAct(m.data); });
-  R.on("pv", m => {
-    const d=m.data||{};
+  R.on("act", d => { if(isHost) hostAct(d); });
+  R.on("pv", d => {
+    d=d||{};
     if(d.k==="truth" && typeof d.text==="string" && d.round===((S&&S.round)||0)){
       L.asg={text:d.text, swapped:d.swapped||null, round:d.round};
       try{ localStorage.setItem("lpv:asg:"+code, JSON.stringify(L.asg)); }catch(e){}
@@ -557,6 +483,22 @@ function bind(){
     }
   });
   R.onPeers(() => { if(isHost&&S){ bc(); } render(); });
+  R.onPromote(onPromoted);
+  R.onDemote(() => { isHost=false; toast("Un autre joueur est devenu l’hôte"); L.rk=""; render(); });
+  Party.listen(R,code,()=>Sess.clear("vt"));
+}
+/* Passage de relais : l'hôte a disparu, le serveur nous désigne avec la dernière « photo » de la partie */
+function onPromoted(snap){
+  isHost=true;
+  if(snap&&snap.S){ S=snap.S; H=snap.H||null; }
+  if(!S) S=newS();
+  S.host=ME;
+  if(!S.pl.some(p=>p.id===ME) && S.ph==="lobby") S.pl.push({id:ME,n:L.name,score:0});
+  if(!H){
+    H=freshH();
+    if(S.ph!=="lobby" && S.ph!=="final"){ S.round=Math.max(0,S.round-1); toast("Manche relancée (l’ancien hôte est parti)"); nextRound(); }
+  }
+  saveSess(); L.rk=""; toast("👑 Tu es maintenant l’hôte"); bc(); render();
 }
 function onPhase(ph){
   if(ph==="reveal"){ L.asg=null; L.asgRound=0; try{ localStorage.removeItem("lpv:asg:"+code); }catch(e){} }
@@ -568,7 +510,7 @@ function onPhase(ph){
 
 /* ---------- Logique hôte ---------- */
 function uniq(n){ let m=n,k=2; while(S.pl.some(p=>p.n.toLowerCase()===m.toLowerCase())) m=n+" "+k++; return m; }
-const clean = s => String(s||"").replace(/[<>"']/g,"").replace(/\s+/g," ").trim().slice(0,16);
+const clean = s => String(s||"").replace(/[<>"']/g,"").replace(/\s+/g," ").trim().slice(0,22);
 
 function hostAct(d){
   if(!d||typeof d.k!=="string"||typeof d.p!=="string") return;
@@ -639,6 +581,11 @@ function auto(){
 }
 
 /* ---------- Étapes hôte ---------- */
+function finishGame(){
+  S.ph="final"; S.sid=S.sid||Math.random().toString(36).slice(2,10);
+  Party.report(R,"vt",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:p.score})));
+  bc(); render();
+}
 function startGame(){
   if(S.pl.length<MIN_P) return;
   S.pl.forEach(p=>p.score=0);
@@ -647,7 +594,7 @@ function startGame(){
 }
 function nextRound(){
   S.round++;
-  if(S.round>S.cfg.rounds){ S.ph="final"; bc(); render(); return; }
+  if(S.round>S.cfg.rounds){ finishGame(); return; }
   const bank = bankFor(S.cfg.mode, S.round, S.cfg.rounds);
   S.q = pickR(bank);
   S.ch = 3;
@@ -947,8 +894,11 @@ function renderFinal(){
       <button class="btn primary big" data-act="recap">Copier le récap 📋</button>
       <p class="hint" id="recap-ok" hidden>Copié ! Colle-le où tu veux. ✨</p>
     </div>
+    <div id="gage"></div><div id="ptend"></div>
     ${isHost?`<button class="btn big" data-act="replay">🔁 Rejouer une partie</button>`:`<p class="hint center">L’hôte peut relancer une partie.</p>`}
   `;
+  Gages.mount("#gage",{R,who:sorted.length?sorted[sorted.length-1].n:""});
+  Party.endCard("#ptend",{R,code,isHost,onLeave:()=>Sess.clear("vt")});
   $("#final-stage").dataset.recap = recap;
   const fs=$("#final-stage"); fs.classList.remove("stage"); void fs.offsetWidth; fs.classList.add("stage");
   confetti();
@@ -1125,15 +1075,11 @@ document.addEventListener("click", e=>{
     $("#pname").value=s.name||$("#pname").value;
     $("#pcode").value=s.code;
     $("#rejoin").hidden=true;
-    enter(false);
+    enter(false,{name:s.name,joinCode:s.code,resume:true,wasHost:s.host});
   }
   else if(a==="forget"){ clearSess(); $("#rejoin").hidden=true; }
   else if(a==="create"){ $("#rejoin").hidden=true; enter(true); }
   else if(a==="join") enter(false);
-  else if(a==="copylink"){
-    const url=location.origin+"/verites/index.html#"+code;
-    (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>{t.textContent="✅ Lien copié !";setTimeout(()=>t.textContent="🔗 Copier le lien d’invitation",1600);}).catch(()=>{prompt("Copie ce lien :",url);});
-  }
   else if(a==="leave"){ clearSess(); if(R) R.leave(); location.href="/"; }
   else if(a==="mode"&&isHost&&S.ph==="lobby"){ S.cfg.mode=t.dataset.id; bc(); render(); }
   else if(a==="timer"&&isHost&&S.ph==="lobby"){ S.cfg.timer=+t.dataset.v; bc(); render(); }
@@ -1170,8 +1116,8 @@ document.addEventListener("click", e=>{
   else if(a==="next"&&isHost){ nextRound(); }
   else if(a==="skip"&&isHost){ skipPhase(); }
   else if(a==="skipround"&&isHost){ nextRound(); }
-  else if(a==="endgame"&&isHost){ if(confirm("Terminer la partie maintenant et voir les scores ?")){ S.stats=JSON.parse(JSON.stringify(H.stats)); S.ph="final"; bc(); render(); } }
-  else if(a==="replay"&&isHost){ S.pl.forEach(p=>p.score=0); H=freshH(); S.round=0; S.ph="lobby"; bc(); show("lobby"); render(); }
+  else if(a==="endgame"&&isHost){ if(confirm("Terminer la partie maintenant et voir les scores ?")){ S.stats=JSON.parse(JSON.stringify(H.stats)); finishGame(); } }
+  else if(a==="replay"&&isHost){ S.sid=null; S.pl.forEach(p=>p.score=0); H=freshH(); S.round=0; S.ph="lobby"; bc(); show("lobby"); render(); }
   else if(a==="recap"){
     const txt=$("#final-stage").dataset.recap||"";
     (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>{$("#recap-ok").hidden=false;}).catch(()=>{prompt("Copie le récap :",txt);});
@@ -1184,9 +1130,17 @@ document.addEventListener("input",e=>{
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") $("#setpanel").hidden=true; });
 $("#pname").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();enter(!$("#pcode").value.trim());} });
 $("#pcode").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();enter(false);} });
-try{ $("#pname").value=localStorage.getItem("lpv:name")||""; }catch(e){}
-if(/^#[A-Za-z0-9]{4}$/.test(location.hash)) $("#pcode").value=location.hash.slice(1).toUpperCase();
-loadSet(); applySet(); showRejoin();
+loadSet(); applySet();
+Profile.attach("#pname");
+{ const BP=bootParams(), sv=Sess.load("vt"), pr=Profile.get();
+  if(BP.code) $("#pcode").value=BP.code;
+  if(BP.go&&BP.code&&pr.name&&localStorage.getItem("soiree:18ok")==="1"){ const n0=Profile.tag(pr.name); $("#age18").checked=true; msg("🎪 Lancement de la partie…");
+    if(BP.host) enter(true,{name:n0,code:BP.code,retry:5}); else enter(false,{name:n0,joinCode:BP.code,retry:20}); }
+  else if(sv&&(!BP.code||BP.code===sv.code)){ msg("🔁 Retour dans le salon "+sv.code+"…"); enter(false,{name:sv.name,joinCode:sv.code,resume:true,wasHost:sv.host}); }
+  else showRejoin();
+  if(BP.go&&BP.code&&localStorage.getItem("soiree:18ok")!=="1") msg("🔞 Confirme que tout le monde a 18 ans ou plus, puis rejoins le salon "+BP.code+".");
+}
+$("#age18").addEventListener("change",e=>{ try{ localStorage.setItem("soiree:18ok",e.target.checked?"1":"0"); }catch(x){} });
 </script>
 </body>
 </html>

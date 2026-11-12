@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Photo Roulette</title>
+<meta name="theme-color" content="#ff4f8b">
+<link rel="icon" href="/favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
 <style>
 .shot{position:relative;border:3px solid var(--edge);border-radius:20px;overflow:hidden;background:#000;box-shadow:6px 6px 0 var(--pink);aspect-ratio:3/4;max-height:56vh;margin:12px auto;display:flex;align-items:center;justify-content:center}
 .shot img,.shot video{width:100%;height:100%;object-fit:contain;background:#000}
@@ -13,6 +16,12 @@
 .tbar .bar i{transition:width .1s linear}
 .mark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:7rem;font-weight:800;background:rgba(0,0,0,.35);animation:fin .25s}
 .mark.ok{color:#2fcf7a}.mark.ko{color:#ff4466}
+.flash{position:absolute;inset:0;background:#fff;pointer-events:none;animation:camflash .75s ease-out forwards;z-index:3}
+.shot img.dev{animation:develop 1.2s ease-out both}
+.shot.snap{animation:snapshake .35s}
+@keyframes camflash{0%{opacity:1}15%{opacity:1}100%{opacity:0}}
+@keyframes develop{from{filter:brightness(3) contrast(.35) sepia(1) blur(8px)}to{filter:none}}
+@keyframes snapshake{25%{transform:translateY(-4px) scale(1.02)}60%{transform:translateY(2px)}}
 .rn{font-weight:800;color:var(--muted);text-align:center}
 .title{background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;margin:10px 0;box-shadow:3px 3px 0 var(--amber);font-weight:800}
 .title small{display:block;color:var(--muted);font-weight:500}
@@ -36,7 +45,7 @@
 </section>
 
 <section id="s-lobby" hidden>
- <div class="card center"><h2>Code PIN</h2><div class="code" id="lcode"></div><button class="btn" data-a="copy">🔗 Copier le lien</button></div>
+ <div class="card center"><h2>Code PIN</h2><div class="code" id="lcode"></div><div id="sw-share"></div></div>
  <div class="card"><h2>Joueurs <span id="pc" class="hint" style="display:inline"></span></h2><div id="pl" class="chips"></div><p id="ph" class="hint"></p></div>
  <div class="card"><h2 id="mtitle">📷 Ma pellicule</h2>
   <p class="hint" style="margin:0 0 8px">1) Appuie sur le bouton et ouvre l’album de ton choix dans ta galerie (Récents, un voyage, une soirée…).<br>2) Coche beaucoup de photos, 30 à 60 c’est l’idéal : le site en tire 20 au hasard, tu ne choisis pas lesquelles.<br>3) Tu vois le tirage : une photo te gêne ? Appuie sur ✕, elle est remplacée par une autre au hasard.<br><small>iPhone : choisis « Photothèque ». Les sélecteurs de téléphone n’ont pas de « tout sélectionner » : c’est pour ça qu’il faut cocher les photos toi-même.</small></p>
@@ -63,14 +72,19 @@
 <section id="s-game" hidden><div id="stage" class="fade"></div></section>
 </main>
 <script src="/shared/net.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/gages.js"></script>
+<script src="/shared/party.js"></script>
 <script>
 const MIN=3,MAX=10;
 let R=null,S=null,isHost=false,code="",L={pool:[],name:"",media:[],mine:null,ans:null,key:"",showAgain:false};
 let H={pool:{},ans:{},used:[],order:[],stat:{}};
+L.planted=[];
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
+const rid=()=>Math.random().toString(36).slice(2,10);
 const msg=t=>$("#hmsg").textContent=t;
 const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!==id);
-const bc=()=>{if(isHost&&R)R.emit("st",S).catch(()=>{})};
+const bc=()=>{if(isHost&&R){R.emit("st",S).catch(()=>{});R.snap({S,H:snapH()})}};
 const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
 try{$("#pname").value=localStorage.getItem("soiree:name")||""}catch(e){}
 
@@ -92,12 +106,12 @@ async function fill(){
   try{while(L.media.length<maxN()&&L.queue.length){
     renderThumbs();
     const m=await shrink(L.queue.shift());
-    if(m){L.media.push(m);send({k:"media",kind:m.kind,data:m.data})}
+    if(m){m.key=rid();L.media.push(m);send({k:"media",kind:m.kind,data:m.data,key:m.key})}
   }}finally{L.busy=false}
   renderThumbs();
 }
 async function addFiles(list,planto,redraw){
-  if(planto){const m=await shrink([...list][0]);if(m){send({k:"plant",to:planto,kind:m.kind,data:m.data});toast("Photo plantée 🌱")}else toast("Fichier ignoré");return}
+  if(planto){const m=await shrink([...list][0]);if(m){m.key=rid();L.planted.push({to:planto,...m});send({k:"plant",to:planto,kind:m.kind,data:m.data,key:m.key});toast("Photo plantée 🌱")}else toast("Fichier ignoré");return}
   const vid=S&&S.cfg.media==="video";
   const all=[...list].filter(f=>isMedia(f,vid));
   if(!all.length){toast("Aucun fichier compatible");return}
@@ -117,56 +131,111 @@ async function swap(i){
 }
 
 /* ---------- connexion ---------- */
-async function enter(create){
-  const name=$("#pname").value.trim().slice(0,14); if(!name)return msg("Entre ton prénom 🙂");
-  code=create?mkCode():$("#pcode").value.trim().toUpperCase();
-  if(!/^[A-Z0-9]{4}$/.test(code))return msg("Le code PIN a 4 caractères.");
-  L.name=name;try{localStorage.setItem("soiree:name",name)}catch(e){}
-  try{R=await Net.join("pr-"+code)}catch(e){return msg(e.message)}
-  isHost=R.host; if(create&&!isHost)return enter(true);
-  R.on("st",d=>{S=d;route()});
+async function enter(create,o){
+  o=o||{};
+  let name=o.name;
+  if(!name){const ps=$("#pname").value.trim().slice(0,14);if(!ps)return msg("Entre ton prénom 🙂");Profile.set({name:ps});name=Profile.tag(ps)}
+  const jc=o.joinCode||$("#pcode").value.trim().toUpperCase();
+  if(!create&&!/^[A-Z0-9]{4}$/.test(jc))return msg("Le code PIN a 4 caractères.");
+  L.name=name;
+  const x=await Net.enter({game:"pr",room:c=>"pr-"+c,create,code:o.code,joinCode:jc,resume:o.resume,wasHost:o.wasHost,retry:o.retry,onMsg:msg});
+  if(!x)return;
+  R=x.R;code=x.code;isHost=R.host;
+  Sess.save("pr",{code,name,host:isHost});setInterval(()=>Sess.touch("pr"),20000);
+  Party.listen(R,code,()=>Sess.clear("pr"));
+  R.on("st",d=>{if(isHost||!d)return;S=d;route()});
   R.on("ph",d=>{L.cur=d;if(S)route(true)});
-  if(isHost){R.on("act",hostAct);
-   S={ph:"lobby",host:ME,pl:[],cfg:{rounds:15,time:15,media:"photo",plant:true}};hostAct({k:"join",p:ME,n:name});
-   setInterval(tick,250); setInterval(bc,2500)}
-  else{R.on("priv",d=>{L.owner=d.own;if(S&&S.ph==="round")updLive()});const hello=()=>{if(!S||!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:name},"host")};hello();setInterval(hello,2000)}
-  view("lobby");$("#lcode").textContent=code;route();
+  R.on("priv",d=>{L.owner=d.own;if(S&&S.ph==="round")updLive()});
+  R.on("act",d=>{if(isHost)hostAct(d)});
+  R.on("rs",()=>{if(!isHost)resendAll()});
+  R.onPromote(onPromoted);
+  R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l’hôte");route()});
+  if(isHost){
+    const snap=R.initSnap;
+    if(snap&&snap.S){S=snap.S;S.host=ME;restoreH(snap.H);needResend()}
+    else{S={ph:"lobby",host:ME,pl:[],cfg:{rounds:15,time:15,media:"photo",plant:true}};}
+    hostLoops();
+    hostAct({k:"join",p:ME,n:name});
+    if(S.ph!=="lobby")resendOwnToSelf();
+  }
+  startHello();
+  view(S&&S.ph!=="lobby"?"game":"lobby");$("#lcode").textContent=code;Share.mount("#sw-share",{code,title:"Photo Roulette",text:"Rejoins-moi sur Photo Roulette ! Code PIN : "+code});route();
+}
+function hostLoops(){if(!L.tk){L.tk=setInterval(tick,250);L.bk=setInterval(bc,2500)}}
+function startHello(){
+  if(L.hello)return;
+  const hello=()=>{if(!R||isHost)return;if(!S||!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:L.name},"host")};
+  hello();L.hello=setInterval(hello,2000);
+}
+/* --- passage de relais : l'hôte est parti, on reconstruit la partie avec ce que chacun a gardé --- */
+const snapH=()=>({ans:H.ans,stat:H.stat,used:[],order:(H.order||[]).map(m=>({key:m.key,owner:m.owner,by:m.by,kind:m.kind}))});
+function restoreH(h){
+  h=h||{};H={pool:{},ans:h.ans||{},used:[],order:(h.order||[]).map(m=>({...m,data:null})),stat:h.stat||{fast:null,streak:{},cur:{},per:{}}};
+  H.cur=S.ph==="round"||S.ph==="reveal"?H.order[S.r]||null:null;
+}
+function needResend(){H.rsUntil=Date.now()+8000;if(R)R.emit("rs",{})}
+function resendAll(){
+  send({k:"reset"});
+  L.media.forEach(m=>send({k:"media",kind:m.kind,data:m.data,key:m.key}));
+  (L.planted||[]).forEach(m=>send({k:"plant",to:m.to,kind:m.kind,data:m.data,key:m.key}));
+}
+function resendOwnToSelf(){resendAll()}
+function onPromoted(snap){
+  isHost=true;
+  if(snap&&snap.S)S=snap.S;
+  if(!S)S={ph:"lobby",host:ME,pl:[],cfg:{rounds:15,time:15,media:"photo",plant:true}};
+  S.host=ME;restoreH(snap&&snap.H);
+  hostLoops();
+  if(!S.pl.some(p=>p.id===ME))S.pl.push({id:ME,n:L.name,sc:0});
+  needResend();resendAll();
+  Sess.save("pr",{code,name:L.name,host:true});
+  toast("👑 Tu es maintenant l’hôte");bc();route();
 }
 
 /* ---------- logique hôte ---------- */
 function hostAct(d){
   if(!isHost||!S)return;const p=d.p;
-  if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,14),sc:0});}
+  if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0});}
   else if(d.k==="reset"&&S.pl.some(x=>x.id===p)){H.pool[p]=(H.pool[p]||[]).filter(m=>m.by)}
-  else if(d.k==="media"&&S.pl.some(x=>x.id===p)){const a=H.pool[p]=H.pool[p]||[];if(a.filter(m=>!m.by).length<20&&(d.data||"").length<9e6)a.push({kind:d.kind,data:d.data,by:null,owner:p})}
+  else if(d.k==="media"&&S.pl.some(x=>x.id===p)){const a=H.pool[p]=H.pool[p]||[];if(a.filter(m=>!m.by).length<20&&(d.data||"").length<9e6){const k=String(d.key||"").slice(0,12);a.push({kind:d.kind,data:d.data,by:null,owner:p,key:k});fillStub(k,d.data)}}
   else if(d.k==="drop"&&S.pl.some(x=>x.id===p)){const own=(H.pool[p]||[]).filter(m=>!m.by),t=own[d.i|0];if(t)H.pool[p]=H.pool[p].filter(m=>m!==t)}
-  else if(d.k==="plant"&&S.cfg.plant&&S.pl.some(x=>x.id===d.to)&&d.to!==p&&(d.data||"").length<9e6){(H.pool[d.to]=H.pool[d.to]||[]).push({kind:d.kind,data:d.data,by:p,owner:d.to})}
+  else if(d.k==="plant"&&S.cfg.plant&&S.pl.some(x=>x.id===d.to)&&d.to!==p&&(d.data||"").length<9e6){{const k=String(d.key||"").slice(0,12);(H.pool[d.to]=H.pool[d.to]||[]).push({kind:d.kind,data:d.data,by:p,owner:d.to,key:k});fillStub(k,d.data)}}
   else if(d.k==="ans"&&S.ph==="round"&&S.opts.includes(d.c)&&!H.ans[p]&&p!==H.cur.owner){H.ans[p]={c:d.c,ms:Math.max(0,Math.min(d.ms|0,S.win*1000))}}
-  else if(d.k==="needph"&&S.ph!=="lobby"&&H.cur)R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data},p);
+  else if(d.k==="needph"&&S.ph!=="lobby"&&H.cur){if(H.cur.data)R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data},p);if(S.ph==="round"&&H.cur.owner===p)R.emit("priv",{own:S.r},p)}
   else if(d.k==="cfg"&&p===ME&&S.ph==="lobby")Object.assign(S.cfg,d.cfg);
   else if(d.k==="start"&&p===ME)startGame();
   else if(d.k==="skip"&&p===ME&&S.ph==="round")reveal();
   else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
-  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.pl.forEach(x=>x.sc=0);S.ph="lobby";if(d.media)S.cfg.media=d.media;H.stat={};}
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";if(d.media)S.cfg.media=d.media;H.stat={};}
   if(S.ph==="round")S.ad=Object.keys(H.ans);
   S.pl.forEach(x=>x.np=(H.pool[x.id]||[]).length);
   S.on=[...R.peers(),ME];bc();route();
+}
+/* après un passage de relais : une photo de la file qui arrive enfin remplit son « trou » */
+function fillStub(k,data){
+  if(!k||!H.order)return;
+  const st=H.order.find(x=>x.key===k&&!x.data);if(!st)return;st.data=data;
+  if(st===H.cur&&S&&S.ph!=="lobby"&&R)R.emit("ph",{r:S.r,kind:st.kind,data});
+  if(st===H.cur)L.cur={r:S.r,kind:st.kind,data};
 }
 function startGame(){
   const kind=S.cfg.media==="video"?"video":"photo";
   const all=Object.values(H.pool).flat().filter(m=>(kind==="video")===(m.kind==="video"));
   if(S.pl.length<MIN)return toast("Il faut au moins 3 joueurs");
   if(all.length<3)return toast("Il faut au moins 3 "+(kind==="video"?"vidéos":"photos")+" au total");
-  H.order=shuffle(all).slice(0,S.cfg.rounds);S.total=H.order.length;S.r=-1;H.stat={fast:null,streak:{}, cur:{}};
+  H.order=shuffle(all).slice(0,S.cfg.rounds);S.total=H.order.length;S.r=-1;H.stat={fast:null,streak:{},cur:{},per:{}};
   S.pl.forEach(x=>x.sc=0);nextRound();
 }
 function nextRound(){
+  const nx=H.order[S.r+1]; /* après un passage de relais : on laisse 8 s aux joueurs pour renvoyer leurs photos avant de passer à la suivante */
+  if(nx&&!nx.data&&H.rsUntil&&Date.now()<=H.rsUntil&&S.ph==="reveal"){setTimeout(()=>{if(isHost&&S.ph==="reveal"){nextRound();bc();route()}},800);return}
+  while(H.rsUntil&&Date.now()>H.rsUntil&&S.r+1<S.total&&H.order[S.r+1]&&!H.order[S.r+1].data){H.order.splice(S.r+1,1);S.total=H.order.length}
   S.r++;if(S.r>=S.total){S.ph="end";S.res=null;return finish()}
   H.cur=H.order[S.r];H.ans={};
   const others=shuffle(S.pl.filter(x=>x.id!==H.cur.owner)).slice(0,3).map(x=>x.id);
   S.opts=shuffle([H.cur.owner,...others]);
   S.win=S.cfg.time||15;S.ph="round";S.ad=[];S.t0=Net.now()+900;S.res=null;
-  R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data});if(H.cur.owner!==ME)R.emit("priv",{own:S.r},H.cur.owner);L.cur={r:S.r,kind:H.cur.kind,data:H.cur.data};
+  if(H.cur.data)R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data});if(H.cur.owner!==ME)R.emit("priv",{own:S.r},H.cur.owner);L.cur={r:S.r,kind:H.cur.kind,data:H.cur.data};
 }
 function tick(){
   if(!isHost||!S||S.ph!=="round")return;
@@ -177,6 +246,8 @@ function reveal(){
   const per=[];
   for(const x of S.pl){ if(x.id===H.cur.owner)continue;const a=H.ans[x.id],ok=!!a&&a.c===H.cur.owner;
     const pts=ok?Math.round(300+700*(1-a.ms/(S.win*1000))):0;x.sc+=pts;
+    const pe=(H.stat.per=H.stat.per||{})[x.id]=H.stat.per[x.id]||{n:0,ok:0,ms:0,answered:0};
+    pe.n++;if(ok)pe.ok++;if(a){pe.answered++;pe.ms+=a.ms}
     const st=H.stat.cur[x.id]=ok?(H.stat.cur[x.id]||0)+1:0;H.stat.streak[x.id]=Math.max(H.stat.streak[x.id]||0,st);
     if(ok&&(!H.stat.fast||a.ms<H.stat.fast.ms))H.stat.fast={id:x.id,ms:a.ms};
     per.push({id:x.id,c:a?a.c:null,ok,pts,ms:a?a.ms:null})}
@@ -185,7 +256,15 @@ function reveal(){
 function finish(){
   const best=[...S.pl].sort((a,b)=>b.sc-a.sc)[0];
   const sk=Object.entries(H.stat.streak||{}).sort((a,b)=>b[1]-a[1])[0];
-  S.stats={best:{id:best.id,v:best.sc},fast:H.stat.fast,streak:sk?{id:sk[0],v:sk[1]}:null};
+  const per=H.stat.per||{},ids=Object.keys(per);
+  let tot=0,cnt=0;ids.forEach(i=>{tot+=per[i].ms;cnt+=per[i].answered});
+  const avgOf=i=>per[i].answered?Math.round(per[i].ms/per[i].answered):null;
+  const fastAvg=ids.filter(i=>per[i].answered>=3).sort((a,b)=>avgOf(a)-avgOf(b))[0];
+  const det=ids.filter(i=>per[i].n>=3).sort((a,b)=>per[b].ok/per[b].n-per[a].ok/per[a].n||per[b].ok-per[a].ok)[0];
+  S.stats={best:{id:best.id,v:best.sc},fast:H.stat.fast,streak:sk?{id:sk[0],v:sk[1]}:null,
+    avg:cnt?Math.round(tot/cnt):null,fastAvg:fastAvg?{id:fastAvg,ms:avgOf(fastAvg)}:null,det:det?{id:det,ok:per[det].ok,n:per[det].n}:null,
+    per:Object.fromEntries(ids.map(i=>[i,{ok:per[i].ok,n:per[i].n,avg:avgOf(i)}]))};
+  S.sid=S.sid||rid();Party.report(R,"pr",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:p.sc})));
 }
 
 /* ---------- rendu ---------- */
@@ -235,7 +314,8 @@ function renderGame(fade){
   }else if(S.ph==="reveal"){
     const r=S.res,mineRes=r.per.find(x=>x.id===ME),isOwn=r.owner===ME;
     const c=L.cur&&L.cur.r===S.r?L.cur:null;
-    st.innerHTML=`${score}<div class="shot" id="shot" data-m="${c?1:0}">${media(c,true)}${mineRes?`<div class="mark ${mineRes.ok?"ok":"ko"}">${mineRes.ok?"✓":"✗"}</div>`:""}</div>
+    const fl=L.flashK!==S.r;L.flashK=S.r;
+    st.innerHTML=`${score}<div class="shot ${fl?"snap":""}" id="shot" data-m="${c?1:0}">${fl?'<div class="flash" aria-hidden="true"></div>':""}${fl&&c&&c.kind!=="video"?media(c,true).replace("<img ",'<img class="dev" '):media(c,true)}${mineRes?`<div class="mark ${mineRes.ok?"ok":"ko"}">${mineRes.ok?"✓":"✗"}</div>`:""}</div>
      <div class="card center"><h2>C’était la photo de ${esc(nm(r.owner))} ${r.by?`<br><small class="hint">🌱 plantée par ${esc(nm(r.by))}</small>`:""}</h2>
       ${isOwn?"<p class='hint'>C’était la tienne 😏</p>":mineRes?`<b>${mineRes.ok?"+"+mineRes.pts+" pts · "+mineRes.ms+" ms":"Raté…"}</b>`:""}</div>
      ${[...S.pl].sort((a,b)=>b.sc-a.sc).map((p,i)=>{const x=r.per.find(q=>q.id===p.id);return`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)} ${x?(x.ok?"✓":"✗"):"📸"}<span class="pts">${p.sc}</span></div>`}).join("")}
@@ -247,9 +327,16 @@ function renderGame(fade){
      <div class="title">🥇 Meilleur score<small>${esc(nm(s.best.id))} — ${s.best.v}</small></div>
      <div class="title">⚡ Réponse la plus rapide<small>${s.fast?esc(nm(s.fast.id))+" — "+s.fast.ms+" ms":"—"}</small></div>
      <div class="title">🔥 Plus longue série<small>${s.streak&&s.streak.v?esc(nm(s.streak.id))+" — "+s.streak.v:"—"}</small></div>
-     ${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)}<span class="pts">${p.sc}</span></div>`).join("")}
+     <div class="title">⏱️ Temps de réaction moyen du groupe<small>${s.avg!=null?(s.avg/1000).toFixed(2)+" s":"—"}</small></div>
+     <div class="title">🏃 Le plus rapide en moyenne<small>${s.fastAvg?esc(nm(s.fastAvg.id))+" — "+(s.fastAvg.ms/1000).toFixed(2)+" s":"—"}</small></div>
+     <div class="title">🕵️ Meilleur détective<small>${s.det?esc(nm(s.det.id))+" — "+s.det.ok+"/"+s.det.n+" ("+Math.round(100*s.det.ok/s.det.n)+" %)":"—"}</small></div>
+     ${rank.map((p,i)=>{const q=(s.per||{})[p.id];return`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)}${q?` <small class="hint" style="margin:0">${q.ok}/${q.n}${q.avg!=null?" · "+(q.avg/1000).toFixed(1)+" s":""}</small>`:""}<span class="pts">${p.sc}</span></div>`}).join("")}
+     <div id="gage"></div><div id="ptend"></div>
      ${isHost?`<button class="btn primary big" data-a="again">Play again</button><button class="btn big" data-a="again-video">Play with videos 🎬</button>`:`<p class="hint center">L’hôte peut relancer une partie.</p>`}
      <button class="link" data-a="leave">Quitter</button>`;
+    const lo=[...S.pl].sort((a,b)=>a.sc-b.sc)[0];
+    Gages.mount("#gage",{R,who:lo?lo.n:"",fresh:true});
+    Party.endCard("#ptend",{R,code,isHost,onLeave:()=>Sess.clear("pr")});
   }
 }
 function renderOpts(){
@@ -289,8 +376,7 @@ setInterval(()=>{
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
   if(a==="create")enter(true);else if(a==="join")enter(false);
-  else if(a==="copy"){const u=location.origin+location.pathname+"?c="+code;try{await navigator.clipboard.writeText(u);toast("Lien copié")}catch(x){prompt("Lien :",u)}}
-  else if(a==="leave"){R&&R.leave();location.href=location.pathname}
+  else if(a==="leave"){Sess.clear("pr");R&&R.leave();location.href=location.pathname}
   else if(a==="pick")$("#files").click();
   else if(a==="dir")$("#dir").click();
   else if(a==="redraw"){if(L.pool&&L.pool.length)addFiles(L.pool,null,true);else $("#files").click()}
@@ -317,7 +403,12 @@ $("#files").addEventListener("change",e=>{addFiles(e.target.files);e.target.valu
 if(!matchMedia("(pointer:coarse)").matches)$("#dirb").hidden=false; // choix d'un dossier : ordinateur uniquement
 $("#dir").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
 $("#plfile").addEventListener("change",e=>{addFiles(e.target.files,L.plantTo);e.target.value=""});
-{const c=new URLSearchParams(location.search).get("c");if(c)$("#pcode").value=c.toUpperCase()}
+Profile.attach("#pname");
+{const BP=bootParams(),sv=Sess.load("pr"),pr=Profile.get();
+ if(BP.code)$("#pcode").value=BP.code;
+ if(BP.go&&BP.code&&pr.name){const n0=Profile.tag(pr.name);msg("🎪 Lancement de la partie…");
+  if(BP.host)enter(true,{name:n0,code:BP.code,retry:5});else enter(false,{name:n0,joinCode:BP.code,retry:20})}
+ else if(sv&&(!BP.code||BP.code===sv.code)){msg("🔁 Retour dans le salon "+sv.code+"…");enter(false,{name:sv.name,joinCode:sv.code,resume:true,wasHost:sv.host})}}
 {const d=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML");
  ["#pl","#plto","#showp","#modep","#plp"].forEach(q=>{const el=$(q);let last;Object.defineProperty(el,"innerHTML",{get(){return d.get.call(el)},set(v){if(v!==last){last=v;d.set.call(el,v)}}})})}
 addEventListener("beforeunload",()=>R&&R.leave());

@@ -44,6 +44,20 @@ type Game = {
 
 const GAMES: Game[] = [
   {
+    id: "soiree",
+    title: "Salon de la soirée",
+    tagline: "Un seul code, tous les jeux",
+    emoji: "🎪",
+    path: "/soiree/index.html",
+    players: "2 – 20 joueurs",
+    duration: "Toute la soirée",
+    badge: "Nouveau",
+    desc: "Crée un salon une seule fois : l'hôte change de jeu et tout le monde le suit, avec un classement cumulé de la soirée.",
+    color: "#ff7a3d",
+    tilt: 1.4,
+    pattern: "stripes",
+  },
+  {
     id: "quidenous",
     title: "Qui de nous ?",
     tagline: "Le jeu qui grille tes potes",
