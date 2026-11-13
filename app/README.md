@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# Le Hub de Soirée
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Hub de jeux de soirée jouables chacun sur son téléphone : **Undercover**, **Poker Face**, **Photo Roulette**,
+**Qui de nous ?**, **Les Petites Vérités (18+)**, plus un **Salon de la soirée** (un seul code pour enchaîner les jeux,
+classement cumulé).
 
-Currently, two official plugins are available:
+## Comment ça marche
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `src/` : le hub (React + Vite), une seule page d'accueil avec les jaquettes.
+- `public/<jeu>/index.html` : chaque jeu est une page autonome (HTML + JS).
+- `public/shared/` : code commun aux jeux
+  - `net.js` – connexion temps réel (reconnexion auto, envois fiables, reprise de session, passage de relais de l'hôte)
+  - `profile.js` – profil commun (pseudo, avatar emoji, couleur)
+  - `gages.js` – banque de gages (intensité réglable, 18+ séparé)
+  - `party.js` – partage (QR code), classement de la soirée, retour au salon
+  - `base.css`, `components.css`, `widgets.css` – styles partagés
+- `api/` : petit serveur Hono qui **relaie** les messages entre joueurs (`api/lib/relay.ts`, testé dans `relay.test.ts`).
+  L'hôte de chaque partie fait tourner la logique du jeu dans son navigateur ; le serveur ne fait que relayer,
+  garder une « photo » de la partie (pour le passage de relais) et additionner les points de la soirée.
 
-## React Compiler
+## Lancer en local
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd app
+npm install
+npm run dev      # http://localhost:3000
+npm test         # tests du relais
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Déploiement (Render)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`npm ci && npm run build` puis `npm start` (ou le `Dockerfile`). **Aucune variable d'environnement n'est obligatoire.**
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Variables facultatives, uniquement pour que la caméra de Poker Face marche en 4G (serveur TURN). Au choix :
+
+| Option | Variables |
+|---|---|
+| Metered.ca (gratuit, le plus simple) | `METERED_DOMAIN` (ex. `monappli.metered.live`) et `METERED_API_KEY` |
+| coturn, identifiants fixes | `TURN_URLS` (ex. `turn:mon.serveur:3478`), `TURN_USERNAME`, `TURN_CREDENTIAL` |
+| coturn, secret partagé | `TURN_URLS` et `TURN_SECRET` |
+
+`GET /api/rooms/ice` indique si un TURN est actif (`"turn": true`).
+
+Les salons sont gardés en mémoire du serveur : un redémarrage de Render (déploiement, mise en veille de l'offre
+gratuite) vide les parties en cours.

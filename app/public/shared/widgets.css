@@ -1,0 +1,25 @@
+/* Widgets communs (profil, partage/QR, classement, gages, animations signatures).
+   Utilise les variables de chaque jeu (--surface, --edge, --ink…), donc s'adapte à chaque direction artistique. */
+.sw-prof{display:flex;gap:8px;align-items:center}
+.sw-prof input{flex:1;min-width:0}
+.sw-emo{flex:none;width:48px;height:48px;border-radius:14px;border:2.5px solid var(--edge);background:var(--mycolor,var(--surface));font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:3px 3px 0 var(--sh,#000);padding:0}
+.sw-pop{margin-top:8px;background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;padding:10px;box-shadow:4px 4px 0 var(--sh,#000)}
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
+.sw-grid button{font-size:1.4rem;background:transparent;border:2px solid transparent;border-radius:10px;padding:4px;cursor:pointer}
+.sw-grid button:hover,.sw-grid button:focus-visible{border-color:var(--edge)}
+.sw-cols{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
+.sw-cols button{width:32px;height:32px;border-radius:50%;border:2.5px solid var(--edge);cursor:pointer;padding:0}
+.sw-none{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit}
+.prow.me,.chip.me{box-shadow:3px 3px 0 var(--mycolor,var(--violet))}
+.sw-share{text-align:center}
+.sw-qr{background:#fff;display:inline-block;padding:10px;border-radius:12px;border:2.5px solid var(--edge);min-width:90px;min-height:90px}
+.sw-qr img{display:block;image-rendering:pixelated}
+.sw-sbtn{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.sw-board .prow{margin:6px 0}
+.sw-gl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}.sw-gl span{font-weight:800;margin-right:4px}
+.sw-ga{display:flex;gap:8px;align-items:flex-start;margin:8px 0;cursor:pointer}.sw-ga small{color:var(--muted)}
+.sw-gt{margin:12px 0;padding:16px;border:2.5px dashed var(--edge);border-radius:14px;font-weight:800;font-size:1.15rem;text-align:center;min-height:3.4em;display:flex;align-items:center;justify-content:center}
+.sw-gage .pill{font:inherit;font-weight:800;font-size:.86rem;background:var(--surface);color:var(--ink);border:2px solid var(--edge);border-radius:99px;padding:5px 12px;cursor:pointer}
+.sw-gage .pill.on{background:var(--violet);color:#fff}
+@media(prefers-reduced-motion:reduce){.sw-anim,.sw-anim *{animation:none!important}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:800;z-index:300;max-width:90vw;text-align:center}

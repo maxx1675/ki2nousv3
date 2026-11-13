@@ -1,0 +1,35 @@
+/* Styles communs à « Les Petites Vérités » et « Qui de nous ? » (item 9).
+   Avant, ces règles étaient copiées-collées dans les deux fichiers. Les règles propres à chaque jeu
+   restent dans le <style> de sa page ; les couleurs viennent des thèmes /themes/*.css. */
+:root{--bg:#ece7ff;--surface:#fffdf8;--ink:#1b1340;--muted:#5c5585;--edge:#1b1340;--sh:#1b1340;--violet:#6a47ff;--pink:#ff4f8b;--amber:#ffc531;--teal:#19c7b0;--danger:#e23a6e}
+html[data-theme="dark"]{color-scheme:dark;--bg:#121020;--surface:#231e39;--ink:#f7f3ff;--muted:#bdb4d8;--edge:#9d93bd;--sh:#080611;--violet:#9279ff;--pink:#ff659d;--amber:#ffc531;--teal:#32d7c0;--danger:#ff7298}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-radial-gradient(circle at 50% 120%,transparent 0 90px,color-mix(in srgb,var(--ink) 4%,transparent) 90px 92px)}
+.wrap{position:relative;z-index:1;max-width:620px;margin:0 auto;padding:20px 16px 90px}
+.hero{text-align:center;padding:8px 0 4px}
+.logo{font-size:48px;display:inline-block;transform:rotate(-8deg)}
+h1{font-size:clamp(2rem,8.5vw,3rem);line-height:1.02;margin:.1em 0 .25em;font-weight:800;letter-spacing:-.02em;transform:rotate(-1.2deg)}
+.hero p{color:var(--muted);margin:0 auto;max-width:42ch}
+h2{font-size:1.12rem;margin:0 0 10px;font-weight:800}
+.card{background:var(--surface);border:2.5px solid var(--edge);border-radius:18px;padding:16px;margin:14px 0;box-shadow:5px 5px 0 var(--sh)}
+.row{display:flex;gap:8px;align-items:center}
+.between{justify-content:space-between}
+.center{text-align:center}
+input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--edge);border-radius:12px;padding:11px 13px}
+input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--pink);outline-offset:2px}
+.btn{font:inherit;font-weight:800;color:var(--ink);background:var(--surface);border:2.5px solid var(--edge);border-radius:12px;padding:11px 18px;cursor:pointer;box-shadow:3px 3px 0 var(--sh);transition:transform .1s,box-shadow .1s}
+.btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 var(--sh)}
+.btn.primary{background:var(--violet);color:#fff}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.big{width:100%;font-size:1.1rem;padding:15px;margin-top:10px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.hint{color:var(--muted);font-size:.92rem;margin:10px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.code{font-size:clamp(2.4rem,10vw,3.2rem);font-weight:800;letter-spacing:.22em;text-align:center;margin:4px 0;color:var(--violet)}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{width:42px;height:42px;border-radius:50%;border:2.5px solid var(--edge);background:var(--surface);color:var(--ink);font:inherit;font-size:1.3rem;font-weight:800;cursor:pointer}
+.stepper output{min-width:3.4ch;text-align:center;font-weight:800;font-size:1.25rem}
+.pick.on{background:var(--teal)}
+.pick:disabled{opacity:.45;cursor:not-allowed}

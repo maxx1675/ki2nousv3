@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Salon de la soirée</title>
+<meta name="theme-color" content="#6a47ff">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
+<style>
+.gcard{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);color:var(--ink);border:2.5px solid var(--edge);border-radius:16px;padding:12px 14px;box-shadow:4px 4px 0 var(--sh,#000);margin:8px 0;font:inherit;cursor:pointer}
+.gcard:disabled{opacity:.55;cursor:default}
+.gcard .gi{font-size:2rem}.gcard b{display:block;font-size:1.05rem}.gcard small{color:var(--muted)}
+.mem{display:flex;flex-wrap:wrap;gap:8px}
+.mem .chip{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;background:#27c06a;display:inline-block}
+</style>
+</head>
+<body>
+<main class="wrap">
+ <header class="hero"><div class="logo" aria-hidden="true">🎪</div><h1>Salon de la soirée</h1><p class="hint">Reste connecté au même salon : l’hôte change de jeu, tout le monde le suit — sans ressaisir de code.</p></header>
+
+ <section id="home">
+  <div class="card">
+   <h2>Ton profil</h2>
+   <input type="text" id="pname" maxlength="16" placeholder="Pseudo" autocomplete="off" aria-label="Pseudo">
+   <p class="hint">Ton avatar et ta couleur te suivent dans tous les jeux.</p>
+  </div>
+  <div class="card">
+   <button class="btn primary big" id="create">🎉 Créer une soirée</button>
+   <div class="row" style="margin-top:12px"><input type="text" id="pcode" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Code de la soirée"><button class="btn" id="join">Rejoindre</button></div>
+   <p id="msg" class="hint" role="status"></p>
+  </div>
+ </section>
+
+ <section id="room" hidden>
+  <div class="card center"><h2>Code de la soirée</h2><div class="code" id="lcode"></div><div id="sw-share"></div></div>
+  <div class="card"><h2>👥 Dans le salon <small id="cnt" class="hint" style="display:inline"></small></h2><div class="mem" id="mem"></div></div>
+  <div class="card" id="pick"></div>
+  <div id="board"></div>
+  <div id="gage"></div>
+  <button class="link" id="leave">Quitter la soirée</button>
+ </section>
+</main>
+<a class="homelink" href="/" aria-label="Retour au hub de jeux">🏠</a>
+<script src="/shared/net.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/gages.js"></script>
+<script src="/shared/party.js"></script>
+<script>
+"use strict";
+const GAMES=[
+ {id:"undercover",ico:"🕵️",name:"Undercover",desc:"Trouve l’intrus · 3 à 12 joueurs"},
+ {id:"pokerface",ico:"🃏",name:"Poker Face",desc:"Ne craque pas ! · caméra · 2 à 8 joueurs"},
+ {id:"photoroulette",ico:"📸",name:"Photo Roulette",desc:"À qui est cette photo ?"},
+ {id:"verites",ico:"🔞",name:"Les Petites Vérités",desc:"Vrai ou faux ? · 18+"},
+ {id:"quidenous",ico:"🗳️",name:"Qui de nous ?",desc:"Votes, anecdotes, roasts…"}
+];
+let R=null,code="",members={},isHost=false,last={};
+const msg=t=>{$("#msg").textContent=t||""};
+const show=on=>{$("#home").hidden=on;$("#room").hidden=!on};
+
+async function enter(create,o){
+ o=o||{};
+ let name=o.name;
+ if(!name){const ps=$("#pname").value.trim().slice(0,16);if(!ps)return msg("Entre ton prénom 🙂");Profile.set({name:ps});name=Profile.tag(ps)}
+ const jc=o.joinCode||$("#pcode").value.trim().toUpperCase();
+ if(!create&&!/^[A-Z0-9]{4}$/.test(jc))return msg("Le code a 4 caractères.");
+ const x=await Net.enter({game:"pt",room:c=>"pt-"+c,create,code:o.code,joinCode:jc,resume:o.resume,wasHost:o.wasHost,retry:o.retry,onMsg:msg});
+ if(!x)return;
+ R=x.R;code=x.code;isHost=R.host;
+ Sess.save("pt",{code,name,host:isHost});setInterval(()=>Sess.touch("pt"),20000);
+ last={n:name};
+ R.on("prof",d=>{if(d&&d.cid&&d.n)members[d.cid]={n:String(d.n).slice(0,24)};drawMembers()});
+ R.on("hi",()=>sendProf());
+ R.on("board",d=>drawBoard(d));
+ R.on("go",d=>{if(d&&GAMES.some(g=>g.id===d.game))launch(d.game,false)});
+ R.onPeers(()=>{drawMembers();sendProf()});
+ R.onHostChange(d=>{isHost=R.isHost;drawPick();drawMembers()});
+ R.onPromote(()=>{toast("👑 Tu es maintenant l’hôte de la soirée");isHost=true;drawPick()});
+ members[ME]={n:name};
+ show(true);$("#lcode").textContent=code;
+ Share.mount("#sw-share",{code,url:location.origin+"/soiree/index.html?c="+code,title:"Ma soirée",text:"Rejoins ma soirée ! Code : "+code});
+ drawMembers();drawPick();sendProf();R.emit("hi",{});
+ Party.board(code).then(b=>b&&drawBoard(b));
+ Gages.mount("#gage",{R});
+ history.replaceState(null,"","?c="+code);
+}
+const sendProf=()=>{if(R)R.emit("prof",{cid:ME,n:last.n||Profile.tag()}).catch(()=>{})};
+function drawMembers(){
+ const on=R?[...R.peers()]:[];
+ const list=on.map(id=>members[id]?{id,n:members[id].n}:{id,n:id===ME?last.n:"…"});
+ $("#cnt").textContent="· "+list.length;
+ $("#mem").innerHTML=list.map(m=>`<span class="chip ${m.id===ME?"me":""}"><span class="dot"></span>${R&&m.id===R.hostCid?"👑 ":""}${esc(m.n)}</span>`).join("");
+}
+function drawPick(){
+ const h=isHost;
+ $("#pick").innerHTML=`<h2>🎮 ${h?"Choisis le jeu":"Prochain jeu"}</h2>`+(h?"":`<p class="hint">L’hôte choisit : ton écran basculera tout seul.</p>`)+GAMES.map(g=>`<button class="gcard" data-g="${g.id}" ${h?"":"disabled"}><span class="gi">${g.ico}</span><span><b>${g.name}</b><small>${g.desc}</small></span></button>`).join("");
+}
+function drawBoard(b){
+ const el=$("#board");
+ el.innerHTML=b&&b.rows&&b.rows.length?`<div class="card sw-board">${Party.boardHtml(b,ME)}</div>`:"";
+}
+function launch(game,asHost){
+ const base="/"+game+"/index.html?c="+code+"&go=1"+(asHost?"&h=1":"");
+ setTimeout(()=>{location.href=base},asHost?300:0);
+}
+document.addEventListener("click",e=>{
+ const g=e.target.closest("[data-g]");
+ if(g&&isHost&&R){R.emit("go",{game:g.dataset.g}).catch(()=>{});launch(g.dataset.g,true)}
+});
+$("#create").onclick=()=>enter(true);
+$("#join").onclick=()=>enter(false);
+$("#pcode").addEventListener("keydown",e=>{if(e.key==="Enter")enter(false)});
+$("#leave").onclick=()=>{Sess.clear("pt");R&&R.leave();location.href="/soiree/index.html"};
+Profile.attach("#pname");
+{const BP=bootParams(),sv=Sess.load("pt",12*3600e3),pr=Profile.get();
+ if(BP.code)$("#pcode").value=BP.code;
+ if(sv&&(!BP.code||BP.code===sv.code)){msg("🔁 Retour dans la soirée "+sv.code+"…");enter(false,{name:sv.name,joinCode:sv.code,resume:true,wasHost:sv.host})}
+ else if(BP.code&&pr.name){enter(false,{name:Profile.tag(pr.name),joinCode:BP.code,retry:3})}}
+</script>
+</body>
+</html>

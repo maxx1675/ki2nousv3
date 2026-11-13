@@ -1,17 +1,20 @@
-import "@/lib/logger";
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router'
-import './index.css'
-import { TRPCProvider } from "@/providers/trpc"
-import App from './App.tsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router";
+import "./index.css";
+import App from "./App.tsx";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
-      <TRPCProvider>
-        <App />
-      </TRPCProvider>
+      <App />
     </BrowserRouter>
   </StrictMode>,
-)
+);
+
+// Appli installable : on enregistre le service worker (production uniquement)
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
