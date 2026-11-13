@@ -1,6 +1,6 @@
 # État du projet — ki2nousv3
 
-> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **13 novembre 2026**, vérifiée et validée pour la passation vers une nouvelle session (analyse en lecture seule de l'ensemble du dépôt). Aucun code n'a été modifié lors de cette mise à jour.
+> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **13 novembre 2026**, après la suppression de Petit Bac Boom, la refonte réseau/visuelle de Make It Meme et la correction du sélecteur de photos de Photo Roulette. Modifications non commitées à la date de rédaction.
 >
 > **Emplacement réel de l'application : `app/`.** C'est le dossier qui contient `package.json`, `src/`, `public/` et `api/`. La racine du dépôt ne contient que la documentation et `.opencode/`. Toutes les commandes npm doivent être lancées depuis `app/`.
 
@@ -12,11 +12,11 @@
 - Pages des jeux : HTML/CSS/JavaScript autonomes sous `public/`, avec scripts globaux et ordre de chargement à respecter.
 - Code commun des jeux : `public/shared/` (`net.js`, `profile.js`, `party.js`, `gages.js`, `qr.js`, CSS partagé) et thèmes dans `public/themes/`.
 - Backend : Hono 4 + `@hono/node-server`, relais SSE + REST sous `api/`, sans base de données.
-- Tests présents : uniquement `api/lib/relay.test.ts` (Vitest, 15 tests du relais).
+- Tests présents : `api/lib/relay.test.ts` (13 tests du relais) et `api/lib/makeitmeme-room.test.ts` (3 tests des helpers de salon Make It Meme), soit **16 tests Vitest**.
 - Scripts npm : `dev`, `build`, `preview`, `start`, `check`, `format`, `test`.
 - Déploiement documenté : Render (`npm ci && npm run build` puis `npm start`) ou `Dockerfile`.
-- **`node_modules` n'est pas installé dans le dépôt actuel** : `npm test`, `npm run check` et `npm run build` ne sont pas exécutables sans `npm install` préalable.
-- Dépôt Git : arbre de travail propre. Code de `app/` commité (`40e06ba`), documentation et skills commitées ensuite (`74607bc`). Rien n'est poussé à la connaissance de cette session.
+- `node_modules` installé dans `app/` : `npm run check`, `npm test` et `npm run build` s'exécutent.
+- Dépôt Git : modifications non commitées (voir « Modifications récentes »). Code de `app/` commité jusqu'à `40e06ba`, documentation et skills ensuite (`74607bc`). Rien n'est poussé à la connaissance de cette session.
 
 ### Convention de lecture
 Dans ce document, **« terminé »** signifie : fonctionnalité présente dans le code, cohérente avec l'architecture partagée et sans bug bloquant identifié à la lecture. Cela ne vaut pas validation en navigateur ni sur plusieurs téléphones : les vérifications réellement exécutées sont indiquées plus bas.
@@ -25,21 +25,21 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 | Espace | Chemin | Statut réel |
 |---|---|---|
-| Hub React | `src/` | Terminé dans le code : 9 tuiles, carrousel, réglages, musique, PWA. |
+| Hub React | `src/` | Terminé dans le code : 8 tuiles, carrousel, réglages, musique, PWA. |
 | Salon de la soirée | `public/soiree/` | Terminé pour 5 jeux ; liste limitée à Undercover, Poker Face, Photo Roulette, Qui de nous ?, Les Petites Vérités. |
 | Undercover | `public/undercover/` | Terminé dans le code : rôles, mots personnalisables, salon public, gages, scores, snapshot. |
 | Poker Face | `public/pokerface/` | Terminé dans le code : caméra/MediaPipe, médias, téléphone-caméra WebRTC, gages, scores. |
-| Photo Roulette | `public/photoroulette/` | Terminé dans le code : consentement, photos/vidéos, manches, scores, snapshot. |
+| Photo Roulette | `public/photoroulette/` | Terminé dans le code : consentement, photos/vidéos, manches, scores, snapshot, sélection de plus de 20 photos par lots. |
 | Qui de nous ? | `public/quidenous/` | Terminé dans le code : 12 types de manches, packs, photos, scores cumulés, `Party.report`. Contient un mode « piquant +18 » non signalé comme tel dans le hub (voir bugs). |
 | Les Petites Vérités | `public/verites/` | Terminé dans le code : barrage 18+ explicite, vérités, échange, bluff, scores. |
 | Codenames | `public/codenames/` | **Non fonctionnel en l'état** : la création de partie échoue (voir bugs). Hors salon partagé. |
-| Make It Meme | `public/makeitmeme/` | **Partie solo/bots uniquement** : le multijoueur Firebase n'est pas configuré (voir bugs). Hors salon partagé. |
-| Petit Bac Boom | — | **Page absente** alors que la tuile existe encore dans le hub. |
+| Make It Meme | `public/makeitmeme/` | **Multijoueur fonctionnel via le relais Hono** : salons à 4 caractères, hôte autoritaire, reprise, bots, vote, classement de soirée. Hors liste du salon partagé. |
+| Petit Bac Boom | — | **Supprimé** : la tuile du hub a été retirée ; plus aucune référence dans `src/`. |
 
 ## Fonctionnalités terminées (dans le code)
 
 ### Hub
-- Catalogue de 9 jeux en carrousel 3D, navigation clavier (flèches/Entrée), glisser-swipe, sélection au clic.
+- Catalogue de 8 jeux en carrousel 3D, navigation clavier (flèches/Entrée), glisser-swipe, sélection au clic.
 - Réglages persistés (`soiree:set`) : thème clair/sombre, animations (`off`/`light`/`full`), musique et volume.
 - Musique générative WebAudio (`src/hubAudio.ts`), coupée quand l'onglet est masqué.
 - PWA : manifest, icônes, service worker, page hors-ligne, métadonnées de partage avec `%ORIGIN%` remplacé côté serveur.
@@ -63,8 +63,8 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 ## Fonctionnalités en cours / incomplètes
 
 - **Codenames** : règles complètes (deux équipes, 25 cartes, maître-espion, assassin, listes de mots personnalisées, pause, journal), mais la partie ne peut pas être créée et le jeu n'est pas branché au salon partagé (code 6 caractères, pas de `Party`, pas de snapshot, pas de reprise, pas de gestion de promotion).
-- **Make It Meme** : éditeur de memes abouti (canvas, textes déplaçables, styles, 60 templates, bots, sélection/édition/vote/résultats, modération), mais le multijoueur et la persistance reposent sur Firebase non configuré. En pratique : solo contre bots, pas de partie entre téléphones, pas de reprise, pas de classement de soirée.
-- **Salon de la soirée** : n'expose que 5 jeux alors que le hub en affiche 9. Codenames et Make It Meme n'y figurent pas ; Petit Bac Boom y figurerait mais n'existe plus.
+- **Make It Meme** : jeu complet et multijoueur (éditeur canvas, textes déplaçables, styles, 60 templates, bots, sélection/édition/vote/résultats, modération, sons Web Audio dédiés, thème « collage néon »). Branché sur le relais Hono via `public/shared/net.js`, salons à 4 caractères (`mim-`), hôte autoritaire, snapshot de reprise, `Party.report` et classement de soirée. Il n'est pas encore proposé dans la liste du Salon de la soirée.
+- **Salon de la soirée** : n'expose que 5 jeux alors que le hub en affiche 8. Codenames et Make It Meme n'y figurent pas.
 - **Tuile « verrouillée »** : la propriété `locked` et le cadenas existent dans `Home.tsx`, mais aucun jeu ne l'utilise.
 - **Salons publics** : implémentés côté serveur et utilisés uniquement par Undercover ; pas de découverte globale dans le hub.
 - **Tests client/E2E** : absents. Aucun test de `net.js`, `party.js`, des pages de jeux ou d'un parcours multi-téléphones.
@@ -73,25 +73,28 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 ### Bloquants
 1. **Codenames ne peut pas créer de partie.** `public/codenames/index.html` appelle `Net.join("cn-"+code)` sans `{ create:true }` ; le relais répond `404 noroom` pour un salon inexistant. Le code étant généré côté client, le salon n'existe jamais : « Créer une partie » échoue. À confirmer en navigateur, mais le chemin de code est sans ambiguïté.
-2. **Make It Meme n'est pas multijoueur.** `__firebase_config`, `__app_id` et `__initial_auth_token` ne sont définis nulle part (ni dans la page, ni injectés par `api/lib/vite.ts`). Le jeu bascule donc toujours en repli local : les salons vivent dans la mémoire de la page, aucun autre appareil ne peut rejoindre, un rechargement efface tout, et deux onglets du même navigateur partagent le même `uid`.
-3. **Lien mort « Petit Bac Boom ».** La page a été supprimée (commit `75cf6b6`, « suppr prtitbac ») mais la tuile est restée dans `Home.tsx`. Le fallback SPA renvoie le hub au lieu d'un 404, donc le clic semble « ne rien faire ».
+
+### Corrigés le 13 novembre 2026
+- **Make It Meme est désormais multijoueur** : Firebase a été remplacé par le relais Hono (`Net.enter`/`Net.join`), avec hôte autoritaire, snapshot, reprise, promotion d'hôte et `Party.report`. Vérifié en navigateur (création, jointure par code, lobby, manches, vote, résultats, bots, reprise, exclusion).
+- **Le lien mort « Petit Bac Boom » a disparu** : la tuile a été retirée de `Home.tsx`, plus aucune référence dans `src/`.
+- **Codes Make It Meme alignés sur 4 caractères** (`mim-XXXX`), compatibles avec `Sess`, `bootParams`, `Party.codeOf` et `/board`. Codenames reste en 6 caractères (hors salon).
+- **Pseudos et contenus Make It Meme échappés** dans le lobby, l'éditeur, le vote et le podium ; les joueurs partants sont élagués et les joueurs exclus sont mémorisés (`S.ban`) pour ne pas revenir en boucle.
+- **Photo Roulette accepte plus de 20 photos** : traitement par lots, budget global de 30 s, miniatures incrémentales, fichiers ignorés signalés, déduplication et bouton « ➕ Ajouter d'autres photos ». Vérifié avec 25 puis 30 photos synthétiques.
 
 ### Majeurs
-4. **Codes de salon incompatibles.** Tout le système partagé (session, partage, `bootParams`, `Party.codeOf`, `/board`) attend 4 caractères ; Codenames et Make It Meme utilisent 6 caractères (et `?room=` pour Make It Meme).
-5. **Classement de soirée réutilisable par collision.** Les parties sont indexées par code à 4 caractères pendant 12 h ; créer un nouveau salon avec un code déjà utilisé additionne les scores de deux soirées.
-6. **Relais sans authentification ni limitation de débit.** Le `cid` est fourni par le client : une connexion peut usurper l'hôte pour écraser le snapshot ou poster des scores. `/event` accepte 16 Mo par requête.
-7. **Événements non idempotents.** `net.js` réessaie jusqu'à 20 s sans identifiant de message : une réponse perdue peut rejouer une action (double vote, double passage de phase). Le serveur ne déduplique que les scores par `sid`.
-8. **Barrière 18+ incomplète dans Qui de nous ?** Le mode « 🌶️ piquant +18 » (`quidenous/index.html`) utilise des banques `*_18` sans confirmation d'âge, et le hub ne signale pas ce jeu comme 18+ (seule « Les Petites Vérités » porte le badge).
+2. **Classement de soirée réutilisable par collision.** Les parties sont indexées par code à 4 caractères pendant 12 h ; créer un nouveau salon avec un code déjà utilisé additionne les scores de deux soirées.
+3. **Relais sans authentification ni limitation de débit.** Le `cid` est fourni par le client : une connexion peut usurper l'hôte pour écraser le snapshot ou poster des scores. `/event` accepte 16 Mo par requête.
+4. **Événements non idempotents.** `net.js` réessaie jusqu'à 20 s sans identifiant de message : une réponse perdue peut rejouer une action (double vote, double passage de phase). Le serveur ne déduplique que les scores par `sid`.
+5. **Barrière 18+ incomplète dans Qui de nous ?** Le mode « 🌶️ piquant +18 » (`quidenous/index.html`) utilise des banques `*_18` sans confirmation d'âge, et le hub ne signale pas ce jeu comme 18+ (seule « Les Petites Vérités » porte le badge).
 
 ### Mineurs / robustesse
-9. `npm start` utilise `NODE_ENV=production node …` (syntaxe POSIX) : correct sur Render/Docker, en échec sous Windows.
-10. Make It Meme : code admin `Lext.71` en clair dans le client ; pseudos non échappés dans le lobby/le podium ; deux templates partagent la même image ; compteur 60 templates vs commentaire 59 vs texte initial 40 ; timers basés sur l'horloge locale, sans `Net.clock`.
-11. Make It Meme : quitter un salon ne retire pas le joueur de la liste (joueurs fantômes).
-12. `serveStatic({ root: "./dist/public" })` dépend du répertoire courant alors que la page d'accueil utilise un chemin absolu : fragile si le serveur n'est pas lancé depuis `app/`.
-13. Le fallback SPA renvoie le hub pour toute URL HTML inconnue : les liens morts sont masqués.
-14. Snapshot silencieusement ignoré au-delà de 1,8 Mo côté client (2 Mo côté serveur).
-15. `parties` n'est pas plafonné strictement au-delà de 500 parties actives.
-16. Double enregistrement du service worker (hub en production + `net.js` sur HTTPS), sans conséquence pratique.
+6. `npm start` utilise `NODE_ENV=production node …` (syntaxe POSIX) : correct sur Render/Docker, en échec sous Windows.
+7. Make It Meme : code admin `Lext.71` encore en clair dans le client ; timers basés sur l'horloge locale (`Date.now`) sans `Net.clock` ; certains templates peuvent partager la même image.
+8. `serveStatic({ root: "./dist/public" })` dépend du répertoire courant alors que la page d'accueil utilise un chemin absolu : fragile si le serveur n'est pas lancé depuis `app/`.
+9. Le fallback SPA renvoie le hub pour toute URL HTML inconnue : les liens morts sont masqués.
+10. Snapshot silencieusement ignoré au-delà de 1,8 Mo côté client (2 Mo côté serveur). Make It Meme retire les images base64 de son snapshot pour rester sous la limite ; les invités reconstruisent alors le meme depuis le template + texte.
+11. `parties` n'est pas plafonné strictement au-delà de 500 parties actives.
+12. Double enregistrement du service worker (hub en production + `net.js` sur HTTPS), sans conséquence pratique.
 
 ## Points techniques importants (à conserver)
 - `public/shared/net.js` gère le client réseau commun, la reconnexion et la communication avec le relais.
@@ -104,49 +107,52 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 - Les protections 18+ existantes (Les Petites Vérités, banque de gages adulte) ne doivent être ni retirées, ni contournées, ni étendues à des espaces non appropriés.
 - Le hub et les jeux sont conçus mobile/tactile : `viewport-fit=cover`, zones sûres, cibles tactiles, pas de contrôle uniquement au survol.
 - Skills disponibles : `game-page-development` (pages de jeux), `realtime-multiplayer` (salon/réseau/relais), `verification-and-handoff` (contrôles et passation).
+- Make It Meme : `public/makeitmeme/index.html` (page + logique hôte), `templates.js` (`window.MIM_TEMPLATES`, 60 modèles), `room-state.js` (`clone`, `sanitize`, `applyPatch`, `allowedGuestPatch`), thème `public/themes/makeitmeme.css` (papier, vert acide, rose vif, bleu électrique, ombres dures, Bungee). Le relais ignore l'expéditeur d'un `event` : l'hôte doit rendre son interface localement après diffusion.
+- Photo Roulette : `fill()` renvoie `{added, skipped, timedOut}`, traite par lots avec un budget global de 30 s, déduplique sur `name|size|lastModified` et fusionne les files d'attente lors d'un ajout.
 
 ## Vérifications
 
-### Réalisées le 13 novembre 2026
-- Lecture complète ou ciblée de tous les fichiers applicatifs listés dans la section « Jeux et espaces ».
-- `git status --short` : arbre de travail propre, aucun fichier applicatif modifié ; seuls des documents ont été mis à jour lors de la tâche précédente.
-- Vérification finale de passation : le contenu ci-dessus a été relu ligne par ligne (décisions techniques, 16 bugs, étapes suivantes et limites).
-- `npm test` **tenté et échoué avant exécution** : `'vitest' n'est pas reconnu`, car `node_modules` est absent. Ce n'est pas un échec de test.
-- `npm run check` et `npm run build` **non lancés** : ils nécessitent une installation préalable, et l'analyse devait rester en lecture seule.
+### Réalisées le 13 novembre 2026 (tâche en cours)
+- `npm run check` : **réussi**.
+- `npm test` : **réussi**, 16 tests (13 relais + 3 helpers de salon Make It Meme).
+- `npm run build` : **réussi** ; la copie `dist/public/makeitmeme/index.html` a été vérifiée à jour.
+- Navigateur (serveur de développement, port 3000) — Make It Meme : création de salon, jointure par code dans un second onglet, mises à jour du lobby, sélection de template, éditeur, soumission, vote, résultats, podium final, `Party.report`/classement, rejouer, mode fusion, partie avec bots, reprise, exclusion d'un joueur, promotion d'hôte, bascule audio, modales.
+- Navigateur — Photo Roulette : 25 photos synthétiques → 20 médias + 5 en file ; ajout de 5 → 30 dans la réserve ; échange maintenant 20 ; doublon refusé ; file épuisée jusqu'à 19 avec le message « Plus de photo de rechange ».
+- Captures d'écran vérifiées : accueil, lobby, sélection, éditeur Make It Meme et écran médias Photo Roulette.
+- `git status --short` : 3 fichiers modifiés et 4 fichiers ajoutés (voir ci-dessous), aucun autre fichier applicatif touché.
 
-### Reste à vérifier (après `npm install` dans `app/`)
-- `npm run check`, `npm test`, `npm run build`.
-- En navigateur, sur au moins deux téléphones : création/rejoindre un salon, passage de relais, reprise après verrouillage, retour au salon, classement cumulé.
+### Reste à vérifier
+- Test sur un **vrai iPhone** (le correctif > 20 photos est validé avec des fichiers synthétiques sur navigateur de bureau, pas sur iOS).
+- Test sur **plusieurs appareils physiques** simultanés (le multi-onglets local valide le protocole, pas la latence réelle).
 - Codenames : création de partie (bug attendu), puis parcours complet si corrigé.
-- Make It Meme : confirmer le repli solo et l'absence de synchronisation entre appareils.
 - Poker Face : caméra, MediaPipe, WebRTC et TURN en 4G.
 - Les barrières 18+ (Les Petites Vérités et gages adultes) restent intactes.
+- `npm start` sous Windows : commande POSIX toujours en échec (voir bug 6).
 
 ## Modifications récentes
-- **2026-11-13** — Passation vérifiée : couverture contrôlée (décisions techniques, bugs, étapes suivantes), date et état Git corrigés. **Aucune modification de code.**
-- **2026-11-13** — Mise à jour de ce document après analyse en lecture seule : état réel des jeux, bugs identifiés, vérifications honnêtes, prochaines étapes. **Aucune modification de code.**
+- **2026-11-13** — Suppression de Petit Bac Boom du hub (`app/src/pages/Home.tsx`).
+- **2026-11-13** — Make It Meme rebranché sur le relais Hono : salons 4 caractères, hôte autoritaire, snapshot/reprise, exclusion, bots, `Party.report`. Nouvelle DA (`public/themes/makeitmeme.css`) et nouvelle identité sonore Web Audio. Extraction de `templates.js` et `room-state.js` ; ajout de `api/lib/makeitmeme-room.test.ts`.
+- **2026-11-13** — Photo Roulette : sélection de plus de 20 photos fiabilisée (lots, budget, miniatures progressives, déduplication, ajout par lot).
+- **2026-11-13** — Passation précédente : documentation seule, aucune modification de code.
 - Commits notables déjà présents : `40e06ba` (suppression de `app/README-OPENCODE.md`), `0e19a6a` (Make It Meme), `e543bdb` (Codenames), `75cf6b6` (suppression de Petit Bac Boom).
 
 ## Prochaines étapes de développement
 
-1. **Trancher le sort des trois jeux problématiques** (décision utilisateur nécessaire) :
-   - Petit Bac Boom : retirer la tuile du hub, ou restaurer la page ;
-   - Codenames : l'intégrer réellement (code 4 caractères, `Net.enter({create:true})`, `Sess`, `R.snap`, `onPromote`, `Party.report`, entrée dans le salon) ou le retirer du hub ;
-   - Make It Meme : le rebrancher sur le relais Hono, ou le marquer explicitement « solo / bots » et retirer le discours multijoueur.
-2. **Aligner la liste du Salon de la soirée** sur le hub, ou documenter clairement que le salon ne couvre que 5 jeux.
-3. **Installer les dépendances** puis lancer `npm run check`, `npm test`, `npm run build` et consigner les résultats réels ici.
+1. **Intégrer Make It Meme au Salon de la soirée** (code 4 caractères déjà prêt) : entrée dans la liste de `public/soiree/`, retour au salon, vérification du classement cumulé.
+2. **Trancher le sort de Codenames** : l'intégrer réellement (`Net.enter({create:true})`, code 4 caractères, `Sess`, `R.snap`, `onPromote`, `Party.report`, entrée dans le salon) ou le retirer du hub.
+3. **Aligner la liste du Salon de la soirée** sur le hub, ou documenter clairement que le salon ne couvre que 5 jeux.
 4. **Sécuriser et fiabiliser le relais** : identité de connexion, limitation de débit, taille des événements, tests des cas de reconnexion et de doublons.
 5. **Corriger le classement** : éviter la réutilisation d'un code de soirée actif (codes plus longs ou génération/nettoyage explicite).
 6. **Traiter la cohérence 18+** : confirmation pour le mode piquant de Qui de nous ? et/ou badge dans le hub, sans affaiblir les barrières existantes.
-7. **Assainir Make It Meme** si le jeu est conservé : retirer le secret admin du client, échapper les pseudos, dédupliquer le template, synchroniser les timers, nettoyer les joueurs partants.
+7. **Assainir Make It Meme** : retirer le secret admin du client, synchroniser les timers via `Net.clock`, dédupliquer les templates en double.
 8. **Outillage multiplateforme** : corriger `npm start` sous Windows, vérifier le répertoire de travail de `serveStatic`, et ajouter au minimum un test du parcours de création de salon.
-9. **Documentation à aligner** (non modifiée dans cette tâche) : `ARCHITECTURE.md` (liste des jeux, commandes depuis `app/`, limites du relais), `app/README.md` (liste des jeux, `npm start` sous Windows), `AGENTS.md` (préciser `cd app` avant les commandes npm).
+9. **Documentation à aligner** : `ARCHITECTURE.md` (liste des jeux, commandes depuis `app/`, limites du relais), `app/README.md` (liste des jeux, `npm start` sous Windows), `AGENTS.md` (préciser `cd app` avant les commandes npm).
 
 ## À compléter après chaque tâche importante
 - Date : 2026-11-13
-- Objectif : refléter l'état réel du projet dans `PROJECT_STATUS.md`
-- Fichiers / zones modifiés : `PROJECT_STATUS.md` uniquement (documentation)
-- Décisions techniques à conserver : l'hôte navigateur reste autoritaire ; le relais reste en mémoire ; ne pas intégrer un jeu au salon sans code 4 caractères, session, snapshot et `Party.report`.
-- Vérifications lancées et résultats : lecture de code uniquement ; `npm test` non exécutable faute de `node_modules` ; `check` et `build` non lancés.
-- Problèmes connus / limites : Codenames non créable ; Make It Meme solo ; Petit Bac Boom absent ; salon limité à 5 jeux ; pas de tests client.
-- Prochaine étape concrète : décision sur Petit Bac Boom, Codenames et Make It Meme, puis `npm install` et exécution des trois vérifications.
+- Objectif : supprimer Petit Bac Boom, refondre Make It Meme (DA, sons, multijoueur) et fiabiliser Photo Roulette au-delà de 20 photos.
+- Fichiers / zones modifiés : `app/src/pages/Home.tsx` ; `app/public/makeitmeme/index.html`, `templates.js`, `room-state.js` ; `app/public/themes/makeitmeme.css` ; `app/public/photoroulette/index.html` ; `app/api/lib/makeitmeme-room.test.ts` ; `PROJECT_STATUS.md`.
+- Décisions techniques à conserver : l'hôte navigateur reste autoritaire ; le relais reste en mémoire ; Make It Meme utilise 4 caractères mais reste hors liste du salon ; les images base64 sont retirées du snapshot Make It Meme ; l'ajout de photos par lot est le contournement retenu à l'absence de « tout sélectionner » sur iPhone.
+- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; parcours Make It Meme et Photo Roulette testés en navigateur.
+- Problèmes connus / limites : Codenames non créable ; Make It Meme absent du Salon de la soirée ; pas de test sur iPhone ni multi-appareils physiques ; `npm start` POSIX sous Windows.
+- Prochaine étape concrète : intégrer Make It Meme au Salon de la soirée, puis traiter Codenames.

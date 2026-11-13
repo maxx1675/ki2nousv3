@@ -48,10 +48,11 @@
  <div class="card center"><h2>Code PIN</h2><div class="code" id="lcode"></div><div id="sw-share"></div></div>
  <div class="card"><h2>Joueurs <span id="pc" class="hint" style="display:inline"></span></h2><div id="pl" class="chips"></div><p id="ph" class="hint"></p></div>
  <div class="card"><h2 id="mtitle">📷 Ma pellicule</h2>
-  <p class="hint" style="margin:0 0 8px">1) Appuie sur le bouton et ouvre l’album de ton choix dans ta galerie (Récents, un voyage, une soirée…).<br>2) Coche beaucoup de photos, 30 à 60 c’est l’idéal : le site en tire 20 au hasard, tu ne choisis pas lesquelles.<br>3) Tu vois le tirage : une photo te gêne ? Appuie sur ✕, elle est remplacée par une autre au hasard.<br><small>iPhone : choisis « Photothèque ». Les sélecteurs de téléphone n’ont pas de « tout sélectionner » : c’est pour ça qu’il faut cocher les photos toi-même.</small></p>
+  <p class="hint" style="margin:0 0 8px">1) Appuie sur le bouton et ouvre l’album de ton choix dans ta galerie (Récents, un voyage, une soirée…).<br>2) Coche beaucoup de photos, 30 à 60 c’est l’idéal : le site en tire 20 au hasard (5 en vidéo), tu ne choisis pas lesquelles.<br>3) Tu vois le tirage : une photo te gêne ? Appuie sur ✕, elle est remplacée par une autre au hasard.<br><small>iPhone : choisis « Photothèque ». Les sélecteurs de téléphone n’ont pas de « tout sélectionner » : coche les photos toi-même, ou ajoute-les par petits lots avec « Ajouter d’autres photos ».</small></p>
   <input type="file" id="files" accept="image/*" multiple hidden>
   <input type="file" id="dir" webkitdirectory multiple hidden>
   <button class="btn primary" data-a="pick">🎲 Choisir un album et tirer 20 photos</button>
+  <button class="btn" data-a="add" id="addb" hidden>➕ Ajouter d’autres photos</button>
   <button class="btn" data-a="dir" id="dirb" hidden>📁 Dossier entier</button>
   <button class="btn" data-a="redraw" id="redrawb" hidden>🔄 Retirer au sort</button>
   <span id="mycount" class="hint" style="display:inline"></span>
@@ -89,44 +90,117 @@ const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
 try{$("#pname").value=localStorage.getItem("soiree:name")||""}catch(e){}
 
 /* ---------- médias ---------- */
-function shrink(file){return new Promise(res=>{
-  if(file.type.startsWith("video/")){ if(file.size>6e6)return res(null); const r=new FileReader();r.onload=()=>res({kind:"video",data:r.result});r.readAsDataURL(file);return}
-  const img=new Image(),u=URL.createObjectURL(file);
-  img.onload=()=>{const k=Math.min(1,720/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*k;c.height=img.height*k;c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res({kind:"photo",data:c.toDataURL("image/jpeg",.62)})};
-  img.onerror=()=>res(null);img.src=u})}
+/* Décodage robuste : sur iPhone, certains fichiers (HEIC, photo très lourde) peuvent ne jamais
+   déclencher onload/onerror. Un délai maximum évite de bloquer tout le tirage. */
+function shrink(file){
+  return new Promise(res=>{
+    let done=false;
+    const finish=v=>{if(done)return;done=true;clearTimeout(timer);res(v)};
+    const timer=setTimeout(()=>finish(null),15000);
+    if(file.type.startsWith("video/")){
+      if(file.size>6e6)return finish(null);
+      const r=new FileReader();
+      r.onload=()=>finish({kind:"video",data:r.result});
+      r.onerror=()=>finish(null);
+      try{r.readAsDataURL(file)}catch(e){finish(null)}
+      return;
+    }
+    if(file.size>25e6)return finish(null);
+    let u="";
+    try{u=URL.createObjectURL(file)}catch(e){return finish(null)}
+    const img=new Image();
+    const cleanup=()=>{if(u){URL.revokeObjectURL(u);u=""}};
+    img.onload=()=>{
+      try{
+        const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+        if(!w||!h)return finish(null);
+        const k=Math.min(1,720/Math.max(w,h));
+        const c=document.createElement("canvas");
+        c.width=Math.max(1,Math.round(w*k));c.height=Math.max(1,Math.round(h*k));
+        const ctx=c.getContext("2d");
+        if(!ctx)return finish(null);
+        ctx.drawImage(img,0,0,c.width,c.height);
+        finish({kind:"photo",data:c.toDataURL("image/jpeg",.62)});
+      }catch(e){finish(null)}
+      finally{cleanup()}
+    };
+    img.onerror=()=>{cleanup();finish(null)};
+    img.src=u;
+  });
+}
 const isMedia=(f,vid)=>vid?f.type.startsWith("video/"):(f.type.startsWith("image/")||/\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name));
 const maxN=()=>S&&S.cfg.media==="video"?5:20;
+function updateCount(){
+  const el=$("#mycount");if(!el)return;
+  el.textContent=L.busy?`Tirage au sort… ${L.media.length}/${maxN()}`:L.media.length?`✔ ${L.media.length} tirées au hasard · ✕ pour en écarter une`:"";
+}
+function thumbHtml(m,i){
+  return `<span class="t">${m.kind==="video"?`<video src="${m.data}" muted playsinline></video>`:`<img src="${m.data}" alt="">`}<button data-a="swap" data-i="${i}" aria-label="Écarter et remplacer">✕</button></span>`;
+}
 function renderThumbs(){
-  $("#thumbs").innerHTML=L.media.map((m,i)=>`<span class="t">${m.kind==="video"?`<video src="${m.data}" muted playsinline></video>`:`<img src="${m.data}" alt="">`}<button data-a="swap" data-i="${i}" aria-label="Écarter et remplacer">✕</button></span>`).join("");
-  $("#mycount").textContent=L.busy?`Tirage au sort… ${L.media.length}/${maxN()}`:L.media.length?`✔ ${L.media.length} tirées au hasard · ✕ pour en écarter une`:"";
+  const box=$("#thumbs");if(box)box.innerHTML=L.media.map(thumbHtml).join("");
+  updateCount();
 }
-/* complète le tirage jusqu'à 20 en piochant dans la file mélangée (les fichiers illisibles sont sautés) */
+function appendThumb(m,i){
+  const box=$("#thumbs");if(!box)return;
+  const t=document.createElement("template");
+  t.innerHTML=thumbHtml(m,i);
+  box.append(t.content.firstElementChild);
+}
+/* complète le tirage jusqu'à maxN en piochant dans la file mélangée (les fichiers illisibles sont sautés) */
 async function fill(){
-  if(L.busy)return;L.busy=true;
-  try{while(L.media.length<maxN()&&L.queue.length){
+  if(L.busy)return{added:0,skipped:0,timedOut:false};
+  L.busy=true;let added=0,skipped=0,timedOut=false;
+  /* Budget global : sur iPhone, une grosse sélection de fichiers illisibles ne doit pas
+     bloquer le tirage pendant plusieurs minutes (15 s par fichier). */
+  const deadline=Date.now()+30000;
+  try{
     renderThumbs();
-    const m=await shrink(L.queue.shift());
-    if(m){m.key=rid();L.media.push(m);send({k:"media",kind:m.kind,data:m.data,key:m.key})}
-  }}finally{L.busy=false}
+    while(L.media.length<maxN()&&L.queue.length){
+      if(Date.now()>deadline){timedOut=true;break}
+      const m=await shrink(L.queue.shift());
+      if(m){m.key=rid();L.media.push(m);appendThumb(m,L.media.length-1);updateCount();send({k:"media",kind:m.kind,data:m.data,key:m.key});added++}
+      else skipped++;
+    }
+  }finally{L.busy=false}
   renderThumbs();
+  return{added,skipped,timedOut};
 }
-async function addFiles(list,planto,redraw){
-  if(planto){const m=await shrink([...list][0]);if(m){m.key=rid();L.planted.push({to:planto,...m});send({k:"plant",to:planto,kind:m.kind,data:m.data,key:m.key});toast("Photo plantée 🌱")}else toast("Fichier ignoré");return}
+async function addFiles(list,planto,redraw,append){
+  if(planto){
+    const f=[...list][0];if(!f)return toast("Aucun fichier");
+    const m=await shrink(f);
+    if(m){m.key=rid();L.planted.push({to:planto,...m});send({k:"plant",to:planto,kind:m.kind,data:m.data,key:m.key});toast("Photo plantée 🌱")}
+    else toast("Fichier ignoré (format non lisible)");
+    return;
+  }
   const vid=S&&S.cfg.media==="video";
-  const all=[...list].filter(f=>isMedia(f,vid));
+  let all=[...list].filter(f=>isMedia(f,vid));
   if(!all.length){toast("Aucun fichier compatible");return}
+  if(all.length>200){all=all.slice(0,200);toast("200 photos maximum par sélection")}
   if(L.busy){toast("Patiente, tirage en cours…");return}
-  if(!redraw)L.pool=all;
-  $("#redrawb").hidden=false;
-  L.queue=shuffle([...L.pool]);L.media=[];send({k:"reset"});
-  await fill();
-  toast(L.media.length+" tirés au hasard ✔"+(L.pool.length<maxN()?" — coche plus de photos pour un vrai tirage":""));
+  if(append&&L.pool&&L.pool.length){
+    const seen=new Set(L.pool.map(f=>`${f.name}|${f.size}|${f.lastModified}`));
+    const fresh=all.filter(f=>!seen.has(`${f.name}|${f.size}|${f.lastModified}`));
+    if(!fresh.length){toast("Ces photos sont déjà dans ta sélection");return}
+    L.pool=L.pool.concat(fresh);
+    L.queue=shuffle([...(L.queue||[]),...fresh]);
+    const r=await fill();
+    toast(r.added?`${r.added} nouvelle(s) photo(s) ajoutée(s) ✔`:"Photos ajoutées : elles remplaceront celles que tu écartes ✔");
+  }else{
+    if(!redraw)L.pool=all;
+    $("#redrawb").hidden=false;$("#addb").hidden=false;
+    L.queue=shuffle([...L.pool]);L.media=[];send({k:"reset"});
+    const r=await fill();
+    toast(`${L.media.length} tirées au hasard ✔${r.skipped?` · ${r.skipped} ignorée(s) (format non lisible)`:""}${r.timedOut?" · délai dépassé, réessaie avec moins de photos":""}${L.pool.length<maxN()?" — coche plus de photos pour un vrai tirage":""}`);
+  }
 }
 /* ✕ : écarte une photo et la remplace par une autre tirée au hasard dans la sélection */
 async function swap(i){
   if(L.busy){toast("Patiente un instant…");return}
   if(!(i>=0&&i<L.media.length))return;
   L.media.splice(i,1);send({k:"drop",i});
+  if(!L.queue.length){renderThumbs();toast("Plus de photo de rechange : ajoute d’autres photos ➕");return}
   await fill();
 }
 
@@ -377,7 +451,8 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
   if(a==="create")enter(true);else if(a==="join")enter(false);
   else if(a==="leave"){Sess.clear("pr");R&&R.leave();location.href=location.pathname}
-  else if(a==="pick")$("#files").click();
+  else if(a==="pick"){L.appendMode=false;$("#files").click()}
+  else if(a==="add"){L.appendMode=true;$("#files").click()}
   else if(a==="dir")$("#dir").click();
   else if(a==="redraw"){if(L.pool&&L.pool.length)addFiles(L.pool,null,true);else $("#files").click()}
   else if(a==="swap")swap(+b.dataset.i);
@@ -399,7 +474,7 @@ document.addEventListener("click",async e=>{
     send({k:"ans",c:L.ans,ms:L.ansMs});
   }
 });
-$("#files").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
+$("#files").addEventListener("change",e=>{const append=L.appendMode;L.appendMode=false;addFiles(e.target.files,null,false,append);e.target.value=""});
 if(!matchMedia("(pointer:coarse)").matches)$("#dirb").hidden=false; // choix d'un dossier : ordinateur uniquement
 $("#dir").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
 $("#plfile").addEventListener("change",e=>{addFiles(e.target.files,L.plantTo);e.target.value=""});
