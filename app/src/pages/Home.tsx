@@ -149,6 +149,20 @@ const GAMES: Game[] = [
     tilt: -2.2,
     pattern: "dots",
   },
+  {
+    id: "makeitmeme",
+    title: "Make It Meme",
+    tagline: "Crée le meme le plus drôle",
+    emoji: "😂",
+    path: "/makeitmeme/index.html",
+    players: "2 – 12 joueurs",
+    duration: "10 – 20 min",
+    badge: "Nouveau",
+    desc: "Chacun reçoit un template et le détourne avec son humour : textes, couleurs, placement. Puis tout le monde vote pour les memes les plus frais, et le meilleur memelord gagne.",
+    color: "#9be15d",
+    tilt: 1.9,
+    pattern: "grid",
+  },
 ];
 
 function useClock() {
