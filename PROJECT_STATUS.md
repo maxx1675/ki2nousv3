@@ -1,6 +1,6 @@
 # État du projet — ki2nousv3
 
-> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **13 novembre 2026**, après une analyse en lecture seule de l'ensemble du dépôt. Aucun code n'a été modifié lors de cette mise à jour.
+> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **13 novembre 2026**, vérifiée et validée pour la passation vers une nouvelle session (analyse en lecture seule de l'ensemble du dépôt). Aucun code n'a été modifié lors de cette mise à jour.
 >
 > **Emplacement réel de l'application : `app/`.** C'est le dossier qui contient `package.json`, `src/`, `public/` et `api/`. La racine du dépôt ne contient que la documentation et `.opencode/`. Toutes les commandes npm doivent être lancées depuis `app/`.
 
@@ -16,7 +16,7 @@
 - Scripts npm : `dev`, `build`, `preview`, `start`, `check`, `format`, `test`.
 - Déploiement documenté : Render (`npm ci && npm run build` puis `npm start`) ou `Dockerfile`.
 - **`node_modules` n'est pas installé dans le dépôt actuel** : `npm test`, `npm run check` et `npm run build` ne sont pas exécutables sans `npm install` préalable.
-- Dépôt Git : code de `app/` commité (dernier commit `40e06ba`) ; seuls `.opencode/`, `AGENTS.md`, `ARCHITECTURE.md`, `PROJECT_STATUS.md` et `README-OPENCODE.md` sont non suivis.
+- Dépôt Git : arbre de travail propre. Code de `app/` commité (`40e06ba`), documentation et skills commitées ensuite (`74607bc`). Rien n'est poussé à la connaissance de cette session.
 
 ### Convention de lecture
 Dans ce document, **« terminé »** signifie : fonctionnalité présente dans le code, cohérente avec l'architecture partagée et sans bug bloquant identifié à la lecture. Cela ne vaut pas validation en navigateur ni sur plusieurs téléphones : les vérifications réellement exécutées sont indiquées plus bas.
@@ -109,7 +109,8 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 ### Réalisées le 13 novembre 2026
 - Lecture complète ou ciblée de tous les fichiers applicatifs listés dans la section « Jeux et espaces ».
-- `git status --short` : aucun fichier applicatif modifié ; seuls les documents non suivis mentionnés plus haut.
+- `git status --short` : arbre de travail propre, aucun fichier applicatif modifié ; seuls des documents ont été mis à jour lors de la tâche précédente.
+- Vérification finale de passation : le contenu ci-dessus a été relu ligne par ligne (décisions techniques, 16 bugs, étapes suivantes et limites).
 - `npm test` **tenté et échoué avant exécution** : `'vitest' n'est pas reconnu`, car `node_modules` est absent. Ce n'est pas un échec de test.
 - `npm run check` et `npm run build` **non lancés** : ils nécessitent une installation préalable, et l'analyse devait rester en lecture seule.
 
@@ -122,6 +123,7 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 - Les barrières 18+ (Les Petites Vérités et gages adultes) restent intactes.
 
 ## Modifications récentes
+- **2026-11-13** — Passation vérifiée : couverture contrôlée (décisions techniques, bugs, étapes suivantes), date et état Git corrigés. **Aucune modification de code.**
 - **2026-11-13** — Mise à jour de ce document après analyse en lecture seule : état réel des jeux, bugs identifiés, vérifications honnêtes, prochaines étapes. **Aucune modification de code.**
 - Commits notables déjà présents : `40e06ba` (suppression de `app/README-OPENCODE.md`), `0e19a6a` (Make It Meme), `e543bdb` (Codenames), `75cf6b6` (suppression de Petit Bac Boom).
 
