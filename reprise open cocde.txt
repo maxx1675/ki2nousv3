@@ -1,0 +1,184 @@
+Voici ton **guide définitif pour utiliser OpenCode sur ki2nousv3**. Garde-le quelque part : tu pourras normalement gérer tes prochaines conversations sans avoir besoin de me redemander quoi que ce soit.
+
+L'idée est simple : **les fichiers de ton projet servent de mémoire permanente, les prompts servent à guider OpenCode.**
+
+# **1. Au début de chaque nouvelle conversation**
+
+Ouvre toujours OpenCode depuis la **racine du projet**, là où se trouvent `AGENTS.md`, `PROJECT_STATUS.md` et `ARCHITECTURE.md`.
+
+Puis envoie ce prompt :
+
+Nous reprenons le développement de ki2nousv3.
+
+Avant toute intervention :
+
+1. Lis intégralement `AGENTS.md`, `PROJECT_STATUS.md`, `ARCHITECTURE.md` et `README-OPENCODE.md`.
+2. Consulte les skills disponibles dans `.opencode/skills/` et applique ceux qui correspondent à la tâche.
+3. Examine le code concerné si nécessaire pour comprendre son état réel.
+4. Vérifie la cohérence entre la documentation et le code.
+
+Je veux que tu reprennes exactement là où le projet en est, sans supposer que tu te souviens de nos anciennes conversations.
+
+Pour le moment :
+
+- Ne modifie aucun fichier.
+- Ne lance aucune modification automatique.
+- Présente-moi un résumé concis de l'architecture, de l'état actuel, des problèmes connus et des prochaines priorités.
+
+Attends ensuite mes instructions.
+
+# **2. Pour demander une nouvelle fonctionnalité**
+
+C'est le prompt à utiliser à chaque nouvelle idée ou amélioration.
+
+Je souhaite ajouter ou améliorer la fonctionnalité suivante :
+
+[EXPLIQUE ICI TON IDÉE]
+
+Avant de coder :
+
+1. Analyse l'architecture actuelle et les fichiers concernés.
+2. Identifie les dépendances avec les autres fonctionnalités.
+3. Repère les risques de régression et les éventuels problèmes techniques.
+4. Propose une solution adaptée à l'architecture existante.
+5. Indique précisément les fichiers qui devront être créés ou modifiés.
+6. Si plusieurs solutions sont possibles, recommande la meilleure et explique brièvement pourquoi.
+
+Ne commence pas à coder tout de suite. Présente-moi d'abord ton plan et attends ma validation.
+
+**Pourquoi ?** Tu évites qu'OpenCode parte directement coder une solution mal adaptée à ton architecture.
+
+# **3. Pour lui demander de développer**
+
+Une fois que tu as validé son plan :
+
+Je valide le plan proposé.
+
+Tu peux maintenant implémenter cette fonctionnalité.
+
+Consignes :
+
+- Respecte strictement l'architecture existante.
+- Réutilise les composants, fonctions et systèmes déjà présents quand c'est pertinent.
+- Évite les duplications de code.
+- Ne casse aucune fonctionnalité existante.
+- Respecte les conventions du projet et les instructions de `AGENTS.md`.
+- Pense à la compatibilité mobile et aux interactions tactiles si cela concerne l'interface ou un jeu.
+- Ajoute ou adapte les tests nécessaires.
+
+Travaille proprement, vérifie les dépendances et ne modifie pas de fichiers sans rapport avec la tâche.
+
+À la fin, effectue les vérifications adaptées et présente-moi un bilan des modifications.
+
+# **4. Pour corriger un bug**
+
+J'ai identifié le problème suivant :
+
+[DESCRIPTION DU BUG]
+
+Comportement actuel :\
+[CE QUI SE PASSE]
+
+Comportement attendu :\
+[CE QUI DEVRAIT SE PASSER]
+
+Analyse d'abord la cause réelle du problème avant de proposer une correction.
+
+Je veux une correction durable, qui respecte l'architecture existante et ne crée pas de régression.
+
+Avant de modifier le code, explique-moi brièvement :
+
+- La cause du problème.
+- Les fichiers concernés.
+- La correction envisagée.
+
+Attends ma validation avant de coder.
+
+# **5. Pour faire vérifier le projet**
+
+À utiliser régulièrement, notamment après plusieurs fonctionnalités.
+
+Je souhaite réaliser un audit technique du projet ki2nousv3.
+
+Effectue une analyse approfondie, en lecture seule.
+
+Vérifie notamment :
+
+- La cohérence de l'architecture.
+- Les erreurs potentielles et bugs.
+- Les problèmes de sécurité.
+- Les performances.
+- La compatibilité mobile et desktop.
+- Les fonctionnalités multijoueurs et la synchronisation entre joueurs.
+- Les éventuelles régressions.
+- La qualité et la maintenabilité du code.
+- La cohérence entre le code et la documentation.
+
+Ne modifie aucun fichier.
+
+Classe les problèmes par gravité : critique, majeur, mineur.
+
+Termine par une liste de recommandations classées par ordre de priorité.
+
+# **6. Avant de changer de conversation**
+
+C'est probablement le prompt le plus important. Il permet de transmettre le travail à la prochaine conversation.
+
+Je vais bientôt fermer cette conversation et reprendre le développement dans une nouvelle session OpenCode.
+
+Prépare une transmission complète du projet.
+
+1. Mets à jour `PROJECT_STATUS.md` avec l'état réel et actuel du projet.
+2. Indique les fonctionnalités terminées, en cours et restantes.
+3. Recense les bugs connus, les problèmes non résolus et les décisions techniques importantes.
+4. Ajoute les modifications effectuées pendant cette conversation.
+5. Indique précisément la prochaine étape recommandée.
+6. Mets à jour `ARCHITECTURE.md` uniquement si l'architecture a réellement changé.
+7. Vérifie que `AGENTS.md` et les skills restent cohérents avec le projet.
+
+Contraintes :
+
+- Ne supprime aucune information encore utile.
+- Ne prétends pas qu'une fonctionnalité est terminée si elle n'a pas été vérifiée.
+- Ne modifie pas le code pour cette transmission.
+- Ne fais pas de commit Git.
+- Vérifie le contenu final des fichiers modifiés.
+
+À la fin, indique-moi :
+
+- Les fichiers de documentation modifiés.
+- Les éventuelles vérifications effectuées.
+- Si une action reste à faire avant de fermer la conversation.
+- Le prompt exact à envoyer dans la prochaine conversation pour reprendre.
+
+# **7. Pour reprendre après un changement de conversation**
+
+Si tu as déjà utilisé le prompt précédent, tu peux envoyer celui-ci dans la nouvelle session :
+
+J'ai repris le projet dans une nouvelle conversation.
+
+Lis les fichiers de transmission et les instructions du projet pour retrouver son état actuel.
+
+Vérifie que les informations de `PROJECT_STATUS.md` correspondent bien au code présent.
+
+Ne modifie rien pour le moment.
+
+Explique-moi brièvement où nous en sommes et quelle est la prochaine étape logique. Attends ensuite mes instructions.
+
+# **8. Pour mettre à jour la documentation après une fonctionnalité**
+
+Tu n'as pas besoin d'attendre de changer de conversation pour actualiser la documentation.
+
+La fonctionnalité que nous venons de développer est terminée.
+
+Mets à jour `PROJECT_STATUS.md` pour refléter précisément le nouvel état du projet.
+
+Indique :
+
+- Ce qui a été ajouté ou modifié.
+- Les fichiers concernés.
+- Les tests et vérifications réellement effectués.
+- Les éventuels problèmes restants.
+- Les prochaines étapes pertinentes.
+
+Ne modifie pas le code. Vérifie que la documentation reste cohérente avec l'état réel du projet.
