@@ -7,12 +7,18 @@
    Chargé APRÈS le <style> de la page : il surcharge les variables.
    ========================================================== */
 
-/* palette fixe (ignore le réglage clair/sombre du hub) */
-html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+/* palette claire par défaut, palette sombre via le réglage du jeu */
+html[data-theme="light"],html:not([data-theme]){
   color-scheme:light;
   --bg:#ffd23f;--surface:#ffffff;--ink:#111111;--muted:#3b3b3b;
   --edge:#111111;--sh:#111111;
   --violet:#1f5bff;--pink:#ff2e63;--amber:#ffe66d;--teal:#27d3b8;--danger:#ff2e63;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#15131c;--surface:#221f2e;--ink:#f6f2e8;--muted:#c0bacd;
+  --edge:#f6f2e8;--sh:#000000;
+  --violet:#6f8bff;--pink:#ff5d86;--amber:#ffe66d;--teal:#4de3c8;--danger:#ff5d86;
 }
 
 /* fond : jaune + trame de points BD */
@@ -73,6 +79,28 @@ html:not([data-anim="off"]) .card:nth-of-type(even){transform:rotate(.4deg)}
 .setbox{background:#fff;border-width:3px;box-shadow:0 -6px 0 #111}
 .setpanel{background:rgba(17,17,17,.55)}
 
-/* le style est propre au jeu : on masque le choix clair/sombre */
-.setbox .srow:has(+ .bubbles [data-act="theme"]),
-.setbox .bubbles:has([data-act="theme"]){display:none}
+/* le style est propre au jeu : le choix clair/sombre reste disponible */
+
+/* ---------- variante sombre ---------- */
+html[data-theme="dark"] body{
+  background-color:#15131c;
+  background-image:radial-gradient(rgba(255,255,255,.08) 1.7px,transparent 2px);
+}
+html[data-theme="dark"] body::before{background:radial-gradient(ellipse at 50% 0,rgba(255,255,255,.12),transparent 62%)}
+html[data-theme="dark"] h1{color:#fff;-webkit-text-stroke:2.5px #000;text-shadow:4px 4px 0 #000}
+html[data-theme="dark"] .hero p{color:var(--ink)}
+html[data-theme="dark"] .logo{filter:drop-shadow(3px 3px 0 #000)}
+html[data-theme="dark"] .card{background:var(--surface);box-shadow:8px 8px 0 var(--edge)}
+html[data-theme="dark"] .rcard{box-shadow:8px 8px 0 var(--tc)}
+html[data-theme="dark"] .rcard::before{border-top-color:var(--edge)}
+html[data-theme="dark"] .rcard::after{border-top-color:var(--surface)}
+html[data-theme="dark"] .badge{box-shadow:2px 2px 0 var(--edge)}
+html[data-theme="dark"] .txt{background:#2c2840}
+html[data-theme="dark"] .btn{box-shadow:4px 4px 0 var(--edge)}
+html[data-theme="dark"] .btn.primary{background:var(--violet);color:#fff}
+html[data-theme="dark"] .btn.danger{background:var(--danger);color:#fff}
+html[data-theme="dark"] .bubble{box-shadow:4px 4px 0 var(--edge)}
+html[data-theme="dark"] .prog i{background:repeating-linear-gradient(45deg,var(--pink) 0 10px,#ff8fab 10px 20px)}
+html[data-theme="dark"] .homelink,html[data-theme="dark"] .setbtn{box-shadow:4px 4px 0 var(--edge)}
+html[data-theme="dark"] .setbox{background:var(--surface);box-shadow:0 -6px 0 var(--edge)}
+html[data-theme="dark"] .setpanel{background:rgba(0,0,0,.66)}

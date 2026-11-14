@@ -1,0 +1,8 @@
+-Bouton home sur make it meme comme sur tous les autres et le bouton home de salon de soirée est buggé aussi genre pas d'interface, tout petit, pas au bonne endroit fin voila
+-s'assurere que sur photo roulette on puisse bien mettre plus de 30 photos, pas besoin de tester ça serait trop long mais voila le but est quand meme de pouvoir en selectionner un maximum.
+-code admin : admin
+-Ajoute make it meme au salon de la soirée
+-Je sais pas quel est le probleme que tu dis avec codenames mais regle le
+-pour photo roulette si possible, faire que quand on joue sur pc, on puisse avec un lien/qrcode, prendre les photos de notre tel
+-pour pokerface c'est tres bien je sais pas ce que t'en penses si tu as des idées en tout cas pour le moment fait juste en sorte que la caméra soit pas inversqé parce que genre quand je tourne la tete a gauche, sur la vidéo ca met comme si je tournais a droite
+-pour pokerface ou

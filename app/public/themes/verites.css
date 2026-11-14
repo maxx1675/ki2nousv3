@@ -7,11 +7,17 @@
    Chargé APRÈS le <style> de la page.
    ========================================================== */
 
-html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+html[data-theme="dark"],html:not([data-theme]){
   color-scheme:dark;
   --bg:#16060e;--surface:#2a0f1d;--ink:#f7ead9;--muted:#cfaea5;
   --edge:#c9a24d;--sh:#000000;
   --violet:#a3123f;--pink:#ff5c8a;--amber:#e3c06f;--teal:#d9b25f;--danger:#ff6b87;
+}
+html[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f7efe2;--surface:#fffaf1;--ink:#2a1118;--muted:#6b4a4a;
+  --edge:#a3123f;--sh:#7a5a3a;
+  --violet:#a3123f;--pink:#c2184f;--amber:#c9a24d;--teal:#b8912f;--danger:#c2184f;
 }
 
 /* fond : velours + halos de bougies */
@@ -102,6 +108,44 @@ input[type=text],textarea{border-width:1px;border-radius:4px;background:#16060e;
 .setpanel{background:rgba(10,2,6,.72)}
 .setbox{background:#2a0f1d;border:1px solid #c9a24d;box-shadow:0 -6px 24px rgba(0,0,0,.6)}
 
-/* le style est propre au jeu : on masque le choix clair/sombre */
-.setbox .srow:has(+ .pills [data-act="theme"]),
-.setbox .pills:has([data-act="theme"]){display:none}
+/* le style est propre au jeu : le choix clair/sombre reste disponible */
+
+/* ---------- variante claire ---------- */
+html[data-theme="light"] body{
+  background:radial-gradient(ellipse at 50% -10%,#fff8ec 0%,#f3e6d3 48%,#ead9c2 100%);
+}
+html[data-theme="light"] body::before{
+  background:
+    radial-gradient(circle at 12% 18%,rgba(201,162,77,.18) 0 60px,transparent 62px),
+    radial-gradient(circle at 88% 30%,rgba(194,24,79,.10) 0 90px,transparent 92px),
+    radial-gradient(circle at 70% 85%,rgba(201,162,77,.12) 0 70px,transparent 72px);
+}
+html[data-theme="light"] h1{color:#8e0f36;text-shadow:0 2px 0 #fff,0 0 22px rgba(163,18,63,.18)}
+html[data-theme="light"] h2{color:#8e0f36}
+html[data-theme="light"] .logo{filter:drop-shadow(0 0 12px rgba(163,18,63,.28))}
+html[data-theme="light"] .card,html[data-theme="light"] .qcard{
+  background:linear-gradient(180deg,#fffaf1,#fdf1e0);
+  border-color:#c9a24d;
+  box-shadow:0 14px 30px rgba(122,90,58,.22),inset 0 0 0 4px #fffaf1,inset 0 0 0 5px rgba(201,162,77,.5);
+}
+html[data-theme="light"] .qcard{box-shadow:0 0 44px rgba(163,18,63,.14),inset 0 0 0 5px #fffaf1,inset 0 0 0 6px rgba(201,162,77,.65)}
+html[data-theme="light"] .qcard .sub{color:#a3123f}
+html[data-theme="light"] .truth{background:#fff8e8;color:#2a1118;box-shadow:0 10px 24px rgba(122,90,58,.28)}
+html[data-theme="light"] .srow{border-top-color:rgba(163,18,63,.22)}
+html[data-theme="light"] .prow,html[data-theme="light"] .readrow,html[data-theme="light"] .statcard,html[data-theme="light"] .mode{box-shadow:0 3px 8px rgba(122,90,58,.18)}
+html[data-theme="light"] .prow.top1{background:rgba(201,162,77,.22)}
+html[data-theme="light"] .readrow.done{background:rgba(201,162,77,.16)}
+html[data-theme="light"] .mode.on{background:rgba(201,162,77,.2);box-shadow:inset 0 0 0 1px #b8912f}
+html[data-theme="light"] .chip{background:#f4e3c8;color:#2a1118}
+html[data-theme="light"] .chip.ok{background:#c9a24d;color:#2a1118}
+html[data-theme="light"] input[type=text],html[data-theme="light"] textarea{background:#fffaf1;color:#2a1118}
+html[data-theme="light"] .btn,html[data-theme="light"] .pill,html[data-theme="light"] .pick,html[data-theme="light"] .stepper button{box-shadow:0 2px 0 rgba(122,90,58,.5),0 6px 14px rgba(122,90,58,.18)}
+html[data-theme="light"] .btn.danger{background:#f7d9df;color:#8e0f36}
+html[data-theme="light"] .pill.on{background:#a3123f;color:#fff3e0}
+html[data-theme="light"] .timer{color:#8e0f36;text-shadow:none}
+html[data-theme="light"] .timer.low{color:#c2184f;text-shadow:none}
+html[data-theme="light"] .bar{background:#efe0cc}
+html[data-theme="light"] .adminbar{background:rgba(255,250,241,.96);box-shadow:0 6px 18px rgba(122,90,58,.25)}
+html[data-theme="light"] .homelink,html[data-theme="light"] .setbtn{background:#fffaf1;border-color:#c9a24d;color:#8e0f36;box-shadow:0 3px 10px rgba(122,90,58,.3)}
+html[data-theme="light"] .setpanel{background:rgba(42,17,24,.42)}
+html[data-theme="light"] .setbox{background:#fffaf1;border-color:#c9a24d;box-shadow:0 -6px 24px rgba(122,90,58,.35)}

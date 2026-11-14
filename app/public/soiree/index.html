@@ -54,6 +54,7 @@ const GAMES=[
  {id:"undercover",ico:"🕵️",name:"Undercover",desc:"Trouve l’intrus · 3 à 12 joueurs"},
  {id:"pokerface",ico:"🃏",name:"Poker Face",desc:"Ne craque pas ! · caméra · 2 à 8 joueurs"},
  {id:"photoroulette",ico:"📸",name:"Photo Roulette",desc:"À qui est cette photo ?"},
+ {id:"makeitmeme",ico:"😂",name:"Make It Meme",desc:"Crée et vote les meilleurs memes"},
  {id:"verites",ico:"🔞",name:"Les Petites Vérités",desc:"Vrai ou faux ? · 18+"},
  {id:"quidenous",ico:"🗳️",name:"Qui de nous ?",desc:"Votes, anecdotes, roasts…"}
 ];
@@ -102,13 +103,20 @@ function drawBoard(b){
  const el=$("#board");
  el.innerHTML=b&&b.rows&&b.rows.length?`<div class="card sw-board">${Party.boardHtml(b,ME)}</div>`:"";
 }
+let launching=false;
 function launch(game,asHost){
  const base="/"+game+"/index.html?c="+code+"&go=1"+(asHost?"&h=1":"");
- setTimeout(()=>{location.href=base},asHost?300:0);
+ location.href=base;
 }
-document.addEventListener("click",e=>{
+document.addEventListener("click",async e=>{
  const g=e.target.closest("[data-g]");
- if(g&&isHost&&R){R.emit("go",{game:g.dataset.g}).catch(()=>{});launch(g.dataset.g,true)}
+ if(!g||!isHost||!R||launching)return;
+ launching=true;
+ $("#pick").querySelectorAll("button").forEach(b=>b.disabled=true);
+ // On attend que le relais ait bien distribué « go » avant de quitter la soirée :
+ // sinon les invités restent seuls dans le salon.
+ try{await R.emit("go",{game:g.dataset.g})}catch(err){}
+ launch(g.dataset.g,true);
 });
 $("#create").onclick=()=>enter(true);
 $("#join").onclick=()=>enter(false);

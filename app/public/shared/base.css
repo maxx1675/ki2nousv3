@@ -36,3 +36,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .fade{animation:fin .25s ease-out}@keyframes fin{from{opacity:0;transform:translateY(8px)}}
 html[data-anim="off"] *{animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+/* Boutons flottants partagés (retour au hub / thème) */
+.homelink,.themebtn{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));z-index:50;width:50px;height:50px;border-radius:50%;border:2.5px solid var(--edge);background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:3px 3px 0 var(--sh)}
+.homelink{left:max(14px,env(safe-area-inset-left));font-size:1.3rem}
+.themebtn{right:max(14px,env(safe-area-inset-right));font-size:1.35rem;line-height:1;cursor:pointer;padding:0}
+.homelink:active,.themebtn:active{transform:translate(2px,2px);box-shadow:none}
+@media(max-width:520px){.homelink,.themebtn{width:46px;height:46px;font-size:1.2rem}}

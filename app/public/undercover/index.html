@@ -35,6 +35,7 @@
 <div id="app"></div>
 </main>
 <script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
 <script src="/shared/profile.js"></script>
 <script src="/shared/gages.js"></script>
 <script src="/shared/party.js"></script>
@@ -75,7 +76,7 @@ const pl=id=>S.pl.find(p=>p.id===id);
 const nm=id=>(pl(id)||{n:"?"}).n;
 const aliveIds=()=>S.pl.filter(p=>p.alive).map(p=>p.id);
 const app=$("#app");
-const bc=()=>{if(R&&isHost){R.emit("st",S).catch(()=>{});R.snap({S,H})}};
+const bc=()=>{if(R&&isHost){if(H){S.vdone=Object.keys(H.votes||{}).length;S.vneed=voters().length}else{S.vdone=0;S.vneed=0}R.emit("st",S).catch(()=>{});R.snap({S,H})}};
 const send=d=>{d.p=local()?(S.pr?S.pr.who:ME):ME;if(isHost)act(d);else R&&R.emit("act",d,"host")};
 const uid=()=>"p"+Math.random().toString(36).slice(2,7);
 try{L.name=localStorage.getItem("soiree:name")||""}catch(e){}
@@ -144,7 +145,7 @@ function startRound(){
 }
 function voters(){return S.pl.filter(p=>(p.alive||(S.cfg.ghostAll||p.gh))&&!(H&&H.fal&&H.fal.kind==="bad"&&H.fal.to===p.id)).map(p=>p.id)}
 function startVote(){
- S.ph="vote";H.votes={};S.end=0;
+ S.ph="vote";H.votes={};S.end=Net.now()+45000; // filet de sécurité : le vote se clôture tout seul
  if(local()){H.vq=voters();S.pr={who:H.vq[0],kind:"vote",i:0};L.gate=false}
 }
 function act(d){
@@ -211,7 +212,7 @@ function proc(){
    x.alive=false;H.dead.push(st.id);const r=H.role[st.id];
    if(H.dead.length===1&&r.sp.includes("fool")){H.bonus[st.id]=(H.bonus[st.id]||0)+4}
    if(r.sp.includes("ghost"))x.gh=true;
-   S.out.push({id:st.id,role:r.base,r:S.r});S.log.push("💀 "+x.n+" est éliminé — "+RL[r.base]+(r.word?" ("+r.word+")":""));
+   S.out.push({id:st.id,role:r.base,w:r.word,r:S.r});S.log.push("💀 "+x.n+" est éliminé — "+RL[r.base]+(r.word?" ("+r.word+")":""));
    const extra=[];
    if(r.sp.includes("lovers")){const o=partnerOf(st.id,"lovers");if(o&&pl(o).alive){S.log.push("💔 "+nm(o)+" meurt de chagrin.");extra.push({t:"elim",id:o})}}
    if(r.sp.includes("avenger")&&aliveIds().length>1)extra.push({t:"av",id:st.id});
@@ -222,10 +223,18 @@ function proc(){
  }
  endResult(S.out.filter(o=>o.r===S.r).map(o=>o.id));
 }
-function endResult(){
+function endResult(elim){
  const al=aliveIds(),civ=al.filter(i=>H.role[i].base==="civil").length,inf=al.length-civ;
  S.win=inf===0?"civil":civ<=1?"inf":null;S.ph="result";S.pr=null;
  S.rv=S.rv||{};
+ // Quelqu'un vient d'être éliminé : on change le couple de mots pour la manche
+ // suivante, sinon les joueurs restants gardent le même mot jusqu'à la fin.
+ if(!S.win&&Array.isArray(elim)&&elim.length){
+  H.words=pickWords();
+  Object.keys(H.role).forEach(id=>{const r=H.role[id];r.word=r.base==="civil"?H.words.civ:r.base==="uc"?H.words.uc:null});
+  S.words=H.words;
+  if(!local())sendPrivs();
+ }
 }
 function finishGame(w,who){
  const c=S.cfg.pts;
@@ -244,6 +253,7 @@ function tick(){
  if(!isHost||!S||!S.end||Net.now()<S.end)return;
  if(S.ph==="describe"&&!S.pr)act({k:"nxt",p:S.host});
  else if(S.ph==="discuss")act({k:"vote",p:S.host});
+ else if(S.ph==="vote")resolveVote();
 }
 
 /* ===================== RENDU ===================== */
@@ -341,16 +351,16 @@ function rDiscuss(){
  ${isHost?`<button class="btn primary big" data-a="vote">Passer au vote 🗳️</button>`:`<p class="hint center">L’hôte lance le vote.</p>`}`;
 }
 function rVote(){
- const vs=voters(),done=Object.keys((H&&isHost?H.votes:{})).length,me=pl(ME)||{};
+ const vs=voters(),done=isHost&&H?Object.keys(H.votes||{}).length:(S.vdone||0),need=isHost?vs.length:(S.vneed||vs.length),me=pl(ME)||{};
  const can=(me.alive||me.gh||S.cfg.ghostAll)&&!L.voted&&!(L.priv&&L.priv.nov),cand=S.cand||aliveIds();
- app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>Vote</h1>${privCard()}
+ app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>Vote</h1>${timerHtml()}${privCard()}
  ${can&&!S.pr?`<div class="card"><h2>Qui éliminer ?</h2>${cand.filter(i=>i!==ME).map(i=>`<button class="pick" data-a="cast" data-id="${i}">${esc(nm(i))}</button>`).join("")}</div>`:`<p class="center hint">Vote enregistré… en attente des autres.</p>`}
- ${isHost?`<p class="hint center">${done}/${vs.length} votes</p><button class="btn" data-a="vote!">Clôturer le vote</button>`:""}`;
+ <p class="hint center">${done}/${need} votes</p>${isHost?`<button class="btn" data-a="vote!">Clôturer le vote</button>`:""}`;
 }
 function rResult(){
  const last=S.out.filter(o=>o.r===S.r);
  app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>${last.length?"Éliminé !":"Pas d’élimination"}</h1>
- ${last.map(o=>{const first=L.stK!==S.r+":"+o.id;L.stK=S.r+":"+o.id;return`<div class="secret hit"><div class="word">${esc(nm(o.id))}</div><div class="rl ${o.role}" style="font-size:1.3rem">${RL[o.role]}</div><div class="stamp ${first?"play":""}" aria-hidden="true">Éliminé</div></div>`}).join("")}
+ ${last.map(o=>{const first=L.stK!==S.r+":"+o.id;L.stK=S.r+":"+o.id;return`<div class="secret hit"><div class="word">${esc(nm(o.id))}</div><div class="rl ${o.role}" style="font-size:1.3rem">${RL[o.role]}</div>${o.w?`<div class="hint" style="margin:4px 0 0">Son mot : <b>${esc(o.w)}</b></div>`:""}<div class="stamp ${first?"play":""}" aria-hidden="true">Éliminé</div></div>`}).join("")}
  ${card("Déroulé",S.log.slice(-8).map(l=>`<div>${esc(l)}</div>`).join("")||"—")}
  ${S.tally&&S.tally.length?card("Votes",S.tally.map(t=>`<div>${esc(nm(t.f))} → <b>${esc(nm(t.t))}</b></div>`).join("")):""}
  ${S.win?`<div class="ban">${S.win==="civil"?"Il ne reste que des Civils !":"Il ne reste qu’un seul Civil !"}</div>`:""}

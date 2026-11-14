@@ -7,11 +7,17 @@
    Chargé APRÈS le <style> de la page.
    ========================================================== */
 
-html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+html[data-theme="light"],html:not([data-theme]){
   color-scheme:light;
   --bg:#c9cdd0;--surface:#f3eddc;--ink:#171717;--muted:#55554f;
   --edge:#171717;--sh:#171717;
   --violet:#222222;--pink:#c8102e;--amber:#e2bf62;--teal:#a9d1b0;--danger:#c8102e;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#1a1d1f;--surface:#24282b;--ink:#e9e5da;--muted:#a9a69c;
+  --edge:#e9e5da;--sh:#000000;
+  --violet:#c9c9c9;--pink:#ff5a6e;--amber:#d8b562;--teal:#8fc4a0;--danger:#ff5a6e;
 }
 
 /* fond : béton + lignes de scan */
@@ -89,3 +95,31 @@ input[type=text],input[type=number],textarea,select{background:#fffdf3}
 .tog{border-radius:2px}
 .tog.on{background:#171717}
 .tog.on::after{background:#f3eddc}
+
+/* ---------- variante sombre ---------- */
+html[data-theme="dark"] body{
+  background-color:#1a1d1f;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04),rgba(0,0,0,.35)),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 4px);
+}
+html[data-theme="dark"] .card{background:#24282b;border-color:#e9e5da;box-shadow:4px 4px 0 rgba(0,0,0,.6)}
+html[data-theme="dark"] .card::before{background:#d8b562;border-color:#e9e5da;color:#171717}
+html[data-theme="dark"] .card:nth-of-type(3n)::before{background:#a8263c;color:#fff}
+html[data-theme="dark"] .secret{background:#2b3034;border-color:#e9e5da}
+html[data-theme="dark"] .secret::after{color:rgba(255,90,110,.85);border-color:rgba(255,90,110,.85)}
+html[data-theme="dark"] .ban{color:#ff5a6e;border-color:#ff5a6e}
+html[data-theme="dark"] .tag{background:#e9e5da;color:#1a1d1f}
+html[data-theme="dark"] .timer{color:#ff5a6e}
+html[data-theme="dark"] input[type=text],html[data-theme="dark"] input[type=number],html[data-theme="dark"] textarea,html[data-theme="dark"] select{background:#2b3034;color:#e9e5da}
+html[data-theme="dark"] .btn{box-shadow:3px 3px 0 #000}
+html[data-theme="dark"] .btn.primary{background:#e9e5da;color:#1a1d1f}
+html[data-theme="dark"] .btn.danger{background:#a8263c;color:#fff}
+html[data-theme="dark"] .pick.on{background:#8fc4a0;color:#171717}
+html[data-theme="dark"] .pill.on{background:#e9e5da;color:#1a1d1f}
+html[data-theme="dark"] .prow{box-shadow:3px 3px 0 rgba(0,0,0,.6)}
+html[data-theme="dark"] .rl.civil{color:#7fd6a8}
+html[data-theme="dark"] .rl.uc{color:#ff5a6e}
+html[data-theme="dark"] .rl.mw{color:#9aa0ff}
+html[data-theme="dark"] .tog.on{background:#e9e5da}
+html[data-theme="dark"] .tog.on::after{background:#1a1d1f}

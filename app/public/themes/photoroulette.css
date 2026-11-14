@@ -7,11 +7,17 @@
    Chargé APRÈS le <style> de la page.
    ========================================================== */
 
-html[data-theme],html[data-theme="light"],html[data-theme="dark"]{
+html[data-theme="light"],html:not([data-theme]){
   color-scheme:light;
   --bg:#efe2c6;--surface:#fffaf0;--ink:#2b2118;--muted:#7a6650;
   --edge:#2b2118;--sh:rgba(43,33,24,.4);
   --violet:#e4572e;--pink:#e4572e;--amber:#f6b93b;--teal:#47b5a8;--danger:#c0392b;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#17130f;--surface:#241f19;--ink:#f4e9d8;--muted:#c1b09a;
+  --edge:#f4e9d8;--sh:rgba(0,0,0,.65);
+  --violet:#ff7a4d;--pink:#ff7a4d;--amber:#f6b93b;--teal:#5ad1c1;--danger:#ff6b5a;
 }
 
 /* fond : papier kraft légèrement rayé */
@@ -85,6 +91,22 @@ html:not([data-anim="off"]) .card:nth-of-type(even){transform:rotate(.5deg)}
 .prow{border-width:2px;border-radius:6px;box-shadow:0 3px 0 rgba(43,33,24,.5)}
 .prow .pts{background:#f6b93b;color:#2b2118}
 .pill.on{background:#e4572e;color:#fff}
+
+/* variante sombre */
+html[data-theme="dark"] body{
+  background-color:#17130f;
+  background-image:
+    radial-gradient(ellipse at 50% 0,rgba(255,255,255,.07),transparent 65%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 2px,transparent 2px 5px);
+}
+html[data-theme="dark"] .card,html[data-theme="dark"] .title{background:#241f19;box-shadow:0 10px 22px rgba(0,0,0,.55)}
+html[data-theme="dark"] .card::before{background:rgba(246,185,59,.35)}
+html[data-theme="dark"] h1{color:#ff8a5c;text-shadow:3px 3px 0 #6b3a12}
+html[data-theme="dark"] .code{color:#ff8a5c}
+html[data-theme="dark"] .shot{background:#f4e9d8}
+html[data-theme="dark"] .shot::after{color:#2b2118}
+html[data-theme="dark"] .thumbs img,html[data-theme="dark"] .thumbs video{border-color:#f4e9d8}
+html[data-theme="dark"] .mod{background:rgba(0,0,0,.72)}
 
 /* perforations de pellicule sur les côtés (écrans larges seulement) */
 @media (min-width:760px){

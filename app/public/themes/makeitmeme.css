@@ -5,9 +5,7 @@
    Chargé APRÈS shared/base.css et shared/widgets.css.
    ========================================================== */
 
-html[data-theme],
-html[data-theme="light"],
-html[data-theme="dark"]{
+html[data-theme="light"],html:not([data-theme]){
   color-scheme:light;
   --bg:#f2eee3;
   --surface:#fffdf6;
@@ -23,6 +21,23 @@ html[data-theme="dark"]{
   --mim-lime:#c9ff3b;
   --mim-pink:#ff2f92;
   --mim-blue:#2f6bff;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#141210;
+  --surface:#221e19;
+  --ink:#f6f1e6;
+  --muted:#b7ad9f;
+  --edge:#f6f1e6;
+  --sh:#000000;
+  --violet:#7c96ff;
+  --pink:#ff5aa6;
+  --amber:#c9ff3b;
+  --teal:#2ee0c5;
+  --danger:#ff5c78;
+  --mim-lime:#c9ff3b;
+  --mim-pink:#ff5aa6;
+  --mim-blue:#7c96ff;
 }
 
 body{
@@ -420,3 +435,21 @@ input[type=url]{width:100%;font:inherit;color:var(--ink);background:var(--bg);pa
 
 html[data-anim="off"] *{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- variante sombre ---------- */
+html[data-theme="dark"] body{
+  background-image:
+    radial-gradient(circle at 8% 4%,rgba(255,90,166,.16) 0 110px,transparent 112px),
+    radial-gradient(circle at 94% 10%,rgba(124,150,255,.16) 0 130px,transparent 132px),
+    radial-gradient(circle at 84% 94%,rgba(201,255,59,.12) 0 150px,transparent 152px),
+    radial-gradient(rgba(255,255,255,.09) 1px,transparent 1.2px);
+  background-size:auto,auto,auto,18px 18px;
+}
+html[data-theme="dark"] .mim-canvas-wrap{background:repeating-conic-gradient(#26221d 0 25%,#2e2922 0 50%) 0 0/18px 18px}
+html[data-theme="dark"] .mim-textbox.on{background:#2c2721}
+html[data-theme="dark"] .mim-style-row button:first-child{background:#f6f1e6;color:#111827}
+html[data-theme="dark"] .mim-vote-frame{background:var(--surface)}
+html[data-theme="dark"] .mim-score.top{background:linear-gradient(90deg,var(--mim-lime),var(--surface))}
+html[data-theme="dark"] .mim-code{text-shadow:2px 2px 0 #000}
+html[data-theme="dark"] .mim-panel,.mim-top{box-shadow:5px 5px 0 var(--edge)}
+html[data-theme="dark"] .mim-vote-btn.meh{color:#16120f}

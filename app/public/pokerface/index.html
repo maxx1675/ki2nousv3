@@ -17,6 +17,9 @@ h1.neon{text-shadow:0 0 12px #ff2a4d,0 0 30px #ff2a4d88;letter-spacing:.04em;tex
 #tiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:12px 0}
 .tile{position:relative;width:min(44vw,210px);aspect-ratio:4/3;background:#000;border:3px solid #666;border-radius:14px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
 .tile video{width:100%;height:100%;object-fit:cover;display:block}
+/* Seule la tuile locale est en miroir (comme un selfie) : les autres joueurs ne sont pas inversés. */
+.tile.me video{transform:scaleX(-1)}
+#pv.mirror{transform:scaleX(-1)}
 .tile .nm{position:absolute;left:0;right:0;bottom:0;background:#000b;padding:2px 8px;font-weight:800;font-size:.85rem;display:flex;justify-content:space-between}
 .tile.alive{border-color:var(--teal);box-shadow:0 0 14px #27e08a55}
 .tile.out{border-color:#ff1a40;box-shadow:0 0 28px #ff1a40,inset 0 0 40px #ff1a4088;animation:shake .4s}
@@ -38,6 +41,7 @@ h1.neon{text-shadow:0 0 12px #ff2a4d,0 0 30px #ff2a4d88;letter-spacing:.04em;tex
 .ov.pre small{color:#fff}
 .stage.open .ov.pre{background:#000c}
 /* jauge de self-control */
+@media(min-width:900px){#gwrap{position:fixed;right:14px;top:50%;transform:translateY(-50%);width:180px;max-width:180px;margin:0;z-index:20;background:#09090dee;padding:10px;border:2px solid var(--sh);border-radius:14px;box-shadow:0 0 18px #0008}}
 .gauge{height:16px;border-radius:99px;background:#1b1b26;border:2px solid #5b0b1b;overflow:hidden;margin:4px 0}
 .gauge i{display:block;height:100%;width:100%;background:#27e08a;transition:width .12s linear}
 .cal{width:min(70%,320px);height:10px;background:#fff3;border-radius:99px;overflow:hidden;margin:10px auto 4px}.cal i{display:block;height:100%;background:#27e08a;width:0}
@@ -84,16 +88,17 @@ html[data-anim="off"] .curt{transition:none}
   <button class="btn" data-a="phone" id="phoneBtn">📱 Utiliser mon téléphone comme caméra</button>
   <div class="srow"><span><b>Ma sensibilité</b><small>Plus haut = tu craques plus facilement</small></span><input type="range" id="sens" min="0" max="100" style="width:140px"></div></div>
  <div class="card"><h2>🎬 Contenus <span id="ic" class="hint" style="display:inline"></span></h2>
-  <div class="row"><input type="text" id="url" placeholder="Lien YouTube ou vidéo (.mp4)"><button class="btn" data-a="addurl">Ajouter</button></div>
+  <div class="row"><input type="text" id="url" placeholder="Lien YouTube, TikTok, Vimeo, Instagram, Dailymotion, image ou .mp4"><button class="btn" data-a="addurl">Ajouter</button></div>
   <input type="file" id="fimg" accept="image/*" hidden><input type="file" id="fvid" accept="video/*" hidden>
   <div class="row" style="margin-top:8px"><button class="btn" data-a="pimg">📷 Photo</button><button class="btn" data-a="pvid">🎞️ Vidéo</button></div>
-  <p class="hint">Photos réduites automatiquement, vidéos de 8 Mo maximum. Pour YouTube, la vidéo doit autoriser l’intégration.</p>
+  <p class="hint">Photos réduites automatiquement, vidéos de 8 Mo maximum. YouTube, TikTok, Vimeo, Instagram et Dailymotion sont lus via leur lecteur intégré : le contenu doit autoriser l’intégration.</p>
   <div class="row" style="margin-top:8px"><input type="text" id="txtc" maxlength="160" placeholder="Défi texte (sépare les phrases avec « | »)"><button class="btn" data-a="addtxt">Ajouter</button></div>
   <div class="row" style="margin-top:8px"><select id="sndsel"></select><button class="btn" data-a="sndtest">▶ Écouter</button><button class="btn" data-a="addsnd">Ajouter</button></div>
   <div class="row" style="margin-top:8px"><button class="btn primary" data-a="pack">📦 Pack de départ</button><button class="pill" id="bankb" data-a="bank">🎲 Défis aléatoires</button></div>
   <p class="hint">Rien à ajouter ? Le <b>pack de départ</b> met des défis texte et des sons, et <b>🎲 Défis aléatoires</b> pioche dans une grande banque à chaque manche.</p>
   <div id="items"></div></div>
  <div class="card"><h2>📸 Photo du craquage</h2><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="snapopt"><span>Garder une photo de ma tête quand je craque <small class="hint" style="display:block;margin:0">Facultatif. La photo reste sur <b>mon appareil</b> : je choisis ensuite si je la partage.</small></span></label></div>
+ <div class="card"><h2>👥 Joueurs <span id="plcount" class="hint" style="display:inline"></span></h2><div id="plist"></div></div>
  <div class="card"><h2>Classement</h2><div id="rank-l"></div></div>
  <div id="hostcfg" class="card" hidden><h2>La partie</h2>
   <div class="srow"><span><b>Manches</b></span><div class="pills" id="roundsp"></div></div>
@@ -141,11 +146,17 @@ const MIN=2,MAX=8,AI_VER="0.10.14";
 let R=null,S=null,isHost=false,code="";
 let H={data:{},used:[],ended:false,rdy:new Set()};
 const L={stream:null,lm:null,aiState:"load",face:false,sens:+(localStorage.getItem("soiree:pf_sens")||50),base:null,cal:[],streak:0,out:false,pcs:{},q:{},tiles:{},cur:null,key:"",started:false,name:"",mode:0,miss:0,prep:null,mine:{},snaps:[],shared:[],ice:null,jh:[],gv:0,snapOn:localStorage.getItem("soiree:pf_snap")==="1"};
-const RES_MS=6000;
+const RES_MS=12000; // durée minimale d'affichage du résultat avant que l'hôte puisse enchaîner
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
 const view=id=>["home","lobby","round","result","end"].forEach(x=>$("#s-"+x).hidden=x!==id);
 const msg=t=>$("#hmsg").textContent=t;
-const bc=()=>{if(isHost&&R){R.emit("st",S).catch(()=>{});R.snap({S,H:{used:H.used}})}};
+const bc=()=>{if(isHost&&R){
+ // Retire les joueurs partis depuis plus de 20 s (tuiles figées / classement fantôme).
+ const on=new Set([...R.peers(),ME]);
+ S.pl.forEach(p=>{if(p.id===ME)return;if(on.has(p.id))delete p.miss;else p.miss=p.miss||Date.now()});
+ S.pl=S.pl.filter(p=>p.id===ME||!p.miss||Date.now()-p.miss<20000);
+ R.emit("st",S).catch(()=>{});R.snap({S,H:{used:H.used}});
+}};
 const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
 try{$("#pname").value=localStorage.getItem("soiree:name")||"";$("#sens").value=L.sens}catch(e){}
 
@@ -163,6 +174,7 @@ function updTiles(){
   t.querySelector(".nm span:last-child").textContent=p.sc+" pt";
   t.classList.toggle("out",S.ph==="round"&&!!p.out);t.classList.toggle("alive",S.ph==="round"&&!p.out&&on.has(p.id))});
  for(const id in L.tiles)if(!S.pl.some(p=>p.id===id)){L.tiles[id].remove();delete L.tiles[id]}
+ for(const id in L.pcs)if(!S.pl.some(p=>p.id===id)){try{L.pcs[id].close()}catch(e){}delete L.pcs[id]}
 }
 const place=id=>{const c=$("#"+id);if(c&&$("#tiles").parentNode!==c)c.append($("#tiles"))};
 
@@ -261,24 +273,32 @@ function snaps(){
 setInterval(analyse,70);
 
 /* ---------- WebRTC ---------- */
+function waitIce(pc,ms){
+ return new Promise(res=>{
+  if(pc.iceGatheringState==="complete")return res();
+  const t=setTimeout(res,ms||1600);
+  const done=()=>{if(pc.iceGatheringState==="complete"){clearTimeout(t);res()}};
+  pc.addEventListener("icegatheringstatechange",done);
+ });
+}
 function pcFor(id){
  if(L.pcs[id])return L.pcs[id];
- const pc=new RTCPeerConnection(L.ice||{iceServers:[{urls:"stun:stun.l.google.com:19302"}]});L.pcs[id]=pc;
- L.stream.getTracks().forEach(t=>pc.addTrack(t,L.stream));
+ const pc=new RTCPeerConnection({...(L.ice||{iceServers:[{urls:"stun:stun.l.google.com:19302"}]}),bundlePolicy:"max-bundle",iceCandidatePoolSize:2});L.pcs[id]=pc;
+ if(L.stream)L.stream.getTracks().forEach(t=>{try{if(t.kind==="video"&&"contentHint"in t)t.contentHint="motion"}catch(e){}pc.addTrack(t,L.stream)});
  pc.onicecandidate=e=>{if(e.candidate)R.emit("sig",{f:ME,t:"ice",c:e.candidate},id)};
  pc.ontrack=e=>{tile(id).querySelector("video").srcObject=e.streams[0]};
  return pc;
 }
-async function offer(id){const pc=pcFor(id);await pc.setLocalDescription(await pc.createOffer());R.emit("sig",{f:ME,t:"offer",s:pc.localDescription},id)}
+async function offer(id){const pc=pcFor(id);await pc.setLocalDescription(await pc.createOffer());await waitIce(pc);R.emit("sig",{f:ME,t:"offer",s:pc.localDescription},id)}
 async function onSig(d){
- if(!L.stream||!d||d.f===ME)return;const id=d.f;
+ if(!d||d.f===ME)return;const id=d.f;
  if(d.t==="hi"){const pc=pcFor(id);if(ME<id&&!pc.off){pc.off=1;offer(id)}else if(ME>id&&!pc.rep){pc.rep=1;R.emit("sig",{f:ME,t:"hi"},id)}}
- else if(d.t==="offer"){const pc=pcFor(id);await pc.setRemoteDescription(d.s);await pc.setLocalDescription(await pc.createAnswer());R.emit("sig",{f:ME,t:"answer",s:pc.localDescription},id);flush(id)}
+ else if(d.t==="offer"){const pc=pcFor(id);await pc.setRemoteDescription(d.s);await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);R.emit("sig",{f:ME,t:"answer",s:pc.localDescription},id);flush(id)}
  else if(d.t==="answer"){const pc=pcFor(id);if(pc.signalingState==="have-local-offer"){await pc.setRemoteDescription(d.s);flush(id)}}
  else if(d.t==="ice"){const pc=pcFor(id);if(pc.remoteDescription)pc.addIceCandidate(d.c).catch(()=>{});else(L.q[id]=L.q[id]||[]).push(d.c)}
 }
 function flush(id){const pc=L.pcs[id];(L.q[id]||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));L.q[id]=[]}
-setInterval(()=>{ if(!R||!L.stream||!S)return;
+setInterval(()=>{ if(!R||!S)return;
  for(const id in L.pcs){const st=L.pcs[id].connectionState;if(st==="failed"||st==="closed"){try{L.pcs[id].close()}catch(e){}delete L.pcs[id]}}
  if(S.pl.some(p=>p.id!==ME&&!L.pcs[p.id]||p.id!==ME&&L.pcs[p.id]&&L.pcs[p.id].connectionState!=="connected"))R.emit("sig",{f:ME,t:"hi"});
 },3500);
@@ -335,9 +355,13 @@ async function enter(create,o){
  if(!name){const ps=$("#pname").value.trim().slice(0,14);if(!ps)return msg("Choisis un pseudo 🙂");Profile.set({name:ps});name=Profile.tag(ps)}
  const jc=o.joinCode||$("#pcode").value.trim().toUpperCase();
  if(!create&&!/^[A-Z0-9]{4}$/.test(jc))return msg("Le code a 4 caractères.");
- if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return msg("Ton navigateur ne gère pas la caméra (il faut HTTPS).");
- msg("Autorise la caméra…");if(!(await getCam()))return;
+ // La caméra n'est plus obligatoire : on peut jouer sans, puis brancher son téléphone.
  L.name=name;audioCtx();
+ if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+  msg("Autorise la caméra…");
+  const ok=await getCam().catch(()=>false);
+  if(!ok){L.noCam=true;msg("Tu joues sans caméra : utilise ton téléphone pour être analysé 📱")}
+ }else{L.noCam=true}
  Net.ice().then(x=>L.ice=x);
  const x=await Net.enter({game:"pf",room:c=>"pf-"+c,create,code:o.code,joinCode:jc,resume:o.resume,wasHost:o.wasHost,retry:o.retry,onMsg:msg});
  if(!x)return;
@@ -350,6 +374,7 @@ async function enter(create,o){
  R.on("act",d=>{if(isHost)hostAct(d)});
  R.on("rs",()=>{if(!isHost)resendItems()});
  R.on("snap",d=>addShared(d));
+ R.on("kick",()=>{toast("L’hôte t’a retiré de la partie");Sess.clear("pf");try{R&&R.leave()}catch(e){}R=null;S=null;isHost=false;view("home")});
  R.onPromote(onPromoted);
  R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l’hôte");route()});
  if(isHost){
@@ -361,6 +386,7 @@ async function enter(create,o){
  startHello();
  tile(ME);$("#lcode").textContent=code;$("#who").textContent="Salon "+code;view("lobby");route();initAI();
  Share.mount("#sw-share",{code,title:"Poker Face",text:"Rejoins-moi sur Poker Face ! Code : "+code});
+ if(!L.stream)setTimeout(()=>{if(S&&S.ph==="lobby")phonePair()},700);
 }
 function hostLoops(){if(!L.tk){L.tk=setInterval(tick,250);L.bk=setInterval(bc,2500)}}
 function startHello(){
@@ -385,7 +411,7 @@ function onPromoted(snap){
 /* ---------- logique hôte ---------- */
 function addItem(p,d){
  const kind=String(d.kind||"");
- if(!["yt","vurl","iurl","img","vid","txt","snd"].includes(kind))return;
+ if(!["yt","emb","vurl","iurl","img","vid","txt","snd"].includes(kind))return;
  let id=String(d.id||"").replace(/[^a-z0-9]/gi,"").slice(0,8);
  const ex=id&&S.items.find(i=>i.id===id);
  if(ex){if(d.data&&String(d.data).length<12e6)H.data[id]=d.data;return}
@@ -404,7 +430,8 @@ function addPack(){
 function hostAct(d){
  if(!isHost||!S)return;const p=d.p,pp=S.pl.find(x=>x.id===p);
  if(d.k==="needc"){if(S.ph==="round"&&S.cur){const it=S.cur,c={id:it.id,kind:it.kind,ref:it.ref,data:H.data[it.id]||""};R.emit("content",c,p)}return}
- if(d.k==="join"){if(!pp&&S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0,w:0,o:0,out:false})}
+ if(d.k==="join"){if(!pp&&S.ph==="lobby"&&!(S.banned||[]).includes(p)&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0,w:0,o:0,out:false})}
+ else if(d.k==="kick"&&p===ME&&S.ph==="lobby"&&d.id!==ME){S.banned=S.banned||[];if(!S.banned.includes(d.id))S.banned.push(d.id);S.pl=S.pl.filter(x=>x.id!==d.id);R.emit("kick",{},d.id)}
  else if(d.k==="item"&&pp)addItem(p,d);
  else if(d.k==="rm"){const it=S.items.find(i=>i.id===d.id);if(it&&(it.by===p||p===S.host)){S.items=S.items.filter(i=>i.id!==d.id);delete H.data[d.id]}}
  else if(d.k==="cfg"&&p===ME&&S.ph==="lobby")Object.assign(S.cfg,d.cfg);
@@ -435,7 +462,7 @@ function nextRound(){
 }
 function tick(){
  if(!isHost||!S)return;
- if(S.ph==="result"){if(S.tr&&Net.now()>=S.tr){nextRound();bc();route()}return}
+ // Le résultat reste affiché : c'est l'hôte qui choisit quand enchaîner.
  if(S.ph!=="round")return;
  const now=Net.now(),on=new Set([...R.peers(),ME]);
  if(!S.t0){
@@ -469,12 +496,15 @@ function route(){
 function lobby(){
  view("lobby");place("tl-lobby");L.key="";L.out=false;$("#lost").hidden=true;
  $("#pc").textContent=S.pl.length+"/"+MAX;$("#ic").textContent=S.items.length?"("+S.items.length+")":"";
- const ic={yt:"▶️",vurl:"🎞️",iurl:"🖼️",img:"📷",vid:"🎞️",txt:"💬",snd:"🔊"};
+ const ic={yt:"▶️",emb:"📱",vurl:"🎞️",iurl:"🖼️",img:"📷",vid:"🎞️",txt:"💬",snd:"🔊"};
  $("#items").innerHTML=S.items.map(i=>`<div class="prow"><span>${ic[i.kind]||"🎬"} ${esc(i.label)} <small class="hint">· ${esc(nm(i.by))}</small></span>${i.by===ME||isHost?`<button class="btn" style="margin-left:auto;padding:2px 10px" data-a="rm" data-id="${i.id}">✕</button>`:""}</div>`).join("")||'<p class="hint">Aucun contenu pour le moment.</p>';
  rank("#rank-l");
+ $("#plcount").textContent=S.pl.length+"/"+MAX;
+ $("#plist").innerHTML=S.pl.map(p=>`<div class="prow"><span>${esc(p.n)}${p.id===ME?" (toi)":""}${p.id===S.host?" 👑":""}</span>${isHost&&p.id!==ME?`<button class="btn" style="margin-left:auto;padding:2px 10px" data-a="kick" data-id="${p.id}" title="Retirer ce joueur">✕</button>`:""}</div>`).join("");
  $("#hostcfg").hidden=!isHost;$("#waith").hidden=isHost;$("#snapopt").checked=L.snapOn;
+ const fs=$("#faceStat");if(!L.stream&&fs){fs.textContent="Aucune caméra sur cet appareil : utilise ton téléphone 📱";fs.className="status bad"}
  const ss=$("#sndsel");if(ss&&!ss.options.length)ss.innerHTML=Object.entries(SND).map(([k,v])=>`<option value="${k}">${v.e} ${v.n}</option>`).join("");
- if(isHost){$("#roundsp").innerHTML=[3,5,8].map(v=>`<button class="pill ${S.cfg.rounds===v?"on":""}" data-a="rounds" data-v="${v}">${v}</button>`).join("");
+ if(isHost){$("#roundsp").innerHTML=[3,5,8,10,15,20].map(v=>`<button class="pill ${S.cfg.rounds===v?"on":""}" data-a="rounds" data-v="${v}">${v}</button>`).join("");
   $("#durp").innerHTML=[20,30,45,60].map(v=>`<button class="pill ${S.cfg.dur===v?"on":""}" data-a="dur" data-v="${v}">${v} s</button>`).join("");
   $("#startb").disabled=S.pl.length<MIN;$("#bankb").classList.toggle("on",!!S.cfg.bank);$("#startb").textContent=S.r?`Manche ${S.r+1} 🔥`:"Lancer la manche 🔥"}
 }
@@ -491,8 +521,11 @@ function result(){
  $("#rtitle").textContent=w.length?"Poker Face validé !":"Tout le monde a craqué 😂";
  $("#rsub").textContent=w.length?"Bravo : "+w.map(nm).join(", ")+" (+1 point)":"Personne ne gagne de point.";
  rank("#rank-x",p=>w.includes(p.id)?" ✅":" 💀");
- $("#resbtn").innerHTML=isHost?`<button class="btn primary big" data-a="next">${S.r>=S.cfg.rounds?"Résultats finaux 🏆":"Manche suivante →"}</button>`:'<p class="hint center">L’hôte continue…</p>';
- $("#media").innerHTML="";snaps();
+ $("#resbtn").innerHTML=isHost?`<button class="btn primary big" data-a="next" ${S.tr&&Net.now()<S.tr?"disabled":""}>${S.r>=S.cfg.rounds?"Résultats finaux 🏆":"Manche suivante →"}</button>`:'<p class="hint center">L’hôte décide du moment de continuer…</p>';
+ $("#media").innerHTML="";
+ // Même les joueurs qui ont gardé leur poker face ont une photo de fin de manche.
+ if(L.snapOn&&L.stream&&!L.snaps.some(x=>x.r===S.r))grabFace();
+ snaps();
 }
 function end(){
  view("end");const r=[...S.pl].sort((a,b)=>b.sc-a.sc||b.w-a.w);
@@ -505,6 +538,15 @@ function end(){
 
 /* ---------- contenu de la manche ---------- */
 function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m&&m[1]}
+/* Liens sociaux → URL d'intégration (TikTok, Vimeo, Dailymotion, Instagram). */
+function embedUrl(u){
+ const t=String(u);let m;
+ m=t.match(/tiktok\.com\/(?:@[^/]+\/)?(?:video|photo)\/(\d+)/i);if(m)return"https://www.tiktok.com/embed/v2/"+m[1];
+ m=t.match(/vimeo\.com\/(?:video\/)?(\d+)/i);if(m)return"https://player.vimeo.com/video/"+m[1];
+ m=t.match(/dailymotion\.com\/video\/([a-z0-9]+)/i);if(m)return"https://www.dailymotion.com/embed/video/"+m[1];
+ m=t.match(/instagram\.com\/(reel|p|tv)\/([\w-]+)/i);if(m)return"https://www.instagram.com/"+m[1]+"/"+m[2]+"/embed";
+ return"";
+}
 let _ytP=null;const loadYT=()=>_ytP||(_ytP=new Promise(res=>{if(window.YT&&YT.Player)return res();window.onYouTubeIframeAPIReady=res;const sc=document.createElement("script");sc.src="https://www.youtube.com/iframe_api";sc.onerror=()=>res();document.head.append(sc)}));
 /* Étape 1 : chaque joueur charge le contenu (caché) et dit « prêt » à l'hôte. L'hôte lance le décompte quand tout le monde est prêt. */
 function prepare(){
@@ -514,23 +556,29 @@ function prepare(){
  const pr=L.prep={r:S.r,id:c.id,ready:false,el:null,yt:null};
  const m=$("#media");m.innerHTML="";m.style.visibility="hidden";
  const done=()=>{if(pr.ready)return;pr.ready=true;send({k:"rdy",r:pr.r})};
+ const fail=()=>{pr.err=true;m.style.visibility="visible";m.innerHTML=`<div class="txtc"><p>Contenu indisponible 😕</p><small class="hint">${esc(c.label||"")}</small></div>`;done()};
  setTimeout(done,12000);
  if(c.kind==="yt"){
   const h=document.createElement("div");m.append(h);
-  loadYT().then(()=>{if(L.prep!==pr)return;if(!window.YT||!YT.Player)return done();
+  loadYT().then(()=>{if(L.prep!==pr)return;if(!window.YT||!YT.Player)return fail();
    pr.yt=new YT.Player(h,{videoId:c.ref,playerVars:{controls:0,rel:0,playsinline:1,modestbranding:1,disablekb:1,fs:0,iv_load_policy:3,origin:location.origin},
     events:{onReady:e=>{e.target.mute();e.target.playVideo()},
      onStateChange:e=>{if(e.data===1&&!pr.warm){pr.warm=true;if(!L.started){e.target.pauseVideo();e.target.seekTo(0,true)}done()}if(e.data===0&&isHost)H.ended=true},
-     onError:()=>{pr.err=true;done()}}})});
- }else if(c.kind==="img"||c.kind==="iurl"){const el=pr.el=document.createElement("img");el.onload=el.onerror=done;el.src=c.kind==="img"?c.data:c.ref;m.append(el)}
- else if(c.kind==="vid"||c.kind==="vurl"){const el=pr.el=document.createElement("video");el.playsInline=true;el.preload="auto";el.onended=()=>{if(isHost)H.ended=true};el.oncanplay=done;el.onerror=done;el.src=c.kind==="vid"?c.data:c.ref;m.append(el);el.load()}
+     onError:()=>fail()}})});
+ }else if(c.kind==="emb"){
+  const f=document.createElement("iframe");f.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";f.referrerPolicy="no-referrer";f.src=c.ref;
+  f.onload=()=>setTimeout(done,500);f.onerror=fail;m.append(f);setTimeout(()=>{if(!pr.ready)done()},9000);
+ }else if(c.kind==="img"||c.kind==="iurl"){const el=pr.el=document.createElement("img");el.onload=done;el.onerror=fail;el.src=c.kind==="img"?c.data:c.ref;m.append(el)}
+ else if(c.kind==="vid"||c.kind==="vurl"){const el=pr.el=document.createElement("video");el.playsInline=true;el.preload="auto";el.onended=()=>{if(isHost)H.ended=true};el.oncanplay=done;el.onerror=fail;el.src=c.kind==="vid"?c.data:c.ref;m.append(el);el.load()}
  else{if(c.kind==="snd")audioCtx();done()}
 }
 /* Étape 2 : à t0, tout le monde démarre en même temps (le rideau s'ouvre). */
 function startContent(){
  const c=L.cur,pr=L.prep;if(!c||!pr||!S||!S.cur||c.id!==S.cur.id||pr.id!==c.id)return;
  L.started=true;const m=$("#media");m.style.visibility="visible";const key=L.key;
- if(c.kind==="yt"){if(pr.yt&&pr.yt.playVideo){try{pr.yt.unMute();pr.yt.playVideo()}catch(e){}}else if(!pr.yt){const f=document.createElement("iframe");f.allow="autoplay; encrypted-media";f.src="https://www.youtube.com/embed/"+c.ref+"?autoplay=1&controls=0&rel=0&playsinline=1&modestbranding=1";m.innerHTML="";m.append(f)}}
+ if(pr.err)return;
+ if(c.kind==="emb"){/* l'iframe est déjà chargée et joue toute seule */}
+ else if(c.kind==="yt"){if(pr.yt&&pr.yt.playVideo){try{pr.yt.unMute();pr.yt.playVideo()}catch(e){}}else if(!pr.yt){const f=document.createElement("iframe");f.allow="autoplay; encrypted-media";f.src="https://www.youtube.com/embed/"+c.ref+"?autoplay=1&controls=0&rel=0&playsinline=1&modestbranding=1";m.innerHTML="";m.append(f)}}
  else if(c.kind==="vid"||c.kind==="vurl"){const el=pr.el;if(el)el.play().catch(()=>{el.muted=true;el.play().catch(()=>{})})}
  else if(c.kind==="txt"){const lines=String(c.ref).split("|"),gap=Math.max(2.5,Math.min(5,(S.dur-4)/Math.max(1,lines.length)));m.innerHTML='<div class="txtc">'+lines.map((l,i)=>`<p style="animation-delay:${(i*gap).toFixed(1)}s">${esc(l)}</p>`).join("")+"</div>"}
  else if(c.kind==="snd"){const sd=SND[c.ref]||SND.boing;m.innerHTML=`<div class="sndc"><div class="em">${sd.e}</div><div class="eq"><b></b><b></b><b></b><b></b><b></b></div><div>🔊 ${esc(sd.n)}</div></div>`;
@@ -538,7 +586,12 @@ function startContent(){
 }
 setInterval(()=>{
  if(!S)return;
- if(S.ph==="result"){const e=$("#rnext");if(e&&S.tr)e.textContent=(S.r>=S.cfg.rounds?"Résultats finaux":"Prochaine manche")+" dans "+Math.max(0,Math.ceil((S.tr-Net.now())/1000))+" s…";return}
+ if(S.ph==="result"){
+  const left=S.tr?Math.max(0,Math.ceil((S.tr-Net.now())/1000)):0,e=$("#rnext"),btn=document.querySelector('#resbtn [data-a="next"]');
+  if(btn)btn.disabled=left>0;
+  if(e)e.textContent=left>0?`Le visage reste affiché encore ${left} s…`:(isHost?"Prends ton temps, puis lance la suite →":"En attente de l’hôte…");
+  return
+ }
  if(S.ph!=="round")return;
  const ov=$("#ov"),st=$("#stage"),sk=$("#skipb");
  if(!S.t0){ // chargement : on attend que tout le monde soit prêt
@@ -568,9 +621,11 @@ function shrink(file){return new Promise(res=>{const img=new Image(),u=URL.creat
 function readFile(f){return new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result);x.readAsDataURL(f)})}
 function addUrl(){
  const u=$("#url").value.trim();if(!/^https?:\/\//i.test(u))return toast("Colle un lien complet (https://…)");
- const y=ytId(u);let kind="vurl";
- if(y)kind="yt";else if(/\.(png|jpe?g|gif|webp)(\?|$)/i.test(u))kind="iurl";
- send({k:"item",id:rid(),kind,ref:y||u,label:y?"YouTube "+y:u.replace(/^https?:\/\//,"").slice(0,40)});$("#url").value="";
+ const y=ytId(u),emb=y?"":embedUrl(u);let kind="vurl",ref=u,label=u.replace(/^https?:\/\//,"").slice(0,40);
+ if(y){kind="yt";ref=y;label="YouTube "+y}
+ else if(/\.(png|jpe?g|gif|webp)(\?|$)/i.test(u))kind="iurl";
+ else if(emb){kind="emb";ref=emb;label="Vidéo "+u.replace(/^https?:\/\//,"").split("/")[0]}
+ send({k:"item",id:rid(),kind,ref,label});$("#url").value="";
 }
 $("#fimg").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const d=await shrink(f);{if(!d)return toast("Photo illisible");const id=rid();L.mine[id]={kind:"img",label:f.name||"Photo",data:d};send({k:"item",id,kind:"img",label:f.name||"Photo",data:d})}});
 $("#fvid").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(f.size>8e6)return toast("Vidéo trop lourde (8 Mo max)");{const id=rid(),data=await readFile(f);L.mine[id]={kind:"vid",label:f.name||"Vidéo",data};send({k:"item",id,kind:"vid",label:f.name||"Vidéo",data})}});
@@ -580,7 +635,7 @@ let PR=null,pcPh=null,qPh=[];
 function applyStream(s){
  const old=L.stream;L.stream=s;L.mode=0;L.miss=0;const t=tile(ME);t.querySelector("video").srcObject=s;
  const vt=s.getVideoTracks()[0];
- for(const id in L.pcs){const sn=L.pcs[id].getSenders().find(x=>x.track&&x.track.kind==="video");if(sn&&vt)sn.replaceTrack(vt).catch(()=>{})}
+ for(const id in L.pcs){const pc=L.pcs[id],sn=pc.getSenders().find(x=>x.track&&x.track.kind==="video");if(sn&&vt)sn.replaceTrack(vt).catch(()=>{});else if(vt){try{pc.addTrack(vt,s)}catch(e){}}}
  if(old&&old!==s&&!L.phoneOn)old.getTracks().forEach(x=>x.stop());
 }
 function phStatus(t,ok){const e=$("#qrst");if(e){e.textContent=t;e.className="status "+(ok?"ok":"")}const b=$("#phoneBtn");if(b)b.textContent=L.phoneOn?"📱 Téléphone connecté ✔":"📱 Utiliser mon téléphone comme caméra"}
@@ -603,7 +658,7 @@ async function phonePair(){
     if(c==="failed")phStatus("⚠ Connexion impossible : mets le téléphone sur le même Wi‑Fi que l’ordinateur (coupe la 4G/5G).");
     else if(c==="disconnected")phStatus("Connexion perdue… reconnexion");
     else if(c==="connected")phStatus("✔ Téléphone connecté : ta caméra est maintenant celle du téléphone",true)};
-   await pc.setRemoteDescription(d.s);await pc.setLocalDescription(await pc.createAnswer());
+   await pc.setRemoteDescription(d.s);await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);
    PR.emit("csig",{f:ME,t:"answer",s:pc.localDescription});qPh.forEach(c=>pc.addIceCandidate(c).catch(()=>{}));qPh=[];
   }else if(d.t==="ice"){if(pcPh&&pcPh.remoteDescription)pcPh.addIceCandidate(d.c).catch(()=>{});else qPh.push(d.c)}
  });
@@ -614,7 +669,7 @@ async function phoneBack(){
 }
 /* côté téléphone */
 const PH={stream:null,pc:null,face:"user",q:[],t:0};
-const phCons=f=>({video:{facingMode:f,width:{ideal:640},height:{ideal:480},frameRate:{ideal:30,max:30}},audio:false});
+const phCons=f=>({video:{facingMode:f,width:{ideal:480},height:{ideal:360},frameRate:{ideal:24,max:24}},audio:false});
 function phoneInit(){
  ["home","lobby","round","result","end"].forEach(x=>$("#s-"+x).hidden=true);$("#s-phone").hidden=false;
 }
@@ -622,7 +677,7 @@ async function phoneStart(){
  const st=$("#pst");
  try{PH.stream=await navigator.mediaDevices.getUserMedia(phCons(PH.face))}
  catch(e){return st.textContent="Caméra refusée : autorise-la dans ton navigateur."}
- $("#pv").srcObject=PH.stream;try{await navigator.wakeLock.request("screen")}catch(e){}
+ $("#pv").srcObject=PH.stream;$("#pv").classList.toggle("mirror",PH.face==="user");try{await navigator.wakeLock.request("screen")}catch(e){}
  if(!PR){st.textContent="Connexion à l’ordinateur…";
   try{PR=await Net.join("pfc-"+CAM)}catch(e){return st.textContent="Code expiré : rescanne le QR code sur l’ordinateur."}
   PR.on("csig",async d=>{if(!d||d.f===ME||!PH.pc)return;
@@ -637,6 +692,7 @@ async function phoneConnect(){
  pc.onicecandidate=e=>{if(e.candidate)PR.emit("csig",{f:ME,t:"ice",c:e.candidate})};
  pc.onconnectionstatechange=()=>{if(pc.connectionState==="connected")$("#pst").textContent="✔ Connecté à l’ordinateur : laisse cette page ouverte.";$("#pst").className="status "+(pc.connectionState==="connected"?"ok":"")};
  await pc.setLocalDescription(await pc.createOffer());
+ await waitIce(pc);
  PR.emit("csig",{f:ME,t:"offer",s:pc.localDescription});
  $("#pst").textContent="Connexion en cours…";
  clearTimeout(PH.t);PH.t=setTimeout(()=>{if(pc.connectionState!=="connected")phoneConnect()},8000);
@@ -645,7 +701,7 @@ async function phoneSwap(face){
  const old=PH.stream;let n;
  try{n=await navigator.mediaDevices.getUserMedia(phCons(face))}catch(e){return false}
  PH.face=face;PH.stream=n;if(old)old.getTracks().forEach(t=>t.stop());
- $("#pv").srcObject=n;
+ $("#pv").srcObject=n;$("#pv").classList.toggle("mirror",face==="user");
  const sn=PH.pc&&PH.pc.getSenders().find(x=>x.track&&x.track.kind==="video"||!x.track);if(sn)sn.replaceTrack(n.getVideoTracks()[0]).catch(()=>{});
  return true;
 }
@@ -674,6 +730,7 @@ document.addEventListener("click",async e=>{
  else if(a==="addurl")addUrl();
  else if(a==="pimg")$("#fimg").click();else if(a==="pvid")$("#fvid").click();
  else if(a==="rm")send({k:"rm",id:b.dataset.id});
+ else if(a==="kick"){if(confirm("Retirer ce joueur de la partie ?"))send({k:"kick",id:b.dataset.id})}
  else if(a==="rounds")send({k:"cfg",cfg:{rounds:+b.dataset.v}});
  else if(a==="dur")send({k:"cfg",cfg:{dur:+b.dataset.v}});
  else if(a==="start")send({k:"start"});

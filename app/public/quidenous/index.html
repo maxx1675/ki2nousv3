@@ -109,10 +109,10 @@ html:not([data-anim="off"]) .stepfx>*:nth-child(2){animation-delay:.06s}
 html:not([data-anim="off"]) .stepfx>*:nth-child(3){animation-delay:.12s}
 html:not([data-anim="off"]) .stepfx>*:nth-child(4){animation-delay:.18s}
 html:not([data-anim="off"]) .rcard.fresh{animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
-html:not([data-anim="off"]) .txt{animation:pop .3s cubic-bezier(.3,1.5,.5,1)}
 html:not([data-anim="off"]) .prow b.bump{display:inline-block;animation:bump .7s}
-html:not([data-anim="off"]) #ptimer{display:inline-block;animation:pulse .8s ease-in-out infinite}
-html:not([data-anim="off"]) .btn:hover:not(:disabled):not(:active),html:not([data-anim="off"]) .bubble:hover:not(:active){transform:translateY(-2px) rotate(-.6deg)}
+/* Pas d'animation sur les zones réécrites à chaque vote : cela faisait « trembler » le texte. */
+html:not([data-anim="off"]) .txt,html:not([data-anim="off"]) #ptimer{animation:none}
+html:not([data-anim="off"]) .btn:hover:not(:disabled):not(:active),html:not([data-anim="off"]) .bubble:hover:not(:active){transform:none}
 html[data-anim="full"] .logo{animation:wiggle 3.2s ease-in-out infinite}
 html[data-anim="full"] .sq.win,html[data-anim="full"] .pk.win{animation:pop .4s cubic-bezier(.3,1.5,.5,1)}
 html[data-anim="off"] *,html[data-anim="off"] *::before,html[data-anim="off"] *::after{animation:none!important;transition:none!important}
@@ -959,7 +959,7 @@ async function enter(host,o){
   }
 }
 function leave(){
-  if(R) R.leave().catch(()=>{});
+  try{ if(R) R.leave(); }catch(e){}
   R=null; S=null; isHost=false; L.out=null; L.ok=false; L.photos=[]; PH={i:-1,n:0,parts:[],img:""};
   $("#warn").hidden=true; show("home");
 }

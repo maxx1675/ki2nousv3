@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<html lang="fr" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Codenames</title>
 <style>
 :root{--red:#c4301c;--blue:#1f8fb0;--yel:#ffd21f;--grn:#2cff8a;--ink:#2a1208;--card:#f6e6c8}
@@ -71,7 +71,7 @@ input,textarea,select{font:inherit;padding:10px;border-radius:10px;border:2px so
  <input id="pc" maxlength="6" placeholder="CODE (6 caractères)" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:800">
  <div><button class="btn" data-a="create">🎮 Créer une partie</button><button class="btn" data-a="join">🔑 Rejoindre une partie</button></div>
  <div><button class="btn dk" data-a="words">✏️ Personnaliser les mots</button><button class="btn dk" data-a="words">📚 Mes listes sauvegardées</button><button class="btn dk" data-a="rules">📜 Règles du jeu</button></div>
- <p id="hm" class="hint"></p><a href="/" style="color:#fff">← Hub</a>
+ <p id="hm" class="hint"></p><a href="/" style="color:inherit">← Hub</a>
 </section>
 
 <section id="s-lobby" hidden>
@@ -95,6 +95,7 @@ input,textarea,select{font:inherit;padding:10px;border-radius:10px;border:2px so
 <div id="clueov" hidden></div>
 <div id="toast" hidden></div>
 <script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
 <script>
 "use strict";
 const Q=s=>document.querySelector(s),eh=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -132,12 +133,25 @@ const hm=t=>Q("#hm").textContent=t;
 const view=v=>["home","lobby","game"].forEach(x=>Q("#s-"+x).hidden=x!==v);
 async function enter(create){
  const name=Q("#pn").value.trim().slice(0,14);if(!name)return hm("Choisis un pseudo 🙂");
- const c=create?mkRoom():Q("#pc").value.trim().toUpperCase();
+ let c=create?mkRoom():Q("#pc").value.trim().toUpperCase();
  if(!/^[A-Z0-9]{6}$/.test(c))return hm("Le code de partie a 6 caractères.");
- hm("Connexion…");try{R=await Net.join("cn-"+c)}catch(e){return hm("Connexion impossible : "+e.message)}
+ hm("Connexion…");
+ if(create){
+  // Création : il faut explicitement {create:true}, sinon le relais répond « noroom ».
+  // En cas de code déjà pris, on en tire un nouveau (jusqu'à 6 essais).
+  R=null;
+  for(let i=0;i<6;i++){
+   try{R=await Net.join("cn-"+c,{create:true})}catch(e){R=null}
+   if(R&&R.host)break;
+   if(R){try{R.leave()}catch(e){}R=null}
+   c=mkRoom();
+  }
+  if(!R||!R.host)return hm("Création impossible : réessaie dans un instant.");
+ }else{
+  try{R=await Net.join("cn-"+c)}catch(e){return hm("Connexion impossible : "+e.message)}
+  if(R.host){try{R.leave()}catch(e){}R=null;return hm("Code incorrect ou partie expirée.")}
+ }
  isHost=R.host;
- if(create&&!isHost){R.leave();return enter(true)}
- if(!create&&isHost){R.leave();R=null;return hm("Code incorrect ou partie expirée.")}
  code=c;localStorage.setItem("cn:name",name);
  R.on("st",d=>{S=d;route()});R.on("key",d=>{KEY=d;route()});
  if(isHost){R.on("act",hostAct);

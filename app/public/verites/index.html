@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-anim="light" data-theme="light">
+<html lang="fr" data-anim="light" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -939,7 +939,7 @@ setInterval(()=>{
 },250);
 
 /* ---------- Réglages : musique & animations ---------- */
-const SET={music:true,vol:35,anim:"light",theme:"light"};
+const SET={music:true,vol:35,anim:"light",theme:"dark"};
 function loadSet(){
   let reduced=false; try{ reduced=matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}
   SET.anim=reduced?"off":"light";

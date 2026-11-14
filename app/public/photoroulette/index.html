@@ -26,6 +26,8 @@
 .title{background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;padding:12px 14px;margin:10px 0;box-shadow:3px 3px 0 var(--amber);font-weight:800}
 .title small{display:block;color:var(--muted);font-weight:500}
 .thumbs{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}.thumbs .t{position:relative;display:block}.thumbs img,.thumbs video{width:64px;height:64px;object-fit:cover;border-radius:10px;border:2px solid var(--edge);display:block}.thumbs .t button{position:absolute;top:-9px;right:-9px;width:30px;height:30px;padding:0;border-radius:50%;border:2px solid var(--edge);background:var(--surface);color:var(--ink,#1b1340);font-weight:800;font-size:.9rem;line-height:1;cursor:pointer}
+.mod{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:80;padding:16px}.mod .card{max-width:520px;max-height:88vh;overflow:auto;margin:0}
+.qrbox{background:#fff;padding:10px;border-radius:12px;display:inline-block;margin:8px 0}.qrbox img{display:block;width:200px;height:200px}
 .pick.on{background:#2fcf7a!important;color:#06240f!important;border-color:var(--edge)!important}
 .pick:disabled:not(.on){opacity:.4}
 #vstat{min-height:1.5em}#vstat.ok{font-weight:800;color:#18a05a}
@@ -48,10 +50,11 @@
  <div class="card center"><h2>Code PIN</h2><div class="code" id="lcode"></div><div id="sw-share"></div></div>
  <div class="card"><h2>Joueurs <span id="pc" class="hint" style="display:inline"></span></h2><div id="pl" class="chips"></div><p id="ph" class="hint"></p></div>
  <div class="card"><h2 id="mtitle">📷 Ma pellicule</h2>
-  <p class="hint" style="margin:0 0 8px">1) Appuie sur le bouton et ouvre l’album de ton choix dans ta galerie (Récents, un voyage, une soirée…).<br>2) Coche beaucoup de photos, 30 à 60 c’est l’idéal : le site en tire 20 au hasard (5 en vidéo), tu ne choisis pas lesquelles.<br>3) Tu vois le tirage : une photo te gêne ? Appuie sur ✕, elle est remplacée par une autre au hasard.<br><small>iPhone : choisis « Photothèque ». Les sélecteurs de téléphone n’ont pas de « tout sélectionner » : coche les photos toi-même, ou ajoute-les par petits lots avec « Ajouter d’autres photos ».</small></p>
+  <p class="hint" style="margin:0 0 8px">1) Appuie sur le bouton et ouvre l’album de ton choix dans ta galerie (Récents, un voyage, une soirée…).<br>2) Coche beaucoup de photos, 50 à 150 c’est l’idéal : le site en tire jusqu’à 40 au hasard (10 en vidéo), tu ne choisis pas lesquelles.<br>3) Tu vois le tirage : une photo te gêne ? Appuie sur ✕, elle est remplacée par une autre au hasard.<br><small>iPhone : choisis « Photothèque ». Les sélecteurs de téléphone n’ont pas de « tout sélectionner » : coche les photos toi-même, ou ajoute-les par petits lots avec « Ajouter d’autres photos ». Pas de galerie sur l’ordinateur ? Utilise « Envoyer depuis mon téléphone ».</small></p>
   <input type="file" id="files" accept="image/*" multiple hidden>
   <input type="file" id="dir" webkitdirectory multiple hidden>
-  <button class="btn primary" data-a="pick">🎲 Choisir un album et tirer 20 photos</button>
+  <button class="btn primary" data-a="pick">🎲 Choisir un album et tirer 40 photos</button>
+  <button class="btn" data-a="phoneupload">📱 Envoyer depuis mon téléphone</button>
   <button class="btn" data-a="add" id="addb" hidden>➕ Ajouter d’autres photos</button>
   <button class="btn" data-a="dir" id="dirb" hidden>📁 Dossier entier</button>
   <button class="btn" data-a="redraw" id="redrawb" hidden>🔄 Retirer au sort</button>
@@ -71,14 +74,29 @@
 </section>
 
 <section id="s-game" hidden><div id="stage" class="fade"></div></section>
+
+<section id="s-phup" hidden>
+ <header class="hero"><div class="logo">📱</div><h1>Envoyer des photos</h1><p>Choisis des photos sur ce téléphone : elles rejoignent directement la partie ouverte sur l’ordinateur.</p></header>
+ <div class="card">
+  <input type="file" id="phufiles" accept="image/*" multiple hidden>
+  <button class="btn primary big" data-a="phupick">📷 Choisir des photos</button>
+  <p id="phust" class="hint center" role="status">Connexion à l’ordinateur…</p>
+  <div id="phuthumbs" class="thumbs"></div>
+ </div>
+ <button class="link" data-a="phuclose">Fermer</button>
+</section>
 </main>
 <script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
 <script src="/shared/profile.js"></script>
 <script src="/shared/gages.js"></script>
 <script src="/shared/party.js"></script>
 <script>
 const MIN=3,MAX=10;
 let R=null,S=null,isHost=false,code="",L={pool:[],name:"",media:[],mine:null,ans:null,key:"",showAgain:false};
+/* Envoi de photos depuis un téléphone : salon temporaire « prp-<code> » */
+let PUP=null;
+const PHUP=new URLSearchParams(location.search).get("ph");
 let H={pool:{},ans:{},used:[],order:[],stat:{}};
 L.planted=[];
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
@@ -129,7 +147,7 @@ function shrink(file){
   });
 }
 const isMedia=(f,vid)=>vid?f.type.startsWith("video/"):(f.type.startsWith("image/")||/\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name));
-const maxN=()=>S&&S.cfg.media==="video"?5:20;
+const maxN=()=>S&&S.cfg.media==="video"?10:40;
 function updateCount(){
   const el=$("#mycount");if(!el)return;
   el.textContent=L.busy?`Tirage au sort… ${L.media.length}/${maxN()}`:L.media.length?`✔ ${L.media.length} tirées au hasard · ✕ pour en écarter une`:"";
@@ -177,7 +195,7 @@ async function addFiles(list,planto,redraw,append){
   const vid=S&&S.cfg.media==="video";
   let all=[...list].filter(f=>isMedia(f,vid));
   if(!all.length){toast("Aucun fichier compatible");return}
-  if(all.length>200){all=all.slice(0,200);toast("200 photos maximum par sélection")}
+  if(all.length>400){all=all.slice(0,400);toast("400 photos maximum par sélection")}
   if(L.busy){toast("Patiente, tirage en cours…");return}
   if(append&&L.pool&&L.pool.length){
     const seen=new Set(L.pool.map(f=>`${f.name}|${f.size}|${f.lastModified}`));
@@ -202,6 +220,52 @@ async function swap(i){
   L.media.splice(i,1);send({k:"drop",i});
   if(!L.queue.length){renderThumbs();toast("Plus de photo de rechange : ajoute d’autres photos ➕");return}
   await fill();
+}
+
+/* ---------- photos depuis le téléphone (QR code) ---------- */
+async function phoneUploadPair(){
+ let m=$("#phmod");if(m){m.hidden=false;return}
+ const tok=(mkCode()+mkCode()).slice(0,6),url=location.origin+location.pathname+"?ph="+tok;
+ m=document.createElement("div");m.className="mod";m.id="phmod";
+ m.innerHTML=`<div class="card center"><h2>📱 Photos depuis le téléphone</h2><p class="hint" style="margin:0">Scanne ce QR code avec ton téléphone, puis choisis les photos à envoyer.</p><div class="qrbox" id="qr"></div><p class="hint" style="word-break:break-all">${esc(url)}</p><p id="phrst" class="status">En attente du téléphone…</p><button class="btn" data-a="phclose">Fermer</button></div>`;
+ document.body.append(m);
+ const im=await Share.qrImg(url,200),q=$("#qr");
+ if(q)q.innerHTML=im?`<img src="${im}" width="200" height="200" alt="QR code">`:"QR indisponible : ouvre le lien ci-dessus sur ton téléphone.";
+ try{PUP=await Net.join("prp-"+tok,{create:true})}catch(e){const st=$("#phrst");if(st)st.textContent="Connexion impossible : "+e.message;return}
+ PUP.on("ph",d=>{
+  if(!d||typeof d.data!=="string"||!d.data.startsWith("data:image/")||d.data.length>9e6)return;
+  if(L.media.length>=maxN()){const st=$("#phrst");if(st){st.textContent="Le tirage est déjà complet ("+maxN()+").";st.className="status"}return}
+  const mm={kind:"photo",data:d.data,key:rid()};
+  L.media.push(mm);appendThumb(mm,L.media.length-1);updateCount();send({k:"media",kind:"photo",data:d.data,key:mm.key});
+  const st=$("#phrst");if(st){st.textContent="✔ "+L.media.length+" photo(s) reçue(s) — tu peux en envoyer d’autres";st.className="status ok"}
+ });
+}
+let PHUR=null;
+function phoneUploadInit(){
+ ["home","lobby","game"].forEach(x=>{const e=$("#s-"+x);if(e)e.hidden=true});
+ const e=$("#s-phup");if(e)e.hidden=false;
+ phoneUploadConnect();
+}
+async function phoneUploadConnect(){
+ const st=$("#phust");if(!st)return;
+ try{PHUR=await Net.join("prp-"+PHUP);st.textContent="✔ Connecté : choisis tes photos.";st.className="hint center ok"}
+ catch(e){st.textContent="Code expiré : rescanne le QR code sur l’ordinateur.";st.className="hint center"}
+}
+async function phoneUploadFiles(files){
+ const list=[...files];if(!list.length)return;
+ if(!PHUR)await phoneUploadConnect();
+ if(!PHUR)return;
+ const st=$("#phust"),box=$("#phuthumbs");let ok=0;
+ for(const f of list){
+  if(!f.type.startsWith("image/")&&!/\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name))continue;
+  if(st)st.textContent=`Envoi… ${ok+1}/${list.length}`;
+  const m=await shrink(f);if(!m||m.kind!=="photo")continue;
+  try{await PHUR.emit("ph",{kind:"photo",data:m.data})}catch(e){}
+  ok++;
+  if(box){const t=document.createElement("span");t.className="t";t.innerHTML=`<img src="${m.data}" alt="">`;box.append(t)}
+  if(st)st.textContent=`✔ ${ok} photo(s) envoyée(s)`;
+ }
+ if(st){st.textContent=ok?`✔ ${ok} photo(s) envoyée(s). Tu peux en ajouter d’autres.`:"Aucune photo lisible n’a été envoyée.";st.className="hint center "+(ok?"ok":"")}
 }
 
 /* ---------- connexion ---------- */
@@ -271,7 +335,7 @@ function hostAct(d){
   if(!isHost||!S)return;const p=d.p;
   if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0});}
   else if(d.k==="reset"&&S.pl.some(x=>x.id===p)){H.pool[p]=(H.pool[p]||[]).filter(m=>m.by)}
-  else if(d.k==="media"&&S.pl.some(x=>x.id===p)){const a=H.pool[p]=H.pool[p]||[];if(a.filter(m=>!m.by).length<20&&(d.data||"").length<9e6){const k=String(d.key||"").slice(0,12);a.push({kind:d.kind,data:d.data,by:null,owner:p,key:k});fillStub(k,d.data)}}
+  else if(d.k==="media"&&S.pl.some(x=>x.id===p)){const a=H.pool[p]=H.pool[p]||[];if(a.filter(m=>!m.by).length<40&&(d.data||"").length<9e6){const k=String(d.key||"").slice(0,12);a.push({kind:d.kind,data:d.data,by:null,owner:p,key:k});fillStub(k,d.data)}}
   else if(d.k==="drop"&&S.pl.some(x=>x.id===p)){const own=(H.pool[p]||[]).filter(m=>!m.by),t=own[d.i|0];if(t)H.pool[p]=H.pool[p].filter(m=>m!==t)}
   else if(d.k==="plant"&&S.cfg.plant&&S.pl.some(x=>x.id===d.to)&&d.to!==p&&(d.data||"").length<9e6){{const k=String(d.key||"").slice(0,12);(H.pool[d.to]=H.pool[d.to]||[]).push({kind:d.kind,data:d.data,by:p,owner:d.to,key:k});fillStub(k,d.data)}}
   else if(d.k==="ans"&&S.ph==="round"&&S.opts.includes(d.c)&&!H.ans[p]&&p!==H.cur.owner){H.ans[p]={c:d.c,ms:Math.max(0,Math.min(d.ms|0,S.win*1000))}}
@@ -457,6 +521,10 @@ document.addEventListener("click",async e=>{
   else if(a==="redraw"){if(L.pool&&L.pool.length)addFiles(L.pool,null,true);else $("#files").click()}
   else if(a==="swap")swap(+b.dataset.i);
   else if(a==="plant"){const t=$("#plto").value;if(!t)return toast("Aucun joueur à cibler");L.plantTo=t;$("#plfile").click()}
+  else if(a==="phoneupload")phoneUploadPair();
+  else if(a==="phclose"){const m=$("#phmod");if(m)m.hidden=true;if(PUP){try{PUP.leave()}catch(e){}PUP=null}}
+  else if(a==="phupick")$("#phufiles").click();
+  else if(a==="phuclose"){if(PHUR){try{PHUR.leave()}catch(e){}PHUR=null}try{window.close()}catch(e){}location.href=location.origin}
   else if(a==="r-"||a==="r+")send({k:"cfg",cfg:{rounds:Math.max(5,Math.min(30,S.cfg.rounds+(a==="r+"?1:-1)))}});
   else if(a==="show")send({k:"cfg",cfg:{time:+b.dataset.v}});
   else if(a==="mode")send({k:"cfg",cfg:{media:b.dataset.v}});
@@ -478,8 +546,10 @@ $("#files").addEventListener("change",e=>{const append=L.appendMode;L.appendMode
 if(!matchMedia("(pointer:coarse)").matches)$("#dirb").hidden=false; // choix d'un dossier : ordinateur uniquement
 $("#dir").addEventListener("change",e=>{addFiles(e.target.files);e.target.value=""});
 $("#plfile").addEventListener("change",e=>{addFiles(e.target.files,L.plantTo);e.target.value=""});
+$("#phufiles").addEventListener("change",e=>{phoneUploadFiles(e.target.files);e.target.value=""});
 Profile.attach("#pname");
-{const BP=bootParams(),sv=Sess.load("pr"),pr=Profile.get();
+if(PHUP){phoneUploadInit()}
+else {const BP=bootParams(),sv=Sess.load("pr"),pr=Profile.get();
  if(BP.code)$("#pcode").value=BP.code;
  if(BP.go&&BP.code&&pr.name){const n0=Profile.tag(pr.name);msg("🎪 Lancement de la partie…");
   if(BP.host)enter(true,{name:n0,code:BP.code,retry:5});else enter(false,{name:n0,joinCode:BP.code,retry:20})}

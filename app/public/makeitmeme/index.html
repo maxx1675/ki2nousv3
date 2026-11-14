@@ -195,7 +195,9 @@
   </div>
 </div>
 
+<a class="homelink" href="/" aria-label="Retour au hub de jeux">🏠</a>
 <script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
 <script src="/shared/profile.js"></script>
 <script src="/shared/party.js"></script>
 <script src="/makeitmeme/room-state.js"></script>
@@ -217,7 +219,7 @@ const BOT_CAPTIONS = [
   ["Dire \"je dors tôt ce soir\"","3h du matin sur YouTube","Encore une vidéo","Demain je regrette"],
   ["Quand le Wi-Fi coupe en pleine game","999 de ping","La rage absolue","Pourquoi moi"]
 ];
-const ADMIN_CODE = "Lext.71";
+const ADMIN_CODE = "admin";
 const MAX_PLAYERS = 12;
 const VOTE_POINTS = { fresh: 100, meh: 0, trash: -50 };
 const LS = { approved: "mim:approved", deleted: "mim:deleted", suggestions: "mim:suggestions", avatar: "mim:avatar", audio: "mim:audio" };
@@ -1400,8 +1402,15 @@ function drawTextBoxesOnContext(ctx, width, height, boxes, activeIdx) {
         ctx.strokeStyle = "#000000"; ctx.lineJoin = "round";
         ctx.strokeText(line, cx, ly);
       }
+      // Sans contour, une ombre sombre garde le texte lisible sur les photos claires.
+      if (!box.stroke) {
+        ctx.shadowColor = "rgba(0,0,0,.85)";
+        ctx.shadowBlur = Math.max(2, fontSize * 0.12);
+        ctx.shadowOffsetY = Math.max(1, fontSize * 0.05);
+      }
       ctx.fillStyle = box.color || "#FFFFFF";
       ctx.fillText(line, cx, ly);
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     });
     ctx.restore();
     if (idx === activeIdx) {
@@ -1424,12 +1433,21 @@ function drawTextBoxesOnContext(ctx, width, height, boxes, activeIdx) {
 function redrawEditorCanvas() {
   const canvas = $id("meme-canvas");
   if (!canvas || !currentLoadedImg) return;
-  canvas.width = currentLoadedImg.naturalWidth || 600;
-  canvas.height = currentLoadedImg.naturalHeight || 600;
+  // Ne redimensionne le canvas que lorsque l'image change : réassigner width/height
+  // à chaque déplacement réallouait le buffer et faisait « geler » le glisser-déposer.
+  const k = Math.min(1, 1100 / Math.max(1, currentLoadedImg.naturalWidth || 1100));
+  const w = Math.max(1, Math.round((currentLoadedImg.naturalWidth || 600) * k));
+  const h = Math.max(1, Math.round((currentLoadedImg.naturalHeight || 600) * k));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(currentLoadedImg, 0, 0, canvas.width, canvas.height);
   drawTextBoxesOnContext(ctx, canvas.width, canvas.height, activeTextBoxes, selectedBoxIndex);
+}
+let editorRaf = 0;
+function scheduleEditorRedraw() {
+  if (editorRaf) return;
+  editorRaf = requestAnimationFrame(() => { editorRaf = 0; redrawEditorCanvas(); });
 }
 
 function setupCanvasDragInteractions() {
@@ -1483,7 +1501,7 @@ function setupCanvasDragInteractions() {
       b.size = Math.max(12, Math.min(64, Math.round(Math.abs(ny - b.y) * 160)));
       syncStyleSliders();
     }
-    redrawEditorCanvas();
+    scheduleEditorRedraw();
   };
   const onEnd = () => { draggingBoxIndex = -1; };
 
