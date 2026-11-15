@@ -122,6 +122,7 @@ html[data-anim="off"] .curt{transition:none}
 <section id="s-result" hidden>
  <div class="center"><div class="big-emoji">🎭</div><h1 class="neon" id="rtitle"></h1><p id="rsub"></p></div>
  <div class="card"><div id="rank-x"></div></div>
+ <div id="flagrant"></div>
  <div id="mysnap"></div><div id="sharedsnap"></div>
  <p id="rnext" class="hint center"></p>
  <div id="resbtn"></div>
@@ -146,7 +147,7 @@ const MIN=2,MAX=8,AI_VER="0.10.14";
 let R=null,S=null,isHost=false,code="";
 let H={data:{},used:[],ended:false,rdy:new Set()};
 const L={stream:null,lm:null,aiState:"load",face:false,sens:+(localStorage.getItem("soiree:pf_sens")||50),base:null,cal:[],streak:0,out:false,pcs:{},q:{},tiles:{},cur:null,key:"",started:false,name:"",mode:0,miss:0,prep:null,mine:{},snaps:[],shared:[],ice:null,jh:[],gv:0,snapOn:localStorage.getItem("soiree:pf_snap")==="1"};
-const RES_MS=12000; // durée minimale d'affichage du résultat avant que l'hôte puisse enchaîner
+const RES_MS=10000; // durée d'affichage du flagrant délit avant que l'hôte puisse enchaîner
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
 const view=id=>["home","lobby","round","result","end"].forEach(x=>$("#s-"+x).hidden=x!==id);
 const msg=t=>$("#hmsg").textContent=t;
@@ -263,7 +264,29 @@ function analyse(){
 function crack(){if(L.out||!S||S.ph!=="round"||!S.t0||Net.now()<S.t0)return;L.out=true;if(L.snapOn)grabFace();$("#lost").hidden=false;if(navigator.vibrate)navigator.vibrate(200);send({k:"out"})}
 /* Photo du craquage : prise seulement si le joueur l'a activée, gardée sur SON appareil */
 function grabFace(){try{const v=L.tiles[ME]&&L.tiles[ME].querySelector("video");if(!v||!v.videoWidth)return;const k=Math.min(1,360/v.videoWidth),c=document.createElement("canvas");c.width=Math.round(v.videoWidth*k);c.height=Math.round(v.videoHeight*k);c.getContext("2d").drawImage(v,0,0,c.width,c.height);L.snaps.push({r:S.r,t:(S.cur&&S.cur.label)||"",data:c.toDataURL("image/jpeg",.65),shared:false})}catch(e){}}
-function addShared(d){if(!d||typeof d.data!=="string"||!d.data.startsWith("data:image/")||d.data.length>150000)return;L.shared.push({n:String(d.n||"?").slice(0,24),r:d.r|0,data:d.data});if(L.shared.length>30)L.shared.shift();snaps()}
+function addShared(d){if(!d||typeof d.data!=="string"||!d.data.startsWith("data:image/")||d.data.length>150000)return;
+ const r=d.r|0,n=String(d.n||"?").slice(0,24);
+ if(L.shared.some(x=>x.r===r&&x.data===d.data))return;
+ L.shared.push({n,r,data:d.data,by:d.id||""});if(L.shared.length>60)L.shared.shift();snaps()}
+/* Seuls les joueurs qui ont craqué partagent automatiquement leur photo de fin de manche. */
+function autoShareSnaps(){
+ if(!S||S.ph!=="result"||!L.snapOn||!L.stream)return;
+ if(!(S.res&&S.res.loss&&S.res.loss.includes(ME)))return;
+ L.snaps.filter(x=>x.r===S.r&&!x.shared).forEach(x=>{
+  x.shared=true;
+  if(R)R.emit("snap",{id:ME,n:L.name,r:x.r,data:x.data,auto:1}).catch(()=>{});
+  addShared({id:ME,n:L.name,r:x.r,data:x.data});
+ });
+}
+function flagrant(){
+ const el=$("#flagrant");if(!el||!S||S.ph!=="result"||!S.res)return;
+ const loss=S.res.loss||[];
+ if(!loss.length){if(el.innerHTML){el.innerHTML="";el._k=""}return}
+ const photos=L.shared.filter(x=>x.r===S.r&&(x.by?loss.includes(x.by):loss.some(id=>nm(id)===x.n))).slice().reverse();
+ const k=S.r+":"+photos.length+":"+photos.map(x=>x.data.length).join(",");
+ if(el._k===k)return;el._k=k;
+ el.innerHTML=`<div class="card"><h2>📸 Flagrant délit</h2><p class="hint" style="margin:0 0 8px">Les joueurs qui ont craqué : ${esc(loss.map(nm).join(", "))}. Leurs photos s'affichent automatiquement et rejoignent la galerie partagée.</p>${photos.length?`<div class="snapg">${photos.map(x=>`<figure><img src="${x.data}" alt=""><figcaption>${esc(x.n)}</figcaption></figure>`).join("")}</div>`:'<p class="hint center">Partage de la photo…</p>'}<p id="flagleft" class="hint center"></p></div>`;
+}
 function snaps(){
  const mine=S&&S.ph==="end"?L.snaps:L.snaps.filter(x=>S&&x.r===S.r),sfx=S&&S.ph==="end"?"-e":"";
  const m=$("#mysnap"+sfx),sh=$("#sharedsnap"+sfx);
@@ -478,7 +501,7 @@ function endRound(){
  const on=new Set([...R.peers(),ME]);
  const win=S.pl.filter(p=>!p.out&&on.has(p.id)).map(p=>p.id);
  S.pl.forEach(p=>{if(win.includes(p.id)){p.sc++;p.w++}});
- S.res={win};S.ph="result";S.tr=Net.now()+RES_MS;bc();route();
+ S.res={win,loss:S.pl.filter(p=>p.out).map(p=>p.id)};S.ph="result";S.tr=Net.now()+RES_MS;bc();route();
 }
 
 /* ---------- rendu ---------- */
@@ -523,9 +546,8 @@ function result(){
  rank("#rank-x",p=>w.includes(p.id)?" ✅":" 💀");
  $("#resbtn").innerHTML=isHost?`<button class="btn primary big" data-a="next" ${S.tr&&Net.now()<S.tr?"disabled":""}>${S.r>=S.cfg.rounds?"Résultats finaux 🏆":"Manche suivante →"}</button>`:'<p class="hint center">L’hôte décide du moment de continuer…</p>';
  $("#media").innerHTML="";
- // Même les joueurs qui ont gardé leur poker face ont une photo de fin de manche.
- if(L.snapOn&&L.stream&&!L.snaps.some(x=>x.r===S.r))grabFace();
- snaps();
+ // Seuls les perdants ont une photo : les gagnants n'en prennent plus.
+ autoShareSnaps();flagrant();snaps();
 }
 function end(){
  view("end");const r=[...S.pl].sort((a,b)=>b.sc-a.sc||b.w-a.w);
@@ -589,7 +611,8 @@ setInterval(()=>{
  if(S.ph==="result"){
   const left=S.tr?Math.max(0,Math.ceil((S.tr-Net.now())/1000)):0,e=$("#rnext"),btn=document.querySelector('#resbtn [data-a="next"]');
   if(btn)btn.disabled=left>0;
-  if(e)e.textContent=left>0?`Le visage reste affiché encore ${left} s…`:(isHost?"Prends ton temps, puis lance la suite →":"En attente de l’hôte…");
+  if(e)e.textContent=left>0?`📸 Flagrant délit affiché encore ${left} s…`:(isHost?"Prends ton temps, puis lance la suite →":"En attente de l’hôte…");
+  const fl=$("#flagleft");if(fl)fl.textContent=left>0?`La photo reste visible ${left} s…`:"Les photos restent dans la galerie partagée 🤣";
   return
  }
  if(S.ph!=="round")return;
@@ -725,7 +748,7 @@ document.addEventListener("click",async e=>{
  else if(a==="pack")send({k:"pack"});
  else if(a==="bank")send({k:"cfg",cfg:{bank:!(S&&S.cfg.bank)}});
  else if(a==="snapdl"){const x=L.snaps[+b.dataset.i];if(x){const l=document.createElement("a");l.href=x.data;l.download="craquage-manche"+x.r+".jpg";document.body.append(l);l.click();l.remove()}}
- else if(a==="snapshare"){const x=L.snaps[+b.dataset.i];if(x&&!x.shared&&R){x.shared=true;R.emit("snap",{n:L.name,r:x.r,data:x.data}).catch(()=>{});addShared({n:L.name+" (moi)",r:x.r,data:x.data});toast("Photo partagée 🤣")}}
+ else if(a==="snapshare"){const x=L.snaps[+b.dataset.i];if(x&&!x.shared&&R){x.shared=true;R.emit("snap",{id:ME,n:L.name,r:x.r,data:x.data}).catch(()=>{});addShared({id:ME,n:L.name,r:x.r,data:x.data});toast("Photo partagée 🤣")}}
  else if(a==="snapdel"){L.snaps.splice(+b.dataset.i,1);snaps()}
  else if(a==="addurl")addUrl();
  else if(a==="pimg")$("#fimg").click();else if(a==="pvid")$("#fvid").click();

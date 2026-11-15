@@ -1,8 +1,8 @@
 # Le Hub de Soirée
 
 Hub de jeux de soirée jouables chacun sur son téléphone : **Undercover**, **Poker Face**, **Photo Roulette**,
-**Qui de nous ?**, **Les Petites Vérités (18+)**, plus un **Salon de la soirée** (un seul code pour enchaîner les jeux,
-classement cumulé).
+**Blind Test**, **Make It Meme**, **Codenames**, **Qui de nous ?**, **Les Petites Vérités (18+)**, plus un
+**Salon de la soirée** (un seul code pour enchaîner les jeux, classement cumulé).
 
 ## Comment ça marche
 

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light" data-anim="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blind Test</title>
+<meta name="theme-color" content="#7a3cff">
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
+<style>
+.wrap{max-width:680px}
+.bt-topright{display:flex;align-items:center;gap:8px}
+#sndbtn{font-size:.78rem;padding:4px 10px;white-space:nowrap}
+#theme{font-weight:800}
+.bt-rules{font-size:.9rem}
+.bt-rules b{color:var(--bt-glow)}
+.bt-score-row{display:grid;gap:6px;margin-top:10px}
+.bt-score-row .prow{margin:0;padding:7px 10px;border-width:2px;font-size:.9rem}
+.bt-score-row .prow small{margin-left:auto;color:var(--muted);font-weight:600}
+.bt-end-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.bt-end-stats .title{margin:0}
+.bt-players{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px}
+.bt-players .chip{font-size:.8rem;padding:3px 9px}
+.bt-players .chip.ok{border-color:#18a05a;color:#18a05a}
+.bt-source-info{font-size:.82rem;color:var(--muted);margin:6px 0 0}
+@media(max-width:520px){.top{flex-wrap:wrap;gap:6px}.bt-topright{width:100%;justify-content:flex-end}}
+</style>
+<link rel="stylesheet" href="/themes/blindtest.css">
+</head><body>
+<main class="wrap">
+<div class="top"><a href="/">← Hub</a><span id="who" class="hint"></span><div class="bt-topright"><button class="pill" id="sndbtn" data-a="sound" aria-label="Activer le son des extraits">🔇 Activer le son</button></div></div>
+
+<section id="s-home">
+ <header class="hero"><div class="logo">🎧</div><h1>Blind Test</h1>
+  <p>Écoute l'extrait, trouve le titre et l'artiste avant les autres. De 2 à 12 joueurs, chacun sur son téléphone — l'hôte peut choisir un thème ou coller sa propre playlist YouTube.</p></header>
+ <div class="card"><h2>Ton prénom</h2><input type="text" id="pname" maxlength="14" placeholder="Prénom" autocomplete="off">
+  <button class="btn primary big" data-a="create">Créer une partie 🚀</button></div>
+ <div class="card"><h2>Rejoindre avec un code PIN</h2><div class="row"><input type="text" id="pcode" maxlength="4" placeholder="PIN" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn primary" data-a="join">Rejoindre</button></div></div>
+ <div class="card bt-rules"><h2>Comment ça marche ?</h2>
+  <p style="margin:0 0 8px">🎵 Chaque manche diffuse le même extrait sur tous les écrans. Tu tapes le <b>titre</b> et/ou l'<b>artiste</b> : plus tu réponds vite, plus tu marques de points.</p>
+  <p style="margin:0">🔒 <b>Réponses privées</b> : personne ne voit les propositions, la manche s'arrête quand tout le monde a trouvé quelque chose (ou après le temps). 👀 <b>Réponses visibles</b> : le premier qui trouve le titre termine la manche. Une mauvaise réponse ne bloque pas : tu peux réessayer.</p></div>
+ <p id="hmsg" class="hint center" role="status"></p>
+</section>
+
+<section id="s-lobby" hidden>
+ <div class="card center"><h2>Code PIN</h2><div class="code" id="lcode"></div><div id="sw-share"></div></div>
+ <div class="card"><h2>Joueurs <span id="pc" class="hint" style="display:inline"></span></h2><div id="pl" class="chips"></div><p id="ph" class="hint"></p></div>
+ <div class="card"><h2>⚙️ Réglages de la partie</h2><div id="cfgsum" class="bt-cfg-summary"></div></div>
+ <div id="hostcfg" hidden class="card"><h2>La partie</h2>
+  <div class="srow"><span><b>Source</b><small>Banque intégrée ou ta playlist YouTube</small></span><div class="pills" id="srcp"></div></div>
+  <div class="srow" id="themerow"><span><b>Thème</b><small>Une sélection de tubes vérifiés</small></span><select id="theme" style="max-width:210px"></select></div>
+  <div class="srow"><span><b>Manches</b><small>Nombre de chansons</small></span><div class="stepper"><button data-a="r-">−</button><output id="rn">10</output><button data-a="r+">+</button></div></div>
+  <div class="srow"><span><b>Durée de l'extrait</b><small>La musique s'arrête après</small></span><div class="pills" id="extractp"></div></div>
+  <div class="srow"><span><b>Mode</b><small>Réponses cachées ou visibles</small></span><div class="pills" id="modep"></div></div>
+  <div class="srow"><span><b>Temps de réponse</b><small>Après l'extrait, on peut encore chercher</small></span><div class="pills" id="answerp"></div></div>
+  <div id="ytrow" hidden style="margin-top:10px">
+   <p class="hint" style="margin-top:0">Colle une playlist YouTube ou plusieurs liens vidéo (un par ligne). Une playlist est lue via le lecteur YouTube, sans clé d'API.</p>
+   <textarea id="linktext" maxlength="6000" placeholder="https://www.youtube.com/playlist?list=...&#10;ou&#10;https://youtu.be/...&#10;https://www.youtube.com/watch?v=..."></textarea>
+   <button class="btn" data-a="testyt">🔊 Tester le lecteur</button>
+   <p class="bt-source-info" id="linksrc"></p>
+  </div>
+  <div class="srow" style="border-top:0;padding-top:0"><span><b>Prêt ?</b><small id="loadh"></small></span><button class="btn primary" data-a="start" id="startb">Lancer 🚀</button></div>
+ </div>
+ <p id="waith" class="hint center" hidden>En attente de l'hôte…</p>
+ <button class="link" data-a="leave">Quitter</button>
+</section>
+
+<section id="s-game" hidden><div id="stage" class="fade"></div></section>
+</main>
+<div id="ytbox"><div id="ytframe"></div></div>
+<script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/gages.js"></script>
+<script src="/shared/party.js"></script>
+<script src="/blindtest/bank.js"></script>
+<script>
+"use strict";
+const MIN=2,MAX=12;
+let R=null,S=null,isHost=false,code="";
+let H={song:null,res:{},pts:{},order:[],idx:-1,stat:{fast:null,titles:{}},fails:0};
+const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,needT:0,starting:false,lastSend:0};
+let YT_READY=false,YT_PLAYER=null,YT_QUEUE=[],YT_LOADING=false;
+
+const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
+const rid=()=>Math.random().toString(36).slice(2,10);
+const msg=t=>$("#hmsg").textContent=t;
+const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!=id);
+const bc=()=>{if(isHost&&R){R.emit("st",S).catch(()=>{});R.snap({S,H:snapH()})}};
+const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
+const snapH=()=>({song:H.song,res:H.res,pts:H.pts,order:H.order,idx:H.idx,stat:H.stat});
+try{$("#pname").value=localStorage.getItem("soiree:name")||""}catch(e){}
+
+/* ---------- lecteur YouTube ---------- */
+function ensurePlayer(cb){
+  if(YT_PLAYER&&YT_READY){if(cb)cb(YT_PLAYER);return}
+  if(cb)YT_QUEUE.push(cb);
+  if(YT_LOADING)return;
+  YT_LOADING=true;
+  function boot(){
+    if(!YT_LOADING)return;
+    if(!window.YT||!YT.Player){setTimeout(boot,300);return}
+    const el=document.getElementById("ytframe");if(!el){YT_LOADING=false;return}
+    YT_PLAYER=new YT.Player(el,{width:"2",height:"2",playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0,modestbranding:1,origin:location.origin},events:{
+      onReady:()=>{YT_READY=true;YT_LOADING=false;YT_QUEUE.splice(0).forEach(f=>{try{f(YT_PLAYER)}catch(e){}})},
+      onError:()=>{toast("⚠️ YouTube n'arrive pas à lire cet extrait")}
+    }});
+  }
+  if(window.YT&&window.YT.Player){boot();return}
+  const s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";
+  s.onload=()=>{try{boot()}catch(e){YT_LOADING=false}};
+  s.onerror=()=>{YT_LOADING=false;toast("Impossible de charger le lecteur YouTube")};
+  document.head.append(s);
+  window.onYouTubeIframeAPIReady=()=>{try{boot()}catch(e){YT_LOADING=false}};
+}
+function unlockAudio(){
+  ensurePlayer(()=>{
+    try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo();setTimeout(()=>{try{YT_PLAYER.pauseVideo()}catch(e){}},350)}catch(e){}
+    L.sound=true;syncSnd();toast("🔊 Son activé");
+  });
+}
+function syncSnd(){const b=$("#sndbtn");if(b)b.textContent=L.sound?"🔊 Son OK":"🔇 Activer le son"}
+function playExtract(p){
+  if(!p||!p.id)return;
+  L.playingR=p.r;
+  ensurePlayer(()=>{
+    try{YT_PLAYER.cueVideoById({videoId:p.id,startSeconds:p.offset||0})}catch(e){}
+    const delay=Math.max(0,(p.start||0)-Net.now());
+    setTimeout(()=>{
+      if(!S||S.ph!=="round"||S.r!==p.r){L.playingR=-1;return}
+      try{YT_PLAYER.seekTo(p.offset||0,true);YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo()}catch(e){}
+      L.sound=true;syncSnd();updVinyl(true);
+      const dur=Math.max(1,p.extract||15);
+      setTimeout(()=>{if(L.cur&&L.cur.r===p.r)stopYT()},dur*1000+1000);
+    },delay);
+  });
+}
+function stopYT(){try{if(YT_PLAYER&&YT_PLAYER.pauseVideo)YT_PLAYER.pauseVideo()}catch(e){}updVinyl(false)}
+function updVinyl(on){
+  const v=$("#vinyl");if(v){v.classList.toggle("spin",!!on);v.classList.toggle("pulse",!!on&&!L.sound)}
+  const eq=$("#eq");if(eq)eq.classList.toggle("on",!!on);
+}
+function parseYT(text){
+  const t=String(text||""),ids=[];
+  const re=/(?:youtu\.be\/|youtube\.com\/(?:watch\?[^#\s]*?v=|embed\/|shorts\/|live\/)|[?&]v=)([\w-]{11})/g;
+  let m;while((m=re.exec(t)))if(ids.indexOf(m[1])<0)ids.push(m[1]);
+  const lm=t.match(/[?&]list=([\w-]+)/);
+  return{ids:ids.slice(0,60),listId:lm?lm[1]:""};
+}
+function cueMeta(id,cb){
+  ensurePlayer(()=>{
+    try{YT_PLAYER.cueVideoById({videoId:id,startSeconds:0})}catch(e){cb(null);return}
+    let n=0;
+    const chk=()=>{
+      let d=null;try{d=YT_PLAYER.getVideoData?YT_PLAYER.getVideoData():null}catch(e){}
+      if(d&&d.title){cb({title:BT.cleanTitle(d.title)||d.title,artist:BT.cleanArtist(d.author)||d.author||""});return}
+      if(n++<24)setTimeout(chk,250);else cb(null);
+    };
+    setTimeout(chk,500);
+  });
+}
+function loadPlaylist(listId){
+  ensurePlayer(()=>{
+    try{YT_PLAYER.cuePlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}
+    let n=0;
+    const chk=()=>{
+      let ids=null;try{ids=YT_PLAYER.getPlaylist?YT_PLAYER.getPlaylist():null}catch(e){}
+      if(ids&&ids.length){beginGame(ids.slice(0,60).map(id=>({id,title:"",artist:""})));return}
+      if(n++<30)setTimeout(chk,400);
+      else{L.starting=false;S.loading=false;toast("Playlist illisible : colle plutôt des liens vidéo un par ligne");bc();route()}
+    };
+    setTimeout(chk,900);
+  });
+}
+
+/* ---------- connexion ---------- */
+function initS(){return{ph:"lobby",host:ME,pl:[],cfg:{source:"theme",theme:"80s",rounds:10,extract:15,mode:"private",answer:60,linkText:""},loading:false}}
+async function enter(create,o){
+  o=o||{};
+  let name=o.name;
+  if(!name){const ps=$("#pname").value.trim().slice(0,14);if(!ps)return msg("Entre ton prénom 🙂");Profile.set({name:ps});name=Profile.tag(ps)}
+  const jc=o.joinCode||$("#pcode").value.trim().toUpperCase();
+  if(!create&&!/^[A-Z0-9]{4}$/.test(jc))return msg("Le code PIN a 4 caractères.");
+  L.name=name;
+  const x=await Net.enter({game:"bt",room:c=>"bt-"+c,create,code:o.code,joinCode:jc,resume:o.resume,wasHost:o.wasHost,retry:o.retry,onMsg:msg});
+  if(!x)return;
+  R=x.R;code=x.code;isHost=R.host;
+  Sess.save("bt",{code,name,host:isHost});setInterval(()=>Sess.touch("bt"),20000);
+  Party.listen(R,code,()=>Sess.clear("bt"));
+  R.on("st",d=>{if(isHost||!d)return;S=d;route()});
+  R.on("play",p=>{if(isHost||!p)return;L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playExtract(p);updGame()}else route()});
+  R.on("fb",d=>{if(d&&d.r===S.r&&d.res){L.fb={r:d.r,res:d.res,at:Date.now()};d.res.forEach(x=>{if(x.ok)L.ok[x.f]=true});updGame()}});
+  R.on("act",d=>{if(isHost)hostAct(d)});
+  R.on("rs",()=>{if(isHost)needResend()});
+  R.onPromote(onPromoted);
+  R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l'hôte");route()});
+  if(isHost){
+    const sn=R.initSnap;
+    if(sn&&sn.S){S=sn.S;S.host=ME;restoreH(sn.H);needResend()}
+    else S=initS();
+    hostLoops();hostAct({k:"join",p:ME,n:name});
+  }
+  startHello();
+  view(S&&S.ph!=="lobby"?"game":"lobby");$("#lcode").textContent=code;
+  Share.mount("#sw-share",{code,title:"Blind Test",text:"Rejoins-moi sur le Blind Test ! Code PIN : "+code});
+  route();
+}
+function hostLoops(){if(!L.tk){L.tk=setInterval(tick,300);L.bk=setInterval(bc,2500)}}
+function startHello(){
+  if(L.hello)return;
+  const hello=()=>{if(!R||isHost)return;if(!S||!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:L.name},"host")};
+  hello();L.hello=setInterval(hello,2000);
+}
+function restoreH(h){
+  h=h||{};
+  H={song:h.song||null,res:h.res||{},pts:h.pts||{},order:h.order||[],idx:h.idx!=null?h.idx:-1,stat:h.stat||{fast:null,titles:{}},fails:0};
+}
+function needResend(){
+  if(!R)return;
+  if(S&&S.ph==="round"&&S.song&&S.song.id&&H.song){
+    const el=Math.max(0,(Net.now()-(S.t0||Net.now()))/1000);
+    const p={r:S.r,id:S.song.id,start:Net.now()+900,offset:Math.min(el,S.cfg.extract),extract:S.cfg.extract};
+    R.emit("play",p);
+  }
+}
+function onPromoted(snap){
+  isHost=true;
+  if(snap&&snap.S)S=snap.S;
+  if(!S)S=initS();
+  S.host=ME;
+  if(snap&&snap.H)restoreH(snap.H);
+  if(!S.pl.some(p=>p.id===ME))S.pl.push({id:ME,n:L.name,sc:0});
+  hostLoops();
+  if(S.ph==="round"&&H.song){
+    S.t0=Net.now()+1500;S.ansUntil=S.t0+S.cfg.answer*1000;
+    const p={r:S.r,id:H.song.id,start:S.t0,offset:0,extract:S.cfg.extract};
+    L.cur=p;L.playingR=S.r;R.emit("play",p);playExtract(p);
+  }
+  Sess.save("bt",{code,name:L.name,host:true});
+  toast("👑 Tu es maintenant l'hôte");needResend();bc();route();
+}
+
+/* ---------- logique hôte ---------- */
+function hostAct(d){
+  if(!isHost||!S)return;
+  const p=d.p;
+  if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0})}
+  else if(d.k==="cfg"&&p===ME&&S.ph==="lobby")applyCfg(d.cfg||{});
+  else if(d.k==="start"&&p===ME&&S.ph==="lobby")hostStart();
+  else if(d.k==="ans")answer(p,d);
+  else if(d.k==="skip"&&p===ME&&S.ph==="round")endRound("skip");
+  else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;H={song:null,res:{},pts:{},order:[],idx:-1,stat:{fast:null,titles:{}},fails:0}}
+  else if(d.k==="need"&&S.ph==="round"&&S.song&&S.song.id){const now=Net.now(),el=Math.max(0,(now-(S.t0||now))/1000);R.emit("play",{r:S.r,id:S.song.id,start:now+700,offset:Math.min(el,S.cfg.extract),extract:S.cfg.extract},p);return}
+  S.on=[...R.peers(),ME];bc();route();
+}
+function applyCfg(cfg){
+  const c={...S.cfg,...cfg};
+  c.rounds=Math.max(5,Math.min(30,c.rounds|0));
+  c.extract=[10,15,20,30].indexOf(c.extract)>=0?c.extract:15;
+  c.answer=Math.max(20,Math.min(120,c.answer|0));
+  c.mode=c.mode==="live"?"live":"private";
+  c.source=c.source==="youtube"?"youtube":"theme";
+  c.linkText=String(c.linkText==null?S.cfg.linkText||"":c.linkText).slice(0,6000);
+  S.cfg=c;bc();route();
+}
+function hostStart(){
+  if(!isHost||!S||S.ph!=="lobby"||L.starting)return;
+  if(S.pl.length<MIN)return toast("Il faut au moins "+MIN+" joueurs");
+  if(S.cfg.source==="youtube"){
+    const links=$("#linktext");if(links&&links.value!==S.cfg.linkText){S.cfg.linkText=links.value.slice(0,6000)}
+    const p=parseYT(S.cfg.linkText);
+    if(p.ids.length){beginGame(p.ids.map(id=>({id,title:"",artist:""})));return}
+    if(p.listId){L.starting=true;S.loading=true;bc();route();loadPlaylist(p.listId);return}
+    return toast("Colle une playlist ou au moins un lien YouTube");
+  }
+  const list=BT.pick(S.cfg.theme,Math.max(S.cfg.rounds,12));
+  beginGame(list);
+}
+function beginGame(list){
+  if(!list||!list.length){L.starting=false;if(S)S.loading=false;toast("Pas assez de musiques pour lancer");bc();route();return}
+  L.starting=false;S.loading=false;
+  H={song:null,res:{},pts:{},order:shuffle(list).slice(0,Math.min(S.cfg.rounds,list.length)),idx:-1,stat:{fast:null,titles:{}},fails:0};
+  S.total=H.order.length;S.r=-1;S.sid=null;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;
+  S.pl.forEach(p=>p.sc=0);
+  if(!S.total){toast("Aucune musique disponible");S.ph="lobby";bc();route();return}
+  nextRound();
+}
+function nextRound(){
+  if(!isHost||!S||L.starting)return;
+  if(H.idx+1>=S.total){finish();return}
+  H.idx++;S.r=H.idx;S.ph="round";S.feed=[];S.done=[];S.rev=null;S.nextAt=0;S.last=S.r+1>=S.total;
+  H.res={};H.pts={};
+  const song=H.order[H.idx];H.song={...song};S.song={id:song.id};
+  L.ok={};L.fb=null;
+  if(S.cfg.source==="youtube"&&!H.song.title){
+    L.starting=true;S.loading=true;bc();route();
+    cueMeta(song.id,meta=>{
+      if(!meta||!meta.title){
+        H.fails=(H.fails||0)+1;L.starting=false;S.loading=false;
+        toast("Impossible d'identifier ce lien, on passe au suivant");
+        if(H.fails>3){S.ph="lobby";S.loading=false;bc();route();return}
+        nextRound();return;
+      }
+      H.fails=0;H.song.title=meta.title;H.song.artist=meta.artist||"";
+      L.starting=false;S.loading=false;launchRound();
+    });
+  } else launchRound();
+}
+function launchRound(){
+  const start=Net.now()+2800;
+  S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=S.cfg.extract;
+  const p={r:S.r,id:H.song.id,start,offset:0,extract:S.cfg.extract};
+  L.cur=p;L.playingR=S.r;
+  R.emit("play",p);playExtract(p);bc();route();
+}
+function answer(p,d){
+  if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song)return;
+  if(!S.t0||Net.now()<S.t0-300)return;
+  H.res[p]=H.res[p]||{};
+  const results=[];
+  let titleOk=false;
+  const now=Net.now();
+  const ms=Math.max(0,Math.min(S.cfg.answer*1000,now-S.t0));
+  const tryField=(f,raw)=>{
+    const expected=H.song[f];const txt=String(raw||"").trim().slice(0,90);
+    if(!expected||!txt||H.res[p][f])return;
+    if(BT.match(txt,expected)){
+      const base=f==="title"?700:400,bonus=f==="title"?300:200;
+      const pts=Math.round(base+bonus*(1-ms/(S.cfg.answer*1000)));
+      H.res[p][f]=true;H.pts[p]=(H.pts[p]||0)+pts;
+      const pl=S.pl.find(x=>x.id===p);if(pl)pl.sc+=pts;
+      if(S.done.indexOf(p)<0)S.done.push(p);
+      if(f==="title"){titleOk=true;H.stat.titles[p]=(H.stat.titles[p]||0)+1}
+      if(!H.stat.fast||ms<H.stat.fast.ms)H.stat.fast={id:p,ms,f};
+      results.push({f,ok:true,pts});
+    }else results.push({f,ok:false,pts:0});
+  };
+  tryField("title",d.t);tryField("artist",d.a);
+  if(!results.length)return;
+  feedback(p,results,{t:d.t,a:d.a});
+  if(S.cfg.mode==="live"){
+    results.forEach(x=>{const t=x.f==="title"?d.t:d.a;if(t)S.feed=(S.feed||[]).concat([{n:nm(p),f:x.f,ok:x.ok,t:String(t).slice(0,60)}]).slice(-8)});
+    if(titleOk){endRound("live");return}
+  }
+  if(S.cfg.mode==="private"&&S.pl.length&&S.done.length>=S.pl.length){endRound("all");return}
+  bc();route();
+}
+function feedback(p,results,raw){
+  if(p===ME){
+    L.fb={r:S.r,res:results,at:Date.now()};
+    results.forEach(x=>{if(x.ok)L.ok[x.f]=true});
+    try{navigator.vibrate&&navigator.vibrate(results.some(x=>x.ok)?45:20)}catch(e){}
+    updGame();
+  }else if(R)R.emit("fb",{r:S.r,res:results,raw:raw||{}},p);
+}
+function endRound(reason){
+  if(!isHost||!S||S.ph!=="round")return;
+  stopYT();
+  S.ph="reveal";
+  S.rev={title:(H.song&&H.song.title)||"",artist:(H.song&&H.song.artist)||""};
+  S.rev.per=S.pl.map(p=>{const r=H.res[p.id]||{};return{id:p.id,t:!!r.title,a:!!r.artist,pts:H.pts[p.id]||0}});
+  S.nextAt=S.cfg.mode==="live"?Net.now()+5000:0;
+  S.reason=reason||"";
+  bc();route();
+}
+function tick(){
+  if(!isHost||!S)return;
+  if(S.ph==="round"){
+    if(S.loading)return;
+    if(S.ansUntil&&Net.now()>S.ansUntil+1000)endRound("time");
+  }else if(S.ph==="reveal"&&S.nextAt&&Net.now()>=S.nextAt)nextRound();
+}
+function finish(){
+  stopYT();
+  S.ph="end";S.nextAt=0;S.last=true;
+  const rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
+  const best=rank[0];
+  const te=Object.entries(H.stat.titles||{}).sort((a,b)=>b[1]-a[1])[0];
+  S.stats={best:best?{id:best.id,v:best.sc}:null,fast:H.stat.fast||null,titles:te?{id:te[0],v:te[1]}:null,played:S.total||0};
+  S.sid=S.sid||rid();
+  Party.report(R,"bt",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:p.sc})));
+  bc();route();
+}
+
+/* ---------- rendu ---------- */
+function setHTML(el,h){if(el&&el._h!==h){el._h=h;el.innerHTML=h}}
+function route(){
+  if(!S)return;
+  if(S.ph==="lobby"){L.key="";view("lobby");renderLobby();return}
+  view("game");
+  const key=S.ph+":"+(S.ph==="end"?0:S.r);
+  if(key!==L.key){L.key=key;renderGame(true)}
+  else{ if(S.ph==="round")updGame(); else if(S.ph==="reveal")updReveal() }
+  if(S.ph==="round")ensurePlayback(); else stopYT();
+}
+function renderLobby(){
+  const on=new Set(S.on||[]);
+  $("#pl").innerHTML=S.pl.map(p=>`<span class="chip ${p.id===S.host?"host":""} ${on.has(p.id)||p.id===ME?"":"off"}">${esc(p.n)}</span>`).join("");
+  $("#pc").textContent=`${S.pl.length}/${MAX}`;
+  $("#ph").textContent=S.pl.length<MIN?`Il faut au moins ${MIN} joueurs (${MIN-S.pl.length} de plus).`:"Tout le monde est là ? L'hôte choisit le thème et lance.";
+  renderCfg();
+  $("#hostcfg").hidden=!isHost;$("#waith").hidden=isHost;
+  if(isHost){
+    $("#srcp").innerHTML=[["theme","🎵 Thèmes"],["youtube","▶️ YouTube"]].map(([v,l])=>`<button class="pill ${S.cfg.source===v?"on":""}" data-a="src" data-v="${v}">${l}</button>`).join("");
+    const sel=$("#theme");if(sel&&sel.options.length!==BT_THEMES.length)sel.innerHTML=BT_THEMES.map(t=>`<option value="${t.id}">${t.emoji} ${t.name}</option>`).join("");
+    if(sel)sel.value=S.cfg.theme;
+    $("#themerow").hidden=S.cfg.source!=="theme";
+    $("#ytrow").hidden=S.cfg.source!=="youtube";
+    const lt=$("#linktext");if(lt&&document.activeElement!==lt)lt.value=S.cfg.linkText||"";
+    const ls=$("#linksrc");if(ls){const p=parseYT(S.cfg.linkText);ls.textContent=p.ids.length?`${p.ids.length} lien(s) vidéo détecté(s)`:(p.listId?"Playlist détectée : "+p.listId:"Aucun lien détecté pour le moment.")}
+    $("#rn").textContent=S.cfg.rounds;
+    $("#extractp").innerHTML=[10,15,20,30].map(v=>`<button class="pill ${S.cfg.extract===v?"on":""}" data-a="extract" data-v="${v}">${v} s</button>`).join("");
+    $("#modep").innerHTML=[["private","🔒 Privées"],["live","👀 Visibles"]].map(([v,l])=>`<button class="pill ${S.cfg.mode===v?"on":""}" data-a="mode" data-v="${v}">${l}</button>`).join("");
+    $("#answerp").innerHTML=[30,45,60,90].map(v=>`<button class="pill ${S.cfg.answer===v?"on":""}" data-a="answer" data-v="${v}">${v} s</button>`).join("");
+    $("#startb").disabled=S.pl.length<MIN||S.loading;
+    $("#startb").textContent=S.loading?"Chargement…":"Lancer 🚀";
+    $("#loadh").textContent=S.loading?"Connexion à YouTube…":"";
+  }
+  syncSnd();
+}
+function renderCfg(){
+  const th=BT_THEMES.find(t=>t.id===S.cfg.theme)||BT_THEMES[0];
+  const src=S.cfg.source==="youtube"?"Playlist / liens YouTube":(th.emoji+" "+th.name);
+  $("#cfgsum").innerHTML=`<div>Source<small>${esc(src)}</small></div><div>Manches<small>${S.cfg.rounds} chansons</small></div><div>Extrait<small>${S.cfg.extract} s</small></div><div>Mode<small>${S.cfg.mode==="live"?"Réponses visibles":"Réponses privées"}</small></div><div>Temps<small>${S.cfg.answer} s pour répondre</small></div>`;
+}
+function vinylHtml(){return `<div class="vinyl-wrap"><div class="vinyl" id="vinyl"></div></div><div class="eq" id="eq">${"<b></b>".repeat(7)}</div>`}
+function renderGame(fade){
+  const st=$("#stage");if(!st)return;st.className="";if(fade){void st.offsetWidth;st.className="fade"}
+  if(S.ph==="round"){
+    st.innerHTML=`<div class="bt-head"><span class="round">Manche ${S.r+1}/${S.total}</span><span class="score" id="btScore">0 pts</span></div>
+      <div class="bt-timer"><i id="tb" style="width:100%"></i></div>
+      ${vinylHtml()}
+      <p class="bt-status" id="btStatus" role="status"></p>
+      <div class="card">
+        <div class="bt-fields">
+          <label>Titre de la chanson<input type="text" id="bt-title" maxlength="90" placeholder="Ex. Get Lucky" autocomplete="off" autocapitalize="sentences"></label>
+          <label>Artiste<input type="text" id="bt-artist" maxlength="90" placeholder="Ex. Daft Punk" autocomplete="off" autocapitalize="words"></label>
+        </div>
+        <button class="btn primary big" data-a="btans" id="btSend">Tenter ma chance 🎯</button>
+        <p class="bt-feedback" id="btFb" role="status"></p>
+      </div>
+      <p class="bt-progress" id="btProg"></p>
+      <div class="bt-feed" id="btFeed"></div>
+      ${isHost?'<button class="btn big" data-a="skip">⏭ Révéler et passer</button>':""}`;
+    updGame();
+    if(isHost){const t=$("#bt-title");if(t)setTimeout(()=>{try{t.focus({preventScroll:true})}catch(e){}},80)}
+  }else if(S.ph==="reveal"){
+    const r=S.rev||{},per=r.per||[],rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
+    st.innerHTML=`${vinylHtml()}
+      <div class="card bt-reveal">
+        <p class="hint" style="margin:0">La réponse était</p>
+        <div class="answer big">${esc(r.title||"Titre inconnu")}</div>
+        <div class="artist">${esc(r.artist||"")}</div>
+      </div>
+      <div class="card"><h2>Points de la manche</h2><div class="bt-score-row">
+        ${per.map(x=>`<div class="prow ${x.id===ME?"me":""}"><span>${esc(nm(x.id))}</span><small>${x.t?"✔ Titre":"—"} · ${x.a?"✔ Artiste":"—"}</small><span class="pts">${x.pts?"+"+x.pts:"0"}</span></div>`).join("")}
+      </div></div>
+      <div class="card"><h2>Classement</h2><div class="bt-score-row">${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}</div></div>
+      <p class="hint center" id="btNext"></p>
+      ${isHost?`<button class="btn primary big" data-a="next">${S.last?"Résultats 🏆":"Chanson suivante →"}</button>`:'<p class="hint center">L\'hôte lance la suite.</p>'}
+      <button class="link" data-a="leave">Quitter</button>`;
+    updReveal();
+  }else if(S.ph==="end"){
+    const s=S.stats||{},rank=[...S.pl].sort((a,b)=>b.sc-a.sc),lo=rank[rank.length-1];
+    st.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Blind Test terminé</h1><p><b>${rank[0]?esc(rank[0].n):"—"}</b> remporte la partie !</p></div>
+      <div class="bt-end-stats">
+        <div class="title">🥇 Meilleur score<small>${s.best?esc(nm(s.best.id))+" — "+s.best.v:"—"}</small></div>
+        <div class="title">⚡ Réponse la plus rapide<small>${s.fast?esc(nm(s.fast.id))+" — "+(s.fast.ms/1000).toFixed(1)+" s":"—"}</small></div>
+        <div class="title">🎯 Meilleur chasseur de titres<small>${s.titles?esc(nm(s.titles.id))+" — "+s.titles.v:"—"}</small></div>
+        <div class="title">🎵 Chansons jouées<small>${s.played||0}</small></div>
+      </div>
+      <div class="card"><h2>Classement final</h2><div class="bt-score-row">${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}</div></div>
+      <div id="btgage"></div><div id="btendcard"></div>
+      ${isHost?'<button class="btn primary big" data-a="again">Rejouer 🔁</button>':'<p class="hint center">L\'hôte peut relancer une partie.</p>'}
+      <button class="link" data-a="leave">Quitter</button>`;
+    Gages.mount("#btgage",{R,who:lo?lo.n:"",fresh:true});
+    Party.endCard("#btendcard",{R,code,isHost,onLeave:()=>Sess.clear("bt")});
+  }
+}
+function updGame(){
+  if(!S||S.ph!=="round")return;
+  const me=S.pl.find(p=>p.id===ME),now=Net.now();
+  const total=Math.max(1,S.cfg.answer*1000),left=Math.max(0,S.ansUntil-now);
+  const tb=$("#tb");if(tb)tb.style.width=Math.min(100,left/total*100)+"%";
+  const sc=$("#btScore");if(sc)sc.textContent=(me?me.sc:0)+" pts";
+  const status=$("#btStatus");
+  if(status){
+    if(S.loading)status.textContent="Préparation de l'extrait…";
+    else if(now<S.t0-300)status.textContent="🎧 Prépare-toi…";
+    else if(left>0)status.innerHTML="🎶 Écoute bien… <b>"+Math.ceil(left/1000)+" s</b>";
+    else status.textContent="⏱ Temps écoulé — l'hôte révèle la réponse.";
+    status.className="bt-status"+(S.cfg.mode==="live"&&left>0?" live":"");
+  }
+  const t=$("#bt-title"),a=$("#bt-artist");
+  if(t){t.disabled=!!L.ok.title||S.loading;t.classList.toggle("ok",!!L.ok.title)}
+  if(a){a.disabled=!!L.ok.artist||S.loading;a.classList.toggle("ok",!!L.ok.artist)}
+  const send=$("#btSend");if(send)send.disabled=S.loading;
+  const fb=$("#btFb");
+  if(fb){
+    const f=L.fb&&L.fb.r===S.r?L.fb:null;
+    if(!f){fb.textContent="";fb.className="bt-feedback"}
+    else{
+      const ok=f.res.some(x=>x.ok);
+      fb.className="bt-feedback "+(ok?"ok":"bad");
+      fb.innerHTML=f.res.map(x=>x.ok?`${x.f==="title"?"✅ Titre":"✅ Artiste"} +${x.pts} pts`:`${x.f==="title"?"❌ Titre":"❌ Artiste"} : pas encore`).join(" · ")+"<small>"+(ok?"Bien joué, continue si l'autre champ est encore libre.":"Ce n'est pas ça — tu peux réessayer !")+"</small>";
+    }
+  }
+  const pr=$("#btProg");
+  if(pr){
+    if(S.cfg.mode==="live")pr.innerHTML="👀 Réponses visibles · le premier titre trouvé termine la manche";
+    else pr.innerHTML="<span>"+(S.done?S.done.length:0)+"/"+S.pl.length+"</span> joueurs ont trouvé quelque chose";
+  }
+  const feed=$("#btFeed");
+  if(feed){
+    if(S.cfg.mode!=="live"||!S.feed||!S.feed.length)feed.innerHTML="";
+    else feed.innerHTML=S.feed.slice().reverse().map(x=>`<div class="line ${x.ok?"ok":"ko"}">${esc(x.n)} · ${x.f==="title"?"titre":"artiste"} : ${esc(x.t)}</div>`).join("");
+  }
+  updVinyl(!S.loading&&now>=S.t0-300&&left>0);
+}
+function updReveal(){
+  if(!S||S.ph!=="reveal")return;
+  const el=$("#btNext");if(!el)return;
+  if(S.nextAt){const left=Math.max(0,Math.ceil((S.nextAt-Net.now())/1000));el.textContent=left>0?`Chanson suivante dans ${left} s…`:(isHost?"Tu peux enchaîner.":"En attente de l'hôte…")}
+  else el.textContent=S.reason==="all"?"Tout le monde a trouvé quelque chose !":S.reason==="time"?"Temps écoulé.":"";
+}
+function ensurePlayback(){
+  if(!S||S.ph!=="round"||S.loading)return;
+  if(!L.cur||L.cur.r!==S.r){if(Date.now()-L.needT>1500){L.needT=Date.now();if(R)R.emit("act",{k:"need",r:S.r},"host")}return}
+  if(L.playingR!==S.r){L.playingR=S.r;playExtract(L.cur)}
+}
+setInterval(()=>{
+  if(!S)return;
+  if(S.ph==="round")updGame();
+  else if(S.ph==="reveal")updReveal();
+},300);
+
+/* ---------- événements ---------- */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
+  if(a==="create")enter(true);else if(a==="join")enter(false);
+  else if(a==="leave"){Sess.clear("bt");R&&R.leave();location.href=location.pathname}
+  else if(a==="sound")unlockAudio();
+  else if(a==="src")send({k:"cfg",cfg:{source:b.dataset.v}});
+  else if(a==="extract")send({k:"cfg",cfg:{extract:+b.dataset.v}});
+  else if(a==="mode")send({k:"cfg",cfg:{mode:b.dataset.v}});
+  else if(a==="answer")send({k:"cfg",cfg:{answer:+b.dataset.v}});
+  else if(a==="r-"||a==="r+")send({k:"cfg",cfg:{rounds:Math.max(5,Math.min(30,(S?S.cfg.rounds:10)+(a==="r+"?1:-1)))}});
+  else if(a==="start")send({k:"start"});
+  else if(a==="skip")send({k:"skip"});
+  else if(a==="next")send({k:"next"});
+  else if(a==="again")send({k:"again"});
+  else if(a==="testyt"){unlockAudio();toast("Le lecteur est prêt : le son se lancera au début de la manche.")}
+  else if(a==="btans")submitAnswer();
+});
+function submitAnswer(){
+  if(!S||S.ph!=="round")return;
+  const now=Date.now();if(now-L.lastSend<500)return;L.lastSend=now;
+  const t=$("#bt-title"),a=$("#bt-artist");
+  const tv=t?t.value.trim():"",av=a?a.value.trim():"";
+  if(!tv&&!av)return toast("Écris le titre ou l'artiste");
+  send({k:"ans",r:S.r,t:tv,a:av});
+}
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  if(!S||S.ph!=="round")return;
+  const id=e.target&&e.target.id;
+  if(id==="bt-title"||id==="bt-artist"){e.preventDefault();submitAnswer()}
+});
+$("#theme").addEventListener("change",e=>{if(isHost)send({k:"cfg",cfg:{theme:e.target.value}})});
+$("#linktext").addEventListener("change",e=>{if(isHost)send({k:"cfg",cfg:{linkText:e.target.value}})});
+Profile.attach("#pname");
+{const BP=bootParams(),sv=Sess.load("bt"),pr=Profile.get();
+ if(BP.code)$("#pcode").value=BP.code;
+ if(BP.go&&BP.code&&pr.name){const n0=Profile.tag(pr.name);msg("🎪 Lancement de la partie…");
+  if(BP.host)enter(true,{name:n0,code:BP.code,retry:5});else enter(false,{name:n0,joinCode:BP.code,retry:20})}
+ else if(sv&&(!BP.code||BP.code===sv.code)){msg("🔁 Retour dans le salon "+sv.code+"…");enter(false,{name:sv.name,joinCode:sv.code,resume:true,wasHost:sv.host})}}
+addEventListener("beforeunload",()=>R&&R.leave());
+</script></body></html>

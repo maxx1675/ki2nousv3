@@ -43,6 +43,7 @@ Chaque jeu est une page autonome sous `public/<jeu>/index.html` :
 - `public/quidenous/index.html`
 - `public/verites/index.html`
 - `public/photoroulette/index.html`
+- `public/blindtest/index.html` (banque musicale `public/blindtest/bank.js`)
 - `public/undercover/index.html`
 - `public/pokerface/index.html`
 

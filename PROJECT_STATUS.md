@@ -1,13 +1,13 @@
 # État du projet — ki2nousv3
 
-> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **14 novembre 2026**, après la vague de corrections sur les jeux (mode sombre, salon de la soirée, Photo Roulette par téléphone, Poker Face, Undercover, Codenames, Make It Meme). Modifications non commitées à la date de rédaction.
+> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **15 novembre 2026**, après l'ajout du **Blind Test**, la refonte de **Photo Roulette** (16 photos proposées et validées par joueur) et le **flagrant délit** de **Poker Face**. Modifications non commitées à la date de rédaction.
 >
 > **Emplacement réel de l'application : `app/`.** C'est le dossier qui contient `package.json`, `src/`, `public/` et `api/`. La racine du dépôt ne contient que la documentation et `.opencode/`. Toutes les commandes npm doivent être lancées depuis `app/`.
 
 ## Résumé
 **Le Hub de Soirée** est une application web de jeux de groupe : un hub React/Vite, plusieurs jeux autonomes accessibles depuis un navigateur, et un serveur Hono qui relaie les salons temps réel, conserve un instantané de reprise et gère le classement cumulé de la soirée. La logique de chaque partie est exécutée dans le navigateur de l'hôte ; le serveur ne la calcule pas.
 
-## État actuel vérifié (14 novembre 2026)
+## État actuel vérifié (15 novembre 2026)
 - Frontend du hub : React 19, TypeScript 5.9 (strict), Vite 7, React Router 7.
 - Pages des jeux : HTML/CSS/JavaScript autonomes sous `public/`, avec scripts globaux et ordre de chargement à respecter.
 - Code commun des jeux : `public/shared/` (`net.js`, `profile.js`, `party.js`, `gages.js`, `qr.js`, `theme.js`, CSS partagé) et thèmes dans `public/themes/`.
@@ -25,11 +25,12 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 | Espace | Chemin | Statut réel |
 |---|---|---|
-| Hub React | `src/` | Terminé dans le code : 8 tuiles, carrousel, réglages, musique, PWA. |
-| Salon de la soirée | `public/soiree/` | Terminé pour 6 jeux : Undercover, Poker Face, Photo Roulette, Make It Meme, Qui de nous ?, Les Petites Vérités. |
+| Hub React | `src/` | Terminé dans le code : 9 tuiles (Salon + 8 jeux), carrousel, réglages, musique, PWA. |
+| Salon de la soirée | `public/soiree/` | Terminé pour 7 jeux : Undercover, Poker Face, Photo Roulette, Blind Test, Make It Meme, Qui de nous ?, Les Petites Vérités. |
 | Undercover | `public/undercover/` | Terminé dans le code : rôles, mots personnalisables, salon public, gages, scores, snapshot. |
-| Poker Face | `public/pokerface/` | Terminé dans le code : caméra/MediaPipe, médias, téléphone-caméra WebRTC, gages, scores. |
-| Photo Roulette | `public/photoroulette/` | Terminé dans le code : consentement, photos/vidéos, manches, scores, snapshot, sélection de plus de 20 photos par lots. |
+| Poker Face | `public/pokerface/` | Terminé dans le code : caméra/MediaPipe, médias, téléphone-caméra WebRTC, gages, scores, flagrant délit des perdants. |
+| Photo Roulette | `public/photoroulette/` | Terminé dans le code : 16 photos (10 vidéos) proposées et validées par joueur, manches, scores, replay à la proposition, snapshot. |
+| Blind Test | `public/blindtest/` | Terminé dans le code : banque intégrée ou playlist YouTube, extraits 10–30 s, titre/artiste, modes privé/visible, scores, gages, snapshot. |
 | Qui de nous ? | `public/quidenous/` | Terminé dans le code : 12 types de manches, packs, photos, scores cumulés, `Party.report`. Contient un mode « piquant +18 » non signalé comme tel dans le hub (voir bugs). |
 | Les Petites Vérités | `public/verites/` | Terminé dans le code : barrage 18+ explicite, vérités, échange, bluff, scores. |
 | Codenames | `public/codenames/` | Création de partie corrigée (`Net.join(...,{create:true})` + nouvel essai de code) ; toujours hors salon partagé (6 caractères). |
@@ -39,7 +40,7 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 ## Fonctionnalités terminées (dans le code)
 
 ### Hub
-- Catalogue de 8 jeux en carrousel 3D, navigation clavier (flèches/Entrée), glisser-swipe, sélection au clic.
+- Catalogue de 9 tuiles en carrousel 3D (Salon + 8 jeux, dont Blind Test), navigation clavier (flèches/Entrée), glisser-swipe, sélection au clic.
 - Réglages persistés (`soiree:set`) : thème clair/sombre, animations (`off`/`light`/`full`), musique et volume.
 - Musique générative WebAudio (`src/hubAudio.ts`), coupée quand l'onglet est masqué.
 - PWA : manifest, icônes, service worker, page hors-ligne, métadonnées de partage avec `%ORIGIN%` remplacé côté serveur.
@@ -50,10 +51,17 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 - Choix du jeu par l'hôte diffusé à tous (`go`), classement de soirée cumulé, gages partagés.
 - Retour au salon depuis chaque jeu intégré (`Party.endCard`, `Party.listen`).
 
-### Jeux intégrés au salon (6)
-- Undercover, Poker Face, Photo Roulette, Make It Meme, Qui de nous ?, Les Petites Vérités : `Net.enter`/`Net.join`, session `Sess`, `Party.report`, snapshot `R.snap`, `onPromote`/`onDemote`, retour au salon.
+### Jeux intégrés au salon (7)
+- Undercover, Poker Face, Photo Roulette, Blind Test, Make It Meme, Qui de nous ?, Les Petites Vérités : `Net.enter`/`Net.join`, session `Sess`, `Party.report`, snapshot `R.snap`, `onPromote`/`onDemote`, retour au salon.
 - Mode sombre : chaque jeu expose un thème clair/sombre. `public/shared/theme.js` ajoute un bouton flottant aux pages sans panneau de réglages (Make It Meme, Photo Roulette, Undercover, Codenames) ; Qui de nous ? et Les Petites Vérités gardent leur panneau intégré (le choix de thème n'y est plus masqué).
 - Barrières d'âge : case 18+ et mémorisation `soiree:18ok` pour Les Petites Vérités ; confirmation pour la banque de gages 18+ dans `gages.js`. À conserver.
+
+### Blind Test
+- Page autonome `public/blindtest/index.html` + banque `bank.js` (133 morceaux vérifiés par YouTube oEmbed, 12 thèmes, correspondance souple titre/artiste) + thème `public/themes/blindtest.css`.
+- Source au choix : thèmes intégrés (aucune clé/API à l'exécution) ou playlist/liens YouTube collés par l'hôte. Le lecteur IFrame YouTube est piloté par l'hôte et les invités lisent les mêmes extraits via `R.emit("play")`.
+- Réglages : 10 à 30 s d'extrait, nombre de manches, mode privé (fin quand tous ont trouvé au moins un élément ou ~1 min) ou visible (le premier titre correct termine la manche).
+- Réponse titre et/ou artiste, tolérance aux accents/espaces/majuscules, mauvaise réponse = nouvel essai possible, points selon la vitesse et les éléments trouvés.
+- Révélation de la manche, fin de partie avec podium, gages, `Party.report`, bouton d'accueil et retour au salon.
 
 ### Serveur et partagé
 - Relais en mémoire : salons, présence, hôte, événements ciblés ou diffusés, snapshot, reprise, salons publics (Undercover), classement.
@@ -65,7 +73,7 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 - **Codenames** : règles complètes (deux équipes, 25 cartes, maître-espion, assassin, listes de mots personnalisées, pause, journal). La création de partie fonctionne désormais, mais le jeu n'est pas branché au salon partagé (code 6 caractères, pas de `Party`, pas de snapshot, pas de reprise, pas de gestion de promotion).
 - **Make It Meme** : jeu complet et multijoueur (éditeur canvas, textes déplaçables, styles, 60 templates, bots, sélection/édition/vote/résultats, modération, sons Web Audio dédiés, thème « collage néon »). Branché sur le relais Hono via `public/shared/net.js`, salons à 4 caractères (`mim-`), hôte autoritaire, snapshot de reprise, `Party.report` et classement de soirée. Proposé dans la liste du Salon de la soirée.
-- **Salon de la soirée** : expose 6 jeux sur les 8 du hub ; Codenames et le hub React restent hors salon.
+- **Salon de la soirée** : expose 7 jeux sur les 8 du hub ; Codenames et le hub React restent hors salon.
 - **Tuile « verrouillée »** : la propriété `locked` et le cadenas existent dans `Home.tsx`, mais aucun jeu ne l'utilise.
 - **Salons publics** : implémentés côté serveur et utilisés uniquement par Undercover ; pas de découverte globale dans le hub.
 - **Tests client/E2E** : absents. Aucun test de `net.js`, `party.js`, des pages de jeux ou d'un parcours multi-téléphones.
@@ -74,6 +82,11 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 ### Bloquants
 Aucun bloquant connu à la lecture du code. Codenames a été corrigé le 14 novembre 2026 (voir ci-dessous).
+
+### Corrigés le 15 novembre 2026
+- **Photo Roulette : rejouer repart de la proposition.** `again` vide les validations (`H.valid`, `S.pl[].val`), réarme la file des photos proposées et ramène chaque joueur à l'étape de validation. `replayLobby` resynchronise le bouton et empêche la boucle `route` → `replayLobby` → `send("unval")` → `hostAct` → `route` (l'état `lastPh` est posé avant l'appel).
+- **Photo Roulette : validation obligatoire.** Les photos proposées (16, ou 10 en vidéo) doivent être validées par chaque joueur ; l'hôte ne peut lancer qu'une fois toutes les validations reçues. Toute modification du jeu (ajout, retrait, changement de média) invalide la validation.
+- **Poker Face : flagrant délit des perdants.** Plus de photo pour les gagnants ; les perdants qui ont activé le partage voient leur photo s'afficher automatiquement ~10 s en fin de manche chez tous les joueurs et rejoindre la galerie partagée (plafond 60, déduplication).
 
 ### Corrigés le 14 novembre 2026
 - **Codenames : création de partie.** `public/codenames/index.html` appelle désormais `Net.join("cn-"+code,{create:true})`, réessaie avec un nouveau code en cas de collision et refuse proprement un code déjà pris en rejoignant.
@@ -119,9 +132,20 @@ Aucun bloquant connu à la lecture du code. Codenames a été corrigé le 14 nov
 - Le hub et les jeux sont conçus mobile/tactile : `viewport-fit=cover`, zones sûres, cibles tactiles, pas de contrôle uniquement au survol.
 - Skills disponibles : `game-page-development` (pages de jeux), `realtime-multiplayer` (salon/réseau/relais), `verification-and-handoff` (contrôles et passation).
 - Make It Meme : `public/makeitmeme/index.html` (page + logique hôte), `templates.js` (`window.MIM_TEMPLATES`, 60 modèles), `room-state.js` (`clone`, `sanitize`, `applyPatch`, `allowedGuestPatch`), thème `public/themes/makeitmeme.css` (papier, vert acide, rose vif, bleu électrique, ombres dures, Bungee). Le relais ignore l'expéditeur d'un `event` : l'hôte doit rendre son interface localement après diffusion.
-- Photo Roulette : `fill()` renvoie `{added, skipped, timedOut}`, traite par lots avec un budget global de 30 s, déduplique sur `name|size|lastModified` et fusionne les files d'attente lors d'un ajout.
+- Photo Roulette : `fill()` renvoie `{added, skipped, timedOut}`, traite par lots avec un budget global de 30 s, déduplique sur `name|size|lastModified` et fusionne les files d'attente lors d'un ajout. `maxN()` = 16 photos / 10 vidéos. Les clés validées sont envoyées à l'hôte (`H.valid[p]`), qui compose chaque manche en tourniquet à partir des jeux validés + photos plantées ; `S.opts` contient tous les joueurs.
+- Blind Test : jeu `"bt"`, salons `bt-XXXX`, préfixe DOM `bt-`, page `public/blindtest/index.html`, banque `window.BT` dans `public/blindtest/bank.js`. La banque intégrée évite toute recherche YouTube à l'exécution ; le mode playlist suppose qu'un lecteur IFrame YouTube peut être chargé sur le réseau du joueur. L'hôte est autoritaire et diffuse les extraits (`play`), les invités ne calculent que leurs réponses.
 
 ## Vérifications
+
+### Réalisées le 15 novembre 2026 (Blind Test, Photo Roulette, Poker Face)
+- `npm run check` (depuis `app/`) : **réussi**.
+- `npm test` : **réussi**, 16 tests (13 relais + 3 helpers de salon Make It Meme).
+- `npm run build` : **réussi** (Vite + bundle serveur).
+- Analyse syntaxique des blocs `<script>` inline (Blind Test, Photo Roulette, Poker Face, Soirée) et de `blindtest/bank.js` : **aucune erreur**.
+- Navigateur (serveur de développement, port 3000) — **Blind Test** à 2 joueurs : création, code PIN, jointure, lobby, lancement, extrait commun, mauvaise réponse puis réessai, validation « aventurier » + « indochine », points de vitesse, fin de manche privée, révélation.
+- Navigateur — **Photo Roulette** à 3 joueurs : 3 photos proposées par joueur, validation, lancement bloqué tant que tous n'ont pas validé, `total=9`, options = 3 joueurs, vote, révélation avec points, fin de partie, `again` revenant à l'étape de proposition avec validations remises à zéro, puis nouvelle validation et bouton de lancement réactivé.
+- Navigateur — **Poker Face** : injection dans la page réelle ; `autoShareSnaps()` ajoute la photo du perdant, marque `shared:true` et `flagrant()` affiche « Flagrant délit ». Aucune erreur console applicative.
+- Banque Blind Test : 133 identifiants YouTube vérifiés via oEmbed, 0 échec.
 
 ### Réalisées le 14 novembre 2026 (vague de corrections)
 - `npm run check` (depuis `app/`) : **réussi**.
@@ -141,14 +165,16 @@ Aucun bloquant connu à la lecture du code. Codenames a été corrigé le 14 nov
 - `git status --short` : 3 fichiers modifiés et 4 fichiers ajoutés (voir ci-dessous), aucun autre fichier applicatif touché.
 
 ### Reste à vérifier
+- **Blind Test** sur un vrai réseau YouTube : lecture réelle d'une playlist collée, blocage/consentement éventuel, synchronisation des extraits entre appareils et comportement si la vidéo est indisponible.
 - Test sur un **vrai iPhone** : tirage Photo Roulette, envoi de photos par QR code, sélecteurs HEIC.
-- Test sur **plusieurs appareils physiques** simultanés : Poker Face (WebRTC/TURN en 4G, caméra téléphone, exclusion), salon de la soirée (lancement Make It Meme), Undercover (progression des votes).
+- Test sur **plusieurs appareils physiques** simultanés : Poker Face (WebRTC/TURN en 4G, caméra téléphone, exclusion, flagrant délit), salon de la soirée (lancement Blind Test/Make It Meme), Undercover (progression des votes).
 - Codenames : parcours complet de création après correctif, puis décision d'intégration au salon.
 - Mode sombre : vérification visuelle de chaque jeu sur mobile et bureau.
 - Les barrières 18+ (Les Petites Vérités et gages adultes) restent intactes.
 - `npm start` sous Windows : commande POSIX toujours en échec (voir bug 5).
 
 ## Modifications récentes
+- **2026-11-15** — Ajout du **Blind Test** (`public/blindtest/index.html`, `public/blindtest/bank.js`, `public/themes/blindtest.css`) avec tuile hub et entrée Salon. Refonte de **Photo Roulette** : 16 photos / 10 vidéos proposées, validation obligatoire de tous, manches composées des jeux validés + photos plantées, options = tous les joueurs, replay à la proposition. **Poker Face** : flagrant délit des perdants à ~10 s et galerie partagée. Vérifications npm et parcours navigateur réalisés.
 - **2026-11-14** — Vague de corrections jeux : mode sombre partagé (`public/shared/theme.js`, boutons `.homelink`/`.themebtn` dans `base.css`, palettes claire/sombre des six thèmes), Make It Meme ajouté au Salon de la soirée + attente de `go`, Codenames créable, Undercover (progression des votes, délai de clôture, révélation et changement des mots), corrigés Qui de nous, Poker Face (caméra/miroir/modération/embeds/manches/résultat) et Photo Roulette (tirage 40, envoi par téléphone via QR).
 - **2026-11-13** — Suppression de Petit Bac Boom du hub (`app/src/pages/Home.tsx`).
 - **2026-11-13** — Make It Meme rebranché sur le relais Hono : salons 4 caractères, hôte autoritaire, snapshot/reprise, exclusion, bots, `Party.report`. Nouvelle DA (`public/themes/makeitmeme.css`) et nouvelle identité sonore Web Audio. Extraction de `templates.js` et `room-state.js` ; ajout de `api/lib/makeitmeme-room.test.ts`.
@@ -160,19 +186,20 @@ Aucun bloquant connu à la lecture du code. Codenames a été corrigé le 14 nov
 
 1. **Valider Make It Meme dans le Salon de la soirée** sur plusieurs appareils : lancement par l'hôte, retour au salon et classement cumulé (l'intégration est faite).
 2. **Trancher le sort de Codenames** : la création fonctionne ; reste à l'intégrer réellement (`Net.enter`, code 4 caractères, `Sess`, `R.snap`, `onPromote`, `Party.report`, entrée dans le salon) ou le retirer du hub.
-3. **Compléter la liste du Salon de la soirée** : 6 jeux sur 8 ; Codenames reste le candidat naturel.
-4. **Sécuriser et fiabiliser le relais** : identité de connexion, limitation de débit, taille des événements, tests des cas de reconnexion et de doublons.
-5. **Corriger le classement** : éviter la réutilisation d'un code de soirée actif (codes plus longs ou génération/nettoyage explicite).
-6. **Traiter la cohérence 18+** : confirmation pour le mode piquant de Qui de nous ? et/ou badge dans le hub, sans affaiblir les barrières existantes.
-7. **Assainir Make It Meme** : le code admin (`admin`) reste un choix produit côté client ; synchroniser les timers via `Net.clock`, dédupliquer les templates en double.
-8. **Outillage multiplateforme** : corriger `npm start` sous Windows, vérifier le répertoire de travail de `serveStatic`, et ajouter au minimum un test du parcours de création de salon.
-9. **Documentation à aligner** : `ARCHITECTURE.md` (liste des jeux, commandes depuis `app/`, limites du relais), `app/README.md` (liste des jeux, `npm start` sous Windows), `AGENTS.md` (préciser `cd app` avant les commandes npm).
+3. **Valider le Blind Test sur appareils réels** : playlist YouTube collée sur un vrai réseau, extraits synchronisés, thème intégré, retour au salon et classement.
+4. **Compléter la liste du Salon de la soirée** : 7 jeux sur 8 ; Codenames reste le candidat naturel.
+5. **Sécuriser et fiabiliser le relais** : identité de connexion, limitation de débit, taille des événements, tests des cas de reconnexion et de doublons.
+6. **Corriger le classement** : éviter la réutilisation d'un code de soirée actif (codes plus longs ou génération/nettoyage explicite).
+7. **Traiter la cohérence 18+** : confirmation pour le mode piquant de Qui de nous ? et/ou badge dans le hub, sans affaiblir les barrières existantes.
+8. **Assainir Make It Meme** : le code admin (`admin`) reste un choix produit côté client ; synchroniser les timers via `Net.clock`, dédupliquer les templates en double.
+9. **Outillage multiplateforme** : corriger `npm start` sous Windows, vérifier le répertoire de travail de `serveStatic`, et ajouter au minimum un test du parcours de création de salon.
+10. **Documentation à aligner** : `ARCHITECTURE.md` (commandes depuis `app/`, limites du relais), `app/README.md` (`npm start` sous Windows), `AGENTS.md` (préciser `cd app` avant les commandes npm).
 
 ## À compléter après chaque tâche importante
-- Date : 2026-11-14
-- Objectif : corriger une série de bugs/features sur les jeux et ajouter le mode sombre (Make It Meme, Salon de la soirée, Photo Roulette, Poker Face, Undercover, Qui de nous, Codenames).
-- Fichiers / zones modifiés : `app/public/soiree/index.html` ; `app/public/makeitmeme/index.html` ; `app/public/photoroulette/index.html` ; `app/public/pokerface/index.html` ; `app/public/undercover/index.html` ; `app/public/quidenous/index.html` ; `app/public/verites/index.html` ; `app/public/codenames/index.html` ; `app/public/shared/base.css` ; `app/public/shared/theme.js` (nouveau) ; `app/public/themes/{makeitmeme,photoroulette,undercover,codenames,quidenous,verites}.css` ; `PROJECT_STATUS.md`.
-- Décisions techniques à conserver : hôte navigateur autoritaire, relais inchangé ; `R.leave()` ne renvoie pas de promesse ; codenames utilise `{create:true}` et un code à 6 caractères ; le salon attend la livraison de `go` avant navigation ; Photo Roulette réutilise le relais avec un salon temporaire `prp-<code>` pour le téléphone ; le thème clair/sombre est mémorisé dans `soiree:theme` (jeux avec `theme.js`) ou `soiree:set` (Qui de nous/Vérités) ; Poker Face reste sombre par défaut.
-- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; syntaxe JS inline et accolades CSS vérifiées. Pas de parcours navigateur complet cette vague.
-- Problèmes connus / limites : validations réelles iPhone/multi-appareils à faire (WebRTC, QR Photo Roulette, salon), Codenames toujours hors salon, barrière 18+ de Qui de nous inchangée.
-- Prochaine étape concrète : tester le lancement Make It Meme depuis le Salon et l'envoi de photos Poker Face/Photo Roulette depuis un téléphone réel.
+- Date : 2026-11-15
+- Objectif : ajouter le Blind Test, refondre Photo Roulette (16 photos validées), afficher le flagrant délit des perdants dans Poker Face.
+- Fichiers / zones modifiés : `app/public/blindtest/index.html` (nouveau), `app/public/blindtest/bank.js` (nouveau), `app/public/themes/blindtest.css` (nouveau) ; `app/public/photoroulette/index.html` ; `app/public/pokerface/index.html` ; `app/public/soiree/index.html` ; `app/src/pages/Home.tsx` ; `app/README.md` ; `ARCHITECTURE.md` ; `PROJECT_STATUS.md`.
+- Décisions techniques à conserver : hôte navigateur autoritaire, relais inchangé ; Blind Test = banque intégrée + mode playlist YouTube via IFrame `getVideoData()` ; Photo Roulette = 16/10 photos proposées, validation de tous, clés `H.valid[p]`, decks en tourniquet, options = tous les joueurs ; Poker Face = partage auto des perdants consentants uniquement, `RES_MS=10000`, galerie plafonnée à 60.
+- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; syntaxe inline et `bank.js` vérifiées ; parcours navigateur Blind Test (2 joueurs), Photo Roulette (3 joueurs, replay inclus) et contrôle Poker Face.
+- Problèmes connus / limites : Blind Test à valider sur un vrai réseau YouTube et plusieurs appareils physiques ; Photo Roulette iPhone/HEIC inchangé ; Codenames toujours hors salon ; barrière 18+ de Qui de nous inchangée.
+- Prochaine étape concrète : tester une playlist YouTube réelle dans le Blind Test depuis le Salon, puis valider le flagrant délit Poker Face avec deux téléphones.
