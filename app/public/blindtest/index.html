@@ -24,6 +24,8 @@
 .bt-players .chip{font-size:.8rem;padding:3px 9px}
 .bt-players .chip.ok{border-color:#18a05a;color:#18a05a}
 .bt-source-info{font-size:.82rem;color:var(--muted);margin:6px 0 0}
+.snd-gate{display:flex;flex-direction:column;align-items:center;gap:6px;margin:10px auto;padding:10px 14px;max-width:360px;background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;box-shadow:4px 4px 0 var(--sh);text-align:center}
+.snd-gate small{color:var(--muted);font-size:.8rem}
 @media(max-width:520px){.top{flex-wrap:wrap;gap:6px}.bt-topright{width:100%;justify-content:flex-end}}
 </style>
 <link rel="stylesheet" href="/themes/blindtest.css">
@@ -104,7 +106,15 @@ function ensurePlayer(cb){
     const el=document.getElementById("ytframe");if(!el){YT_LOADING=false;return}
     YT_PLAYER=new YT.Player(el,{width:"2",height:"2",playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0,modestbranding:1,origin:location.origin},events:{
       onReady:()=>{YT_READY=true;YT_LOADING=false;YT_QUEUE.splice(0).forEach(f=>{try{f(YT_PLAYER)}catch(e){}})},
-      onError:()=>{toast("⚠️ YouTube n'arrive pas à lire cet extrait")}
+      onStateChange:e=>{
+        // L'extrait tourne vraiment et n'est pas coupé : le son est autorisé.
+        if(e.data===1){try{L.sound=!YT_PLAYER.isMuted();syncSnd();updGame()}catch(x){}}
+      },
+      onError:e=>{
+        const code=e&&e.data;
+        toast(code===101||code===150?"⚠️ Cette vidéo n'autorise pas la lecture intégrée (on passe à la suivante).":"⚠️ YouTube n'arrive pas à lire cet extrait");
+        if(isHost&&S&&S.ph==="round"&&!S.loading){setTimeout(()=>{if(isHost&&S&&S.ph==="round"&&!S.loading)endRound("error")},600)}
+      }
     }});
   }
   if(window.YT&&window.YT.Player){boot();return}
@@ -115,12 +125,22 @@ function ensurePlayer(cb){
   window.onYouTubeIframeAPIReady=()=>{try{boot()}catch(e){YT_LOADING=false}};
 }
 function unlockAudio(){
-  ensurePlayer(()=>{
-    try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo();setTimeout(()=>{try{YT_PLAYER.pauseVideo()}catch(e){}},350)}catch(e){}
-    L.sound=true;syncSnd();toast("🔊 Son activé");
-  });
+  // À appeler depuis un vrai clic : l'autorisation audio de YouTube ne dure pas
+  // toujours d'une manche à l'autre sur mobile, d'où ce bouton visible.
+  const go=()=>{
+    try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo()}catch(e){}
+    setTimeout(()=>{try{YT_PLAYER.pauseVideo()}catch(e){}},400);
+    L.sound=true;syncSnd();
+    if(S&&S.ph==="round"&&L.cur){
+      const el=Math.max(0,(Net.now()-(S.t0||Net.now()))/1000);
+      if(el<S.cfg.extract){L.playingR=-1;playExtract({...L.cur,start:Net.now()+250,offset:el,extract:Math.max(2,S.cfg.extract-el)})}
+    }
+    if(S&&S.ph==="round")updGame();
+    toast("🔊 Son activé");
+  };
+  if(YT_PLAYER&&YT_READY)go();else ensurePlayer(go);
 }
-function syncSnd(){const b=$("#sndbtn");if(b)b.textContent=L.sound?"🔊 Son OK":"🔇 Activer le son"}
+function syncSnd(){const b=$("#sndbtn");if(b)b.textContent=L.sound?"🔊 Son OK":"🔇 Activer le son";const g=$("#sndgate");if(g)g.hidden=!!L.sound}
 function playExtract(p){
   if(!p||!p.id)return;
   L.playingR=p.r;
@@ -130,7 +150,13 @@ function playExtract(p){
     setTimeout(()=>{
       if(!S||S.ph!=="round"||S.r!==p.r){L.playingR=-1;return}
       try{YT_PLAYER.seekTo(p.offset||0,true);YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo()}catch(e){}
-      L.sound=true;syncSnd();updVinyl(true);
+      // Vérifie que la lecture a vraiment démarré (autoplay bloqué, vidéo muette…).
+      setTimeout(()=>{
+        if(!S||S.ph!=="round"||S.r!==p.r)return;
+        let playing=false,muted=false;try{playing=YT_PLAYER.getPlayerState()===1;muted=YT_PLAYER.isMuted()}catch(e){}
+        L.sound=playing&&!muted;syncSnd();updVinyl(playing);updGame();
+      },800);
+      updVinyl(true);
       const dur=Math.max(1,p.extract||15);
       setTimeout(()=>{if(L.cur&&L.cur.r===p.r)stopYT()},dur*1000+1000);
     },delay);
@@ -162,13 +188,23 @@ function cueMeta(id,cb){
 }
 function loadPlaylist(listId){
   ensurePlayer(()=>{
-    try{YT_PLAYER.cuePlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}
-    let n=0;
+    try{YT_PLAYER.mute()}catch(e){}
+    let tries=0,forced=false;
+    const start=()=>{try{YT_PLAYER.cuePlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}}
+    start();
     const chk=()=>{
       let ids=null;try{ids=YT_PLAYER.getPlaylist?YT_PLAYER.getPlaylist():null}catch(e){}
       if(ids&&ids.length){beginGame(ids.slice(0,60).map(id=>({id,title:"",artist:""})));return}
-      if(n++<30)setTimeout(chk,400);
-      else{L.starting=false;S.loading=false;toast("Playlist illisible : colle plutôt des liens vidéo un par ligne");bc();route()}
+      if(tries++<30){setTimeout(chk,400);return}
+      if(!forced){
+        // Certains navigateurs ne remplissent getPlaylist() qu'après un vrai chargement.
+        forced=true;tries=0;
+        try{YT_PLAYER.loadPlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}
+        setTimeout(chk,1000);return;
+      }
+      L.starting=false;if(S)S.loading=false;
+      toast("Playlist illisible : colle plutôt des liens vidéo un par ligne");
+      bc();route();
     };
     setTimeout(chk,900);
   });
@@ -271,8 +307,10 @@ function hostStart(){
   if(S.cfg.source==="youtube"){
     const links=$("#linktext");if(links&&links.value!==S.cfg.linkText){S.cfg.linkText=links.value.slice(0,6000)}
     const p=parseYT(S.cfg.linkText);
-    if(p.ids.length){beginGame(p.ids.map(id=>({id,title:"",artist:""})));return}
+    // Une playlist est prioritaire : un lien « watch?v=…&list=… » désigne la playlist,
+    // pas seulement la vidéo en cours.
     if(p.listId){L.starting=true;S.loading=true;bc();route();loadPlaylist(p.listId);return}
+    if(p.ids.length){beginGame(p.ids.map(id=>({id,title:"",artist:""})));return}
     return toast("Colle une playlist ou au moins un lien YouTube");
   }
   const list=BT.pick(S.cfg.theme,Math.max(S.cfg.rounds,12));
@@ -409,7 +447,7 @@ function renderLobby(){
     $("#themerow").hidden=S.cfg.source!=="theme";
     $("#ytrow").hidden=S.cfg.source!=="youtube";
     const lt=$("#linktext");if(lt&&document.activeElement!==lt)lt.value=S.cfg.linkText||"";
-    const ls=$("#linksrc");if(ls){const p=parseYT(S.cfg.linkText);ls.textContent=p.ids.length?`${p.ids.length} lien(s) vidéo détecté(s)`:(p.listId?"Playlist détectée : "+p.listId:"Aucun lien détecté pour le moment.")}
+    const ls=$("#linksrc");if(ls){const p=parseYT(S.cfg.linkText);ls.textContent=p.listId?`Playlist détectée : ${p.listId}${p.ids.length?` (${p.ids.length} lien(s) aussi présents)`:" — elle sera jouée en entier"}`:(p.ids.length?`${p.ids.length} lien(s) vidéo détecté(s)`:"Aucun lien détecté pour le moment.")}
     $("#rn").textContent=S.cfg.rounds;
     $("#extractp").innerHTML=[10,15,20,30].map(v=>`<button class="pill ${S.cfg.extract===v?"on":""}" data-a="extract" data-v="${v}">${v} s</button>`).join("");
     $("#modep").innerHTML=[["private","🔒 Privées"],["live","👀 Visibles"]].map(([v,l])=>`<button class="pill ${S.cfg.mode===v?"on":""}" data-a="mode" data-v="${v}">${l}</button>`).join("");
@@ -433,6 +471,7 @@ function renderGame(fade){
       <div class="bt-timer"><i id="tb" style="width:100%"></i></div>
       ${vinylHtml()}
       <p class="bt-status" id="btStatus" role="status"></p>
+      <div id="sndgate" class="snd-gate" hidden><button type="button" class="btn primary" data-a="enable">🔊 Activer le son</button><small>Tape une fois pour autoriser la musique sur cet appareil.</small></div>
       <div class="card">
         <div class="bt-fields">
           <label>Titre de la chanson<input type="text" id="bt-title" maxlength="90" placeholder="Ex. Get Lucky" autocomplete="off" autocapitalize="sentences"></label>
@@ -493,6 +532,8 @@ function updGame(){
     else status.textContent="⏱ Temps écoulé — l'hôte révèle la réponse.";
     status.className="bt-status"+(S.cfg.mode==="live"&&left>0?" live":"");
   }
+  const gate=$("#sndgate");
+  if(gate)gate.hidden=!!L.sound||S.loading||now<S.t0-300||left<=0;
   const t=$("#bt-title"),a=$("#bt-artist");
   if(t){t.disabled=!!L.ok.title||S.loading;t.classList.toggle("ok",!!L.ok.title)}
   if(a){a.disabled=!!L.ok.artist||S.loading;a.classList.toggle("ok",!!L.ok.artist)}
@@ -542,6 +583,7 @@ document.addEventListener("click",async e=>{
   if(a==="create")enter(true);else if(a==="join")enter(false);
   else if(a==="leave"){Sess.clear("bt");R&&R.leave();location.href=location.pathname}
   else if(a==="sound")unlockAudio();
+ else if(a==="enable")unlockAudio();
   else if(a==="src")send({k:"cfg",cfg:{source:b.dataset.v}});
   else if(a==="extract")send({k:"cfg",cfg:{extract:+b.dataset.v}});
   else if(a==="mode")send({k:"cfg",cfg:{mode:b.dataset.v}});

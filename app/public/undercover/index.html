@@ -76,7 +76,7 @@ const pl=id=>S.pl.find(p=>p.id===id);
 const nm=id=>(pl(id)||{n:"?"}).n;
 const aliveIds=()=>S.pl.filter(p=>p.alive).map(p=>p.id);
 const app=$("#app");
-const bc=()=>{if(R&&isHost){if(H){S.vdone=Object.keys(H.votes||{}).length;S.vneed=voters().length}else{S.vdone=0;S.vneed=0}R.emit("st",S).catch(()=>{});R.snap({S,H})}};
+const bc=()=>{if(R&&isHost){if(H){S.vdone=Object.keys(H.votes||{}).length;S.vneed=voters().length;S.voted=Object.keys(H.votes||{});S.vn=H.vn||0}else{S.vdone=0;S.vneed=0;S.voted=[]}R.emit("st",S).catch(()=>{});R.snap({S,H})}};
 const send=d=>{d.p=local()?(S.pr?S.pr.who:ME):ME;if(isHost)act(d);else R&&R.emit("act",d,"host")};
 const uid=()=>"p"+Math.random().toString(36).slice(2,7);
 try{L.name=localStorage.getItem("soiree:name")||""}catch(e){}
@@ -145,7 +145,9 @@ function startRound(){
 }
 function voters(){return S.pl.filter(p=>(p.alive||(S.cfg.ghostAll||p.gh))&&!(H&&H.fal&&H.fal.kind==="bad"&&H.fal.to===p.id)).map(p=>p.id)}
 function startVote(){
- S.ph="vote";H.votes={};S.end=Net.now()+45000; // filet de sécurité : le vote se clôture tout seul
+ S.ph="vote";H.votes={};H.vn=(H.vn||0)+1;S.end=Net.now()+45000; // filet de sécurité : le vote se clôture tout seul
+ // Nouveau scrutin : même l'hôte doit pouvoir revoter (y compris après une égalité).
+ S.voted=[];S.vn=H.vn;L.voted=false;
  if(local()){H.vq=voters();S.pr={who:H.vq[0],kind:"vote",i:0};L.gate=false}
 }
 function act(d){
@@ -352,7 +354,8 @@ function rDiscuss(){
 }
 function rVote(){
  const vs=voters(),done=isHost&&H?Object.keys(H.votes||{}).length:(S.vdone||0),need=isHost?vs.length:(S.vneed||vs.length),me=pl(ME)||{};
- const can=(me.alive||me.gh||S.cfg.ghostAll)&&!L.voted&&!(L.priv&&L.priv.nov),cand=S.cand||aliveIds();
+ const myVote=isHost&&H?!!H.votes[ME]:(Array.isArray(S.voted)?S.voted.includes(ME):L.voted);
+ const can=(me.alive||me.gh||S.cfg.ghostAll)&&!myVote&&!(L.priv&&L.priv.nov),cand=S.cand||aliveIds();
  app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>Vote</h1>${timerHtml()}${privCard()}
  ${can&&!S.pr?`<div class="card"><h2>Qui éliminer ?</h2>${cand.filter(i=>i!==ME).map(i=>`<button class="pick" data-a="cast" data-id="${i}">${esc(nm(i))}</button>`).join("")}</div>`:`<p class="center hint">Vote enregistré… en attente des autres.</p>`}
  <p class="hint center">${done}/${need} votes</p>${isHost?`<button class="btn" data-a="vote!">Clôturer le vote</button>`:""}`;
@@ -413,7 +416,11 @@ async function startOnline(mode,create,joinCode,o){
  Sess.save("uc",{code,name,host:isHost,mode});
  setInterval(()=>Sess.touch("uc"),20000);
  Party.listen(R,code,()=>Sess.clear("uc"));
- R.on("st",d=>{if(isHost||!d)return;S=d;if(S.ph==="lobby")L.priv=null;if(S.ph!=="vote")L.voted=false;render()});
+ R.on("st",d=>{if(isHost||!d)return;S=d;if(S.ph==="lobby")L.priv=null;
+  // On se fie à la liste des votants diffusée par l'hôte : elle survit aux reconnexions.
+  const votersNow=Array.isArray(d.voted)?d.voted:[];
+  if(S.ph!=="vote"||d.vn!==L.vn)L.voted=false;
+  L.vn=d.vn;if(votersNow.includes(ME))L.voted=true;render()});
  R.on("priv",d=>{L.priv=d;render()});
  R.on("act",d=>{if(isHost)act(d)});
  R.onPromote(onPromoted);

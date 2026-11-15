@@ -40,10 +40,15 @@ h1.neon{text-shadow:0 0 12px #ff2a4d,0 0 30px #ff2a4d88;letter-spacing:.04em;tex
 .ov.pre{background:transparent;text-shadow:0 2px 10px #000,0 0 3px #000;z-index:5}
 .ov.pre small{color:#fff}
 .stage.open .ov.pre{background:#000c}
-/* jauge de self-control */
-@media(min-width:900px){#gwrap{position:fixed;right:14px;top:50%;transform:translateY(-50%);width:180px;max-width:180px;margin:0;z-index:20;background:#09090dee;padding:10px;border:2px solid var(--sh);border-radius:14px;box-shadow:0 0 18px #0008}}
-.gauge{height:16px;border-radius:99px;background:#1b1b26;border:2px solid #5b0b1b;overflow:hidden;margin:4px 0}
-.gauge i{display:block;height:100%;width:100%;background:#27e08a;transition:width .12s linear}
+/* jauge de self-control : plus grande et lisible à distance, y compris sur téléphone */
+#gwrap{width:100%;max-width:620px!important;margin:14px auto 6px!important;background:#09090dcc;padding:12px 14px;border:2px solid var(--sh);border-radius:16px;box-shadow:0 0 18px #0006}
+#gwrap .hint{font-size:.95rem;align-items:center;gap:8px;margin:0 0 8px!important}
+#gtxt{font-size:.95rem;font-weight:800;color:var(--teal)}
+.gauge{position:relative;height:clamp(28px,6vw,40px);border-radius:99px;background:linear-gradient(#12121b,#1e1e2a);border:3px solid #5b0b1b;overflow:hidden;margin:0;box-shadow:inset 0 3px 8px #0008,0 0 14px #ff2a4d22}
+.gauge::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),#ffffff14 calc(10% - 1px) 10%)}
+.gauge i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#27e08a,#7bffb8);transition:width .12s linear,background .2s;box-shadow:0 0 18px #27e08a66}
+@media(min-width:900px){#gwrap{position:fixed;right:14px;top:50%;transform:translateY(-50%);width:250px;max-width:250px!important;margin:0!important;z-index:20;padding:14px}}
+@media(max-width:520px){#gwrap{margin:12px 0 4px!important;padding:10px 12px}.gauge{height:34px}}
 .cal{width:min(70%,320px);height:10px;background:#fff3;border-radius:99px;overflow:hidden;margin:10px auto 4px}.cal i{display:block;height:100%;background:#27e08a;width:0}
 /* défis texte / sons */
 .txtc{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px;text-align:center;background:radial-gradient(circle at 50% 30%,#2b0a14,#0a0a10);font-weight:800;font-size:clamp(1.1rem,4.6vw,2rem);line-height:1.25}
@@ -96,6 +101,7 @@ html[data-anim="off"] .curt{transition:none}
   <div class="row" style="margin-top:8px"><select id="sndsel"></select><button class="btn" data-a="sndtest">▶ Écouter</button><button class="btn" data-a="addsnd">Ajouter</button></div>
   <div class="row" style="margin-top:8px"><button class="btn primary" data-a="pack">📦 Pack de départ</button><button class="pill" id="bankb" data-a="bank">🎲 Défis aléatoires</button></div>
   <p class="hint">Rien à ajouter ? Le <b>pack de départ</b> met des défis texte et des sons, et <b>🎲 Défis aléatoires</b> pioche dans une grande banque à chaque manche.</p>
+  <div class="row" style="margin-top:8px"><button class="btn" data-a="libopen">📚 Ma bibliothèque <span id="libn" class="hint"></span></button><span class="hint" style="margin:0;text-align:left">Tout ce que tu ajoutes ici est gardé sur cet appareil pour tes prochaines parties.</span></div>
   <div id="items"></div></div>
  <div class="card"><h2>📸 Photo du craquage</h2><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="snapopt"><span>Garder une photo de ma tête quand je craque <small class="hint" style="display:block;margin:0">Facultatif. La photo reste sur <b>mon appareil</b> : je choisis ensuite si je la partage.</small></span></label></div>
  <div class="card"><h2>👥 Joueurs <span id="plcount" class="hint" style="display:inline"></span></h2><div id="plist"></div></div>
@@ -114,7 +120,7 @@ html[data-anim="off"] .curt{transition:none}
  <div class="stage" id="stage"><div id="media" style="width:100%;height:100%"></div><div class="curt l"></div><div class="curt r"></div><div class="ov" id="ov"></div><div class="ov lost" id="lost" hidden>TU AS CRAQUÉ !</div></div>
  <div id="tl-round"></div>
  <p id="roundFace" class="status center"></p>
- <div id="gwrap" style="max-width:520px;margin:0 auto"><div class="hint" style="margin:0;display:flex;justify-content:space-between"><span>🧘 Self-control</span><span id="gtxt"></span></div><div class="gauge"><i id="gfill"></i></div></div>
+ <div id="gwrap"><div class="hint" style="display:flex;justify-content:space-between"><span>🧘 Self-control</span><span id="gtxt"></span></div><div class="gauge" role="progressbar" aria-label="Niveau de self-control" aria-valuemin="0" aria-valuemax="100"><i id="gfill"></i></div></div>
  <div class="center"><button class="btn danger" data-a="crack">😂 J’ai craqué</button> <button class="btn" data-a="skip" id="skipb" hidden>⏭ Passer le temps</button></div>
  <div class="card"><div id="rank-r"></div></div>
 </section>
@@ -140,6 +146,7 @@ html[data-anim="off"] .curt{transition:none}
 <script src="/shared/net.js"></script>
 <script src="/shared/profile.js"></script>
 <script src="/shared/gages.js"></script>
+<script src="/shared/library.js"></script>
 <script src="/shared/party.js"></script>
 <script>
 "use strict";
@@ -255,7 +262,7 @@ function analyse(){
  const thr=0.42-0.0035*L.sens;let hit=false,mx=0;
  for(const k in s){let d=s[k]-L.base[k];if(talk&&(k==="laugh"||k==="lips"))d=Math.min(d,0);if(d>thr)hit=true;mx=Math.max(mx,d/thr)}
  L.gv=L.gv*.6+Math.max(0,Math.min(1,mx))*.4;
- if(gf){gf.style.width=((1-L.gv)*100)+"%";gf.style.background=L.gv<.5?"#27e08a":L.gv<.8?"#ffc531":"#ff1a40"}
+ if(gf){gf.style.width=((1-L.gv)*100)+"%";gf.style.background=L.gv<.5?"#27e08a":L.gv<.8?"#ffc531":"#ff1a40";const gw=gf.closest(".gauge");if(gw)gw.setAttribute("aria-valuenow",String(Math.round((1-L.gv)*100)))}
  if(gt)gt.textContent=L.out?"💀":talk?"🗣 parole ignorée":L.gv>.75?"⚠ tiens bon…":"";
  if(L.out)return;
  L.streak=hit?L.streak+1:0;
@@ -304,26 +311,75 @@ function waitIce(pc,ms){
   pc.addEventListener("icegatheringstatechange",done);
  });
 }
+function attachStream(pc){
+ if(!L.stream)return;
+ L.stream.getTracks().forEach(t=>{
+  try{ if(t.kind==="video"&&"contentHint"in t)t.contentHint="motion"; }catch(e){}
+  try{
+   const sn=pc.getSenders().find(x=>x.track&&x.track.kind===t.kind);
+   if(sn)sn.replaceTrack(t).catch(()=>{});else pc.addTrack(t,L.stream);
+  }catch(e){}
+ });
+}
 function pcFor(id){
  if(L.pcs[id])return L.pcs[id];
- const pc=new RTCPeerConnection({...(L.ice||{iceServers:[{urls:"stun:stun.l.google.com:19302"}]}),bundlePolicy:"max-bundle",iceCandidatePoolSize:2});L.pcs[id]=pc;
- if(L.stream)L.stream.getTracks().forEach(t=>{try{if(t.kind==="video"&&"contentHint"in t)t.contentHint="motion"}catch(e){}pc.addTrack(t,L.stream)});
+ const pc=new RTCPeerConnection({...(L.ice||{iceServers:[{urls:"stun:stun.l.google.com:19302"}]}),bundlePolicy:"max-bundle",iceCandidatePoolSize:2});
+ pc._makingOffer=false;pc._downSince=0;pc._offerAt=0;pc._lastOffer="";
+ L.pcs[id]=pc;attachStream(pc);
  pc.onicecandidate=e=>{if(e.candidate)R.emit("sig",{f:ME,t:"ice",c:e.candidate},id)};
- pc.ontrack=e=>{tile(id).querySelector("video").srcObject=e.streams[0]};
+ pc.ontrack=e=>{const v=tile(id).querySelector("video");if(v&&v.srcObject!==e.streams[0])v.srcObject=e.streams[0]};
+ pc.onconnectionstatechange=()=>{const st=pc.connectionState;if(st==="connected"){pc._downSince=0;pc._offerAt=0}else if(st==="failed"||st==="disconnected"||st==="closed")pc._downSince=pc._downSince||Date.now()};
  return pc;
 }
-async function offer(id){const pc=pcFor(id);await pc.setLocalDescription(await pc.createOffer());await waitIce(pc);R.emit("sig",{f:ME,t:"offer",s:pc.localDescription},id)}
-async function onSig(d){
- if(!d||d.f===ME)return;const id=d.f;
- if(d.t==="hi"){const pc=pcFor(id);if(ME<id&&!pc.off){pc.off=1;offer(id)}else if(ME>id&&!pc.rep){pc.rep=1;R.emit("sig",{f:ME,t:"hi"},id)}}
- else if(d.t==="offer"){const pc=pcFor(id);await pc.setRemoteDescription(d.s);await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);R.emit("sig",{f:ME,t:"answer",s:pc.localDescription},id);flush(id)}
- else if(d.t==="answer"){const pc=pcFor(id);if(pc.signalingState==="have-local-offer"){await pc.setRemoteDescription(d.s);flush(id)}}
- else if(d.t==="ice"){const pc=pcFor(id);if(pc.remoteDescription)pc.addIceCandidate(d.c).catch(()=>{});else(L.q[id]=L.q[id]||[]).push(d.c)}
+/* Un seul côté initie l'offre (le plus petit identifiant). Cela évite les offres croisées
+   quand deux joueurs se reconnectent en même temps, qui laissaient parfois des tuiles noires. */
+async function offer(id){
+ const pc=pcFor(id);
+ if(pc._makingOffer||pc.signalingState!=="stable")return;
+ pc._makingOffer=true;pc._offerAt=Date.now();
+ try{
+  const o=await pc.createOffer();if(pc.signalingState!=="stable")return;
+  await pc.setLocalDescription(o);await waitIce(pc);
+  if(!pc.localDescription)return;pc._lastOffer=pc.localDescription.sdp;
+  R.emit("sig",{f:ME,t:"offer",s:pc.localDescription},id);
+ }catch(e){pc._offerAt=0}
+ finally{pc._makingOffer=false}
 }
-function flush(id){const pc=L.pcs[id];(L.q[id]||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));L.q[id]=[]}
+async function onSig(d){
+ if(!d||d.f===ME)return;const id=d.f;const pc=pcFor(id);
+ if(d.t==="hi"){
+  if(ME<id&&pc.signalingState==="stable"&&pc.connectionState!=="connected")offer(id);
+  return;
+ }
+ if(d.t==="offer"){
+  try{
+   if(pc._makingOffer||pc.signalingState!=="stable"){
+    // Glare : le plus petit identifiant cède et accepte l'offre, l'autre l'ignore.
+    if(ME<id&&pc.signalingState==="have-local-offer")await pc.setLocalDescription({type:"rollback"});
+    else return;
+   }
+   await pc.setRemoteDescription(d.s);
+   await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);
+   R.emit("sig",{f:ME,t:"answer",s:pc.localDescription},id);flush(id);
+  }catch(e){}
+  return;
+ }
+ if(d.t==="answer"){
+  try{if(pc.signalingState==="have-local-offer"){await pc.setRemoteDescription(d.s);flush(id)}}catch(e){}
+  return;
+ }
+ if(d.t==="ice"){
+  try{if(pc.remoteDescription)await pc.addIceCandidate(d.c);else(L.q[id]=L.q[id]||[]).push(d.c)}catch(e){}
+ }
+}
+function flush(id){const pc=L.pcs[id];if(!pc)return;(L.q[id]||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));L.q[id]=[]}
 setInterval(()=>{ if(!R||!S)return;
- for(const id in L.pcs){const st=L.pcs[id].connectionState;if(st==="failed"||st==="closed"){try{L.pcs[id].close()}catch(e){}delete L.pcs[id]}}
- if(S.pl.some(p=>p.id!==ME&&!L.pcs[p.id]||p.id!==ME&&L.pcs[p.id]&&L.pcs[p.id].connectionState!=="connected"))R.emit("sig",{f:ME,t:"hi"});
+ for(const id in L.pcs){const pc=L.pcs[id],st=pc.connectionState;
+  const stuck=(pc.signalingState==="have-local-offer"&&pc._offerAt&&Date.now()-pc._offerAt>9000)||
+   st==="failed"||st==="closed"||(st==="disconnected"&&pc._downSince&&Date.now()-pc._downSince>9000);
+  if(stuck){try{pc.close()}catch(e){}delete L.pcs[id]}
+ }
+ if(S.pl.some(p=>p.id!==ME&&!L.pcs[p.id]))R.emit("sig",{f:ME,t:"hi"});
 },3500);
 
 /* ---------- banque de défis : textes + sons synthétisés (aucun fichier à héberger) ---------- */
@@ -391,7 +447,10 @@ async function enter(create,o){
  R=x.R;code=x.code;isHost=R.host;
  Sess.save("pf",{code,name,host:isHost});setInterval(()=>Sess.touch("pf"),20000);
  Party.listen(R,code,()=>Sess.clear("pf"));
- R.on("st",d=>{if(isHost||!d)return;S=d;route()});
+ R.on("st",d=>{if(isHost||!d)return;S=d;
+  // Si l'hôte nous a élagué (rechargement long, veille du téléphone), on redemande notre place.
+  if(!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:L.name},"host");
+  route()});
  R.on("sig",onSig);
  R.on("content",d=>{L.cur=d;L.started=false;L.prep=null;if(S&&S.ph==="round")prepare()});
  R.on("act",d=>{if(isHost)hostAct(d)});
@@ -404,7 +463,7 @@ async function enter(create,o){
   const sn=R.initSnap;
   if(sn&&sn.S){S=sn.S;S.host=ME;H.used=(sn.H&&sn.H.used)||[];needResend();resendItems()}
   else S={ph:"lobby",host:ME,pl:[],items:[],r:0,cfg:{rounds:5,dur:30,bank:false}};
-  hostLoops();hostAct({k:"join",p:ME,n:name});
+  hostLoops();hostAct({k:"join",p:ME,n:name});libRestore();libCount();
  }
  startHello();
  tile(ME);$("#lcode").textContent=code;$("#who").textContent="Salon "+code;view("lobby");route();initAI();
@@ -420,6 +479,54 @@ function startHello(){
 /* Passage de relais : l'hôte a disparu, le serveur nous désigne. Les contenus (photos/vidéos) sont renvoyés par leurs propriétaires. */
 function needResend(){if(R)R.emit("rs",{})}
 function resendItems(){for(const id in L.mine){const m=L.mine[id];send({k:"item",id,kind:m.kind,label:m.label,data:m.data})}}
+
+/* ---------- bibliothèque locale (IndexedDB, reste sur cet appareil) ---------- */
+function libId(it){
+  const d=it.data?String(it.data):"";
+  const s=String(it.kind||"")+"|"+String(it.ref||"")+"|"+(d?d.length+":"+d.slice(0,120)+":"+d.slice(-120):"");
+  let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;
+  return"pf"+Math.abs(h).toString(36);
+}
+function libSave(it){
+  if(!it||!window.Lib)return;
+  try{Lib.put({id:libId(it),game:"pf",kind:it.kind,label:it.label,ref:it.ref||"",data:it.data||"",by:L.name||"",partyId:it.partyId||it.id||""}).then(ok=>{if(ok){Lib.trim("pf",60);libCount(true)}})}catch(e){}
+}
+function libCount(force){
+  const el=$("#libn");if(!el||!window.Lib)return;
+  if(!force&&L.libN!=null){el.textContent=L.libN?"("+L.libN+")":"";return}
+  Lib.list("pf").then(rows=>{L.libN=rows.length;el.textContent=L.libN?"("+L.libN+")":""});
+}
+function libOpen(){
+  let m=$("#libmod");
+  if(m){m.hidden=false;libRender();return}
+  m=document.createElement("div");m.className="mod";m.id="libmod";
+  m.innerHTML=`<div class="card"><h2>📚 Ma bibliothèque</h2><p class="hint" style="margin:0 0 8px">Les liens, photos, vidéos, textes et sons que tu ajoutes sont gardés automatiquement sur <b>cet appareil</b>. Ajoute-les à une nouvelle partie en un clic.</p><div id="liblist"><p class="hint">Chargement…</p></div><div class="row" style="margin-top:12px"><button class="btn primary" data-a="libclose">Fermer</button><button class="btn" data-a="libclear">🗑 Tout effacer</button></div></div>`;
+  document.body.append(m);libRender();
+}
+function libRender(){
+  const box=$("#liblist");if(!box||!window.Lib)return;
+  Lib.list("pf").then(rows=>{
+    L.libRows={};rows.forEach(r=>L.libRows[r.id]=r);L.libN=rows.length;
+    if(!rows.length){box.innerHTML='<p class="hint">Aucun contenu enregistré pour le moment. Ajoute un lien, une photo ou un défi : il apparaîtra ici.</p>';return}
+    const ic={yt:"▶️",emb:"📱",vurl:"🎞️",iurl:"🖼️",img:"📷",vid:"🎞️",txt:"💬",snd:"🔊"};
+    box.innerHTML=rows.map(r=>`<div class="prow"><span>${ic[r.kind]||"🎬"} ${esc(r.label||r.kind||"contenu")} <small class="hint">· ${esc(r.kind)}${r.data?" · fichier":""}</small></span><button class="btn" style="margin-left:auto;padding:2px 10px" data-a="libadd" data-id="${r.id}" title="Ajouter à la partie">➕</button><button class="btn" style="padding:2px 10px" data-a="libdel" data-id="${r.id}" title="Supprimer">🗑</button></div>`).join("");
+  });
+}
+/* Après un rechargement, l'hôte retrouve ses photos/vidéos grâce à la bibliothèque
+   (le snapshot du relais ne contient pas les fichiers lourds). */
+function libRestore(){
+  if(!window.Lib||!S)return;
+  Lib.list("pf").then(rows=>{
+    if(!S||!rows.length)return;
+    let n=0;const byParty={};rows.forEach(r=>{if(r.partyId)byParty[r.partyId]=r});
+    S.items.forEach(it=>{
+      if((it.kind!=="img"&&it.kind!=="vid")||H.data[it.id])return;
+      const r=byParty[it.id]||rows.find(x=>x.kind===it.kind&&x.label===it.label&&x.data);
+      if(r&&r.data){H.data[it.id]=r.data;n++}
+    });
+    if(n){bc();route()}
+  });
+}
 function onPromoted(snap){
  isHost=true;
  if(snap&&snap.S)S=snap.S;
@@ -428,7 +535,7 @@ function onPromoted(snap){
  if(!S.pl.some(p=>p.id===ME)&&S.ph==="lobby")S.pl.push({id:ME,n:L.name,sc:0,w:0,o:0,out:false});
  hostLoops();needResend();resendItems();
  Sess.save("pf",{code,name:L.name,host:true});
- L.hostSig="";toast("👑 Tu es maintenant l’hôte");bc();route();
+ L.hostSig="";toast("👑 Tu es maintenant l’hôte");libRestore();bc();route();
 }
 
 /* ---------- logique hôte ---------- */
@@ -437,12 +544,13 @@ function addItem(p,d){
  if(!["yt","emb","vurl","iurl","img","vid","txt","snd"].includes(kind))return;
  let id=String(d.id||"").replace(/[^a-z0-9]/gi,"").slice(0,8);
  const ex=id&&S.items.find(i=>i.id===id);
- if(ex){if(d.data&&String(d.data).length<12e6)H.data[id]=d.data;return}
+ if(ex){if(d.data&&String(d.data).length<12e6)H.data[id]=d.data;libSave({id,partyId:id,kind:ex.kind,ref:ex.ref,label:ex.label,data:H.data[id]||""});return}
  if(S.items.length>=40||String(d.data||"").length>=12e6)return;
  if(!id)id=rid();
  const ref=kind==="snd"?(SND[d.ref]?d.ref:"boing"):kind==="txt"?String(d.ref||"").replace(/[<>]/g,"").slice(0,200):String(d.ref||"");
  if(kind==="txt"&&!ref.trim())return;
  S.items.push({id,kind,label:String(d.label||"").slice(0,60),ref,by:p});if(d.data)H.data[id]=d.data;
+ libSave({id,partyId:id,kind,ref,label:String(d.label||"").slice(0,60),data:d.data||""});
 }
 function addPack(){
  const have=new Set(S.items.map(i=>i.ref));
@@ -453,7 +561,10 @@ function addPack(){
 function hostAct(d){
  if(!isHost||!S)return;const p=d.p,pp=S.pl.find(x=>x.id===p);
  if(d.k==="needc"){if(S.ph==="round"&&S.cur){const it=S.cur,c={id:it.id,kind:it.kind,ref:it.ref,data:H.data[it.id]||""};R.emit("content",c,p)}return}
- if(d.k==="join"){if(!pp&&S.ph==="lobby"&&!(S.banned||[]).includes(p)&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0,w:0,o:0,out:false})}
+ // Une partie peut déjà être lancée : un joueur qui recharge sa page (ou arrive en cours de route)
+ // doit pouvoir reprendre sa place, et non rester spectateur bloqué sur le lobby.
+ if(d.k==="join"){if(!pp&&!(S.banned||[]).includes(p)&&S.pl.length<MAX&&S.ph!=="end"){
+   S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0,w:0,o:0,out:false})}}
  else if(d.k==="kick"&&p===ME&&S.ph==="lobby"&&d.id!==ME){S.banned=S.banned||[];if(!S.banned.includes(d.id))S.banned.push(d.id);S.pl=S.pl.filter(x=>x.id!==d.id);R.emit("kick",{},d.id)}
  else if(d.k==="item"&&pp)addItem(p,d);
  else if(d.k==="rm"){const it=S.items.find(i=>i.id===d.id);if(it&&(it.by===p||p===S.host)){S.items=S.items.filter(i=>i.id!==d.id);delete H.data[d.id]}}
@@ -522,6 +633,7 @@ function lobby(){
  const ic={yt:"▶️",emb:"📱",vurl:"🎞️",iurl:"🖼️",img:"📷",vid:"🎞️",txt:"💬",snd:"🔊"};
  $("#items").innerHTML=S.items.map(i=>`<div class="prow"><span>${ic[i.kind]||"🎬"} ${esc(i.label)} <small class="hint">· ${esc(nm(i.by))}</small></span>${i.by===ME||isHost?`<button class="btn" style="margin-left:auto;padding:2px 10px" data-a="rm" data-id="${i.id}">✕</button>`:""}</div>`).join("")||'<p class="hint">Aucun contenu pour le moment.</p>';
  rank("#rank-l");
+ libCount();
  $("#plcount").textContent=S.pl.length+"/"+MAX;
  $("#plist").innerHTML=S.pl.map(p=>`<div class="prow"><span>${esc(p.n)}${p.id===ME?" (toi)":""}${p.id===S.host?" 👑":""}</span>${isHost&&p.id!==ME?`<button class="btn" style="margin-left:auto;padding:2px 10px" data-a="kick" data-id="${p.id}" title="Retirer ce joueur">✕</button>`:""}</div>`).join("");
  $("#hostcfg").hidden=!isHost;$("#waith").hidden=isHost;$("#snapopt").checked=L.snapOn;
@@ -648,10 +760,10 @@ function addUrl(){
  if(y){kind="yt";ref=y;label="YouTube "+y}
  else if(/\.(png|jpe?g|gif|webp)(\?|$)/i.test(u))kind="iurl";
  else if(emb){kind="emb";ref=emb;label="Vidéo "+u.replace(/^https?:\/\//,"").split("/")[0]}
- send({k:"item",id:rid(),kind,ref,label});$("#url").value="";
+ const id=rid();send({k:"item",id,kind,ref,label});libSave({id,partyId:id,kind,ref,label});$("#url").value="";
 }
-$("#fimg").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const d=await shrink(f);{if(!d)return toast("Photo illisible");const id=rid();L.mine[id]={kind:"img",label:f.name||"Photo",data:d};send({k:"item",id,kind:"img",label:f.name||"Photo",data:d})}});
-$("#fvid").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(f.size>8e6)return toast("Vidéo trop lourde (8 Mo max)");{const id=rid(),data=await readFile(f);L.mine[id]={kind:"vid",label:f.name||"Vidéo",data};send({k:"item",id,kind:"vid",label:f.name||"Vidéo",data})}});
+$("#fimg").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const d=await shrink(f);{if(!d)return toast("Photo illisible");const id=rid(),label=f.name||"Photo";L.mine[id]={kind:"img",label,data:d};send({k:"item",id,kind:"img",label,data:d});libSave({id,partyId:id,kind:"img",ref:"",label,data:d})}});
+$("#fvid").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(f.size>8e6)return toast("Vidéo trop lourde (8 Mo max)");{const id=rid(),data=await readFile(f),label=f.name||"Vidéo";L.mine[id]={kind:"vid",label,data};send({k:"item",id,kind:"vid",label,data});libSave({id,partyId:id,kind:"vid",ref:"",label,data})}});
 /* ---------- téléphone = caméra (QR code) ---------- */
 const CAM=new URLSearchParams(location.search).get("cam");
 let PR=null,pcPh=null,qPh=[];
@@ -742,8 +854,8 @@ document.addEventListener("click",async e=>{
  if(a==="create")enter(true);else if(a==="join")enter(false);
  else if(a==="rules"){const m=document.createElement("div");m.className="mod";m.innerHTML='<div class="card"><h2>📜 Règles</h2><p>Chaque manche, un contenu (vidéo ou photo) est choisi au hasard parmi ceux proposés par les joueurs.</p><p>Ta webcam est analysée <b>dans ton navigateur</b> (rien n’est enregistré ni envoyé) : sourire, rire, grimace, surprise… Si tu réagis, tu es <b>éliminé</b> de la manche.</p><p>Ceux qui gardent leur Poker Face gagnent <b>1 point</b>. Le meilleur total gagne la partie.</p><button class="btn primary big" onclick="this.closest(\'.mod\').remove()">Compris</button></div>';document.body.append(m)}
  else if(a==="leave"){Sess.clear("pf");R&&R.leave();location.href=location.pathname}
- else if(a==="addtxt"){const t=$("#txtc").value.trim();if(!t)return;send({k:"item",id:rid(),kind:"txt",label:t.split("|")[0].slice(0,40),ref:t});$("#txtc").value=""}
- else if(a==="addsnd"){const k=$("#sndsel").value;send({k:"item",id:rid(),kind:"snd",label:SND[k].n,ref:k})}
+ else if(a==="addtxt"){const t=$("#txtc").value.trim();if(!t)return;const id=rid(),label=t.split("|")[0].slice(0,40);send({k:"item",id,kind:"txt",label,ref:t});libSave({id,partyId:id,kind:"txt",ref:t,label});$("#txtc").value=""}
+ else if(a==="addsnd"){const k=$("#sndsel").value,id=rid(),label=SND[k].n;send({k:"item",id,kind:"snd",label,ref:k});libSave({id,partyId:id,kind:"snd",ref:k,label})}
  else if(a==="sndtest")playSnd($("#sndsel").value)
  else if(a==="pack")send({k:"pack"});
  else if(a==="bank")send({k:"cfg",cfg:{bank:!(S&&S.cfg.bank)}});
@@ -751,6 +863,11 @@ document.addEventListener("click",async e=>{
  else if(a==="snapshare"){const x=L.snaps[+b.dataset.i];if(x&&!x.shared&&R){x.shared=true;R.emit("snap",{id:ME,n:L.name,r:x.r,data:x.data}).catch(()=>{});addShared({id:ME,n:L.name,r:x.r,data:x.data});toast("Photo partagée 🤣")}}
  else if(a==="snapdel"){L.snaps.splice(+b.dataset.i,1);snaps()}
  else if(a==="addurl")addUrl();
+ else if(a==="libopen")libOpen();
+ else if(a==="libclose"){const m=$("#libmod");if(m)m.remove()}
+ else if(a==="libadd"){const r=L.libRows&&L.libRows[b.dataset.id];if(!r)return;const id=rid();send({k:"item",id,kind:r.kind,label:r.label,ref:r.ref,data:r.data||""});libSave({id,partyId:id,kind:r.kind,ref:r.ref,label:r.label,data:r.data||""});toast("Ajouté à la partie ✔")}
+ else if(a==="libdel"){if(window.Lib)Lib.del(b.dataset.id).then(()=>{libRender();libCount(true)})}
+ else if(a==="libclear"){if(confirm("Effacer toute ta bibliothèque Poker Face ?"))Lib.clear("pf").then(()=>{libRender();libCount(true)})}
  else if(a==="pimg")$("#fimg").click();else if(a==="pvid")$("#fvid").click();
  else if(a==="rm")send({k:"rm",id:b.dataset.id});
  else if(a==="kick"){if(confirm("Retirer ce joueur de la partie ?"))send({k:"kick",id:b.dataset.id})}

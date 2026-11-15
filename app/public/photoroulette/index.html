@@ -29,6 +29,7 @@
 .mod{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:80;padding:16px}.mod .card{max-width:520px;max-height:88vh;overflow:auto;margin:0}
 .qrbox{background:#fff;padding:10px;border-radius:12px;display:inline-block;margin:8px 0}.qrbox img{display:block;width:200px;height:200px}
 .pick.on{background:#2fcf7a!important;color:#06240f!important;border-color:var(--edge)!important}
+.chip.on{background:#2fcf7a;color:#06240f;border-color:var(--edge)}
 .pick:disabled:not(.on){opacity:.4}
 #vstat{min-height:1.5em}#vstat.ok{font-weight:800;color:#18a05a}
 </style>
@@ -39,7 +40,7 @@
 
 <section id="s-home">
  <header class="hero"><div class="logo">📸</div><h1>Photo Roulette</h1>
- <p>Chacun propose 16 photos de sa pellicule, les valide, puis une photo d’un joueur s’affiche quelques secondes : devine à qui elle appartient — vite ! De 3 à 10 joueurs.</p></header>
+ <p>Choisis une grande réserve de photos. Avant chaque manche, 16 photos sont tirées au hasard : elles sont mélangées à celles des autres joueurs, puis une photo s’affiche et tu dois deviner à qui elle appartient — vite ! De 3 à 10 joueurs.</p></header>
  <div class="card"><h2>Ton prénom</h2><input type="text" id="pname" maxlength="14" placeholder="Prénom" autocomplete="off">
  <button class="btn primary big" data-a="create">Créer une partie 🚀</button></div>
  <div class="card"><h2>Rejoindre avec un code PIN</h2><div class="row"><input type="text" id="pcode" maxlength="4" placeholder="PIN" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn primary" data-a="join">Rejoindre</button></div></div>
@@ -50,10 +51,10 @@
  <div class="card center"><h2>Code PIN</h2><div class="code" id="lcode"></div><div id="sw-share"></div></div>
  <div class="card"><h2>Joueurs <span id="pc" class="hint" style="display:inline"></span></h2><div id="pl" class="chips"></div><p id="ph" class="hint"></p></div>
  <div class="card"><h2 id="mtitle">📷 Ma pellicule</h2>
-  <p class="hint" style="margin:0 0 8px">1) Appuie sur le bouton et ouvre l’album de ton choix dans ta galerie (Récents, un voyage, une soirée…).<br>2) Coche autant de photos que possible : le site te propose 16 photos au hasard (10 en vidéo).<br>3) Une photo te gêne ? Appuie sur ✕ : elle est remplacée par une autre au hasard. Puis valide ton jeu de 16.<br><small>La partie ne démarre que quand tous les joueurs ont validé. iPhone : choisis « Photothèque ». Les sélecteurs de téléphone n’ont pas de « tout sélectionner » : coche les photos toi-même, ou ajoute-les par petits lots avec « Ajouter d’autres photos ». Pas de galerie sur l’ordinateur ? Utilise « Envoyer depuis mon téléphone ».</small></p>
+  <p class="hint" style="margin:0 0 8px">1) Choisis un album dans ta galerie (Récents, un voyage, une soirée…) et coche <b>beaucoup</b> de photos (150 ou plus) : c’est ta réserve pour toute la partie.<br>2) Le site tire 16 photos au hasard (10 en vidéo). Une photo te gêne ? Appuie sur ✕ : elle est remplacée automatiquement par une autre de ta réserve.<br>3) Valide ton jeu. La partie démarre quand tous les joueurs ont validé. À chaque nouvelle manche, 16 nouvelles photos sont tirées de ta réserve.<br><small>iPhone : choisis « Photothèque ». Les sélecteurs de téléphone n’ont pas de « tout sélectionner » : coche les photos toi-même, ou ajoute-les par petits lots avec « Ajouter d’autres photos ». Pas de galerie sur l’ordinateur ? Utilise « Envoyer depuis mon téléphone ».</small></p>
   <input type="file" id="files" accept="image/*" multiple hidden>
   <input type="file" id="dir" webkitdirectory multiple hidden>
-  <button class="btn primary" data-a="pick">🎲 Choisir un album et proposer 16 photos</button>
+  <button class="btn primary" data-a="pick">🗂️ Choisir ma réserve de photos</button>
   <button class="btn" data-a="phoneupload">📱 Envoyer depuis mon téléphone</button>
   <button class="btn" data-a="add" id="addb" hidden>➕ Ajouter d’autres photos</button>
   <button class="btn" data-a="dir" id="dirb" hidden>📁 Dossier entier</button>
@@ -66,8 +67,9 @@
   <p class="hint" style="margin:0 0 8px">Plante une photo drôle dans la pellicule d’un autre joueur : quand elle sort, c’est lui la bonne réponse !</p>
   <div class="row"><select id="plto"></select><input type="file" id="plfile" accept="image/*" hidden><button class="btn" data-a="plant">Planter</button></div></div>
  <div id="hostcfg" hidden class="card"><h2>La partie</h2>
-  <div class="srow"><span><b>Nombre de manches</b><small>Une photo par manche</small></span><div class="stepper"><button data-a="r-">−</button><output id="rn">15</output><button data-a="r+">+</button></div></div>
-  <div class="srow"><span><b>Temps par manche</b></span><div class="pills" id="showp"></div></div>
+  <div class="srow"><span><b>Nombre de manches</b><small>Une série de photos par manche</small></span><div class="stepper"><button data-a="r-">−</button><output id="rn">3</output><button data-a="r+">+</button></div></div>
+  <div class="srow"><span><b>Photos par manche</b><small>Questions tirées du mélange</small></span><div class="stepper"><button data-a="q-">−</button><output id="qn">8</output><button data-a="q+">+</button></div></div>
+  <div class="srow"><span><b>Temps par photo</b></span><div class="pills" id="showp"></div></div>
   <div class="srow"><span><b>Mode</b></span><div class="pills" id="modep"></div></div>
   <div class="srow"><span><b>🌱 Plant a photo</b></span><div class="pills" id="plp"></div></div>
   <button class="btn primary big" data-a="start" id="startb">Lancer 🚀</button></div>
@@ -93,13 +95,14 @@
 <script src="/shared/profile.js"></script>
 <script src="/shared/gages.js"></script>
 <script src="/shared/party.js"></script>
+<script src="/shared/library.js"></script>
 <script>
 const MIN=3,MAX=10;
-let R=null,S=null,isHost=false,code="",L={pool:[],name:"",media:[],mine:null,ans:null,key:"",showAgain:false,validated:false,validKeys:null,lastPh:""};
+let R=null,S=null,isHost=false,code="",L={pool:[],name:"",media:[],ans:null,ansKey:"",key:"",validated:false,validKeys:null,lastPh:"",used:new Set(),queue:[],busy:false,readyM:-1,ownerKey:"",need:0,replaying:false};
 /* Envoi de photos depuis un téléphone : salon temporaire « prp-<code> » */
 let PUP=null;
 const PHUP=new URLSearchParams(location.search).get("ph");
-let H={pool:{},ans:{},used:[],order:[],stat:{},valid:{}};
+let H={pool:{},ans:{},qdeck:[],stat:{},valid:{},skip:{},cur:null,mok:{},mn:{}};
 L.planted=[];
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
 const rid=()=>Math.random().toString(36).slice(2,10);
@@ -107,12 +110,18 @@ const msg=t=>$("#hmsg").textContent=t;
 const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!==id);
 const bc=()=>{if(isHost&&R){R.emit("st",S).catch(()=>{});R.snap({S,H:snapH()})}};
 const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
+const DEFCFG=()=>({rounds:3,qper:8,time:15,media:"photo",plant:true});
+const cfgRounds=()=>Math.max(1,Math.min(10,(S&&S.cfg&&S.cfg.rounds)||3));
+const cfgQper=()=>Math.max(3,Math.min(20,(S&&S.cfg&&S.cfg.qper)||8));
+const cfgTime=()=>([10,15,20,30].indexOf(S&&S.cfg&&S.cfg.time)>=0?S.cfg.time:15);
+const fid=f=>f._fid||(f._fid=f._data?("ph:"+f.name+"|"+f.size):(f.name+"|"+f.size+"|"+f.lastModified));
 try{$("#pname").value=localStorage.getItem("soiree:name")||""}catch(e){}
 
 /* ---------- médias ---------- */
 /* Décodage robuste : sur iPhone, certains fichiers (HEIC, photo très lourde) peuvent ne jamais
    déclencher onload/onerror. Un délai maximum évite de bloquer tout le tirage. */
 function shrink(file){
+  if(file._data)return Promise.resolve({kind:"photo",data:file._data});
   return new Promise(res=>{
     let done=false;
     const finish=v=>{if(done)return;done=true;clearTimeout(timer);res(v)};
@@ -150,10 +159,10 @@ function shrink(file){
 }
 const isMedia=(f,vid)=>vid?f.type.startsWith("video/"):(f.type.startsWith("image/")||/\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name));
 const maxN=()=>S&&S.cfg.media==="video"?10:16;
-function allValidated(){return !!(S&&S.pl.length&&S.pl.every(p=>p.val>0))}
+function allValidated(){return !!(S&&S.pl&&S.pl.length&&S.pl.every(p=>p.val>0||p.skip))}
 function updateCount(){
   const el=$("#mycount");if(!el)return;
-  el.textContent=L.busy?`Tirage au sort… ${L.media.length}/${maxN()}`:L.media.length?`✔ ${L.media.length} proposées au hasard · ✕ pour en écarter une`:"";
+  el.textContent=L.busy?`Tirage au sort… ${L.media.length}/${maxN()}`:L.media.length?`✔ ${L.media.length} proposées au hasard · 🗂️ ${L.pool.length} dans ta réserve`:(L.pool.length?`🗂️ ${L.pool.length} photo(s) dans ta réserve`:"");
 }
 function syncValid(){
   const b=$("#valb"),h=$("#valhint");if(!b)return;
@@ -164,6 +173,14 @@ function syncValid(){
   b.classList.toggle("primary",!L.validated);
   if(h)h.textContent=L.validated?"✔ Jeu validé. Tu peux encore le modifier avant le lancement.":"";
 }
+function syncReady(){
+  const b=$("#rvalb"),h=$("#rvalhint");if(!b)return;
+  b.hidden=!L.media.length;
+  b.disabled=L.busy;
+  b.textContent=L.validated?"✏️ Modifier mon jeu":"✅ Valider mes "+L.media.length+" photos";
+  if(h)h.textContent=L.busy?"Tirage au sort…":L.validated?"✔ Photos validées. Tu peux encore les modifier.":"";
+  const sb=$("#skipmb");if(sb)sb.hidden=!!L.media.length;
+}
 function invalidate(){
   if(!L.validated&&L.validKeys==null)return;
   L.validated=false;L.validKeys=null;
@@ -171,24 +188,31 @@ function invalidate(){
 }
 function validateDeck(){
   if(!L.media.length||L.busy)return;
-  if(L.validated){invalidate();syncValid();return}
+  if(L.validated){invalidate();syncValid();syncReady();return}
   L.validated=true;L.validKeys=L.media.map(m=>m.key);
   send({k:"val",keys:L.validKeys.slice()});
-  syncValid();
+  syncValid();syncReady();
   toast("✔ Jeu validé, en attente des autres joueurs");
 }
 function thumbHtml(m,i){
   return `<span class="t">${m.kind==="video"?`<video src="${m.data}" muted playsinline></video>`:`<img src="${m.data}" alt="">`}<button data-a="swap" data-i="${i}" aria-label="Écarter et remplacer">✕</button></span>`;
 }
-function renderThumbs(){
-  const box=$("#thumbs");if(box)box.innerHTML=L.media.map(thumbHtml).join("");
-  updateCount();syncValid();
+function paintThumbs(){
+  const h=L.media.map(thumbHtml).join(""),k=L.media.map(m=>m.key).join("|");
+  const a=$("#thumbs");if(a&&a._pk!==k){a._pk=k;a.innerHTML=h}
+  const b=$("#rthumbs");if(b&&b._pk!==k){b._pk=k;b.innerHTML=h}
+  updateCount();syncValid();syncReady();
 }
-function appendThumb(m,i){
-  const box=$("#thumbs");if(!box)return;
-  const t=document.createElement("template");
-  t.innerHTML=thumbHtml(m,i);
-  box.append(t.content.firstElementChild);
+/* Réserve locale : chaque manche puise 16 nouvelles photos dedans. */
+function pickReserve(n){
+  const inDraw=new Set(L.media.map(m=>m.fid));
+  const used=L.used||new Set();
+  let avail=L.pool.filter(f=>!used.has(fid(f))&&!inDraw.has(fid(f)));
+  if(avail.length<n){
+    const rest=L.pool.filter(f=>!inDraw.has(fid(f))&&avail.indexOf(f)<0);
+    avail=avail.concat(shuffle(rest).slice(0,Math.max(0,n-avail.length)));
+  }
+  return shuffle(avail).slice(0,n);
 }
 /* complète le tirage jusqu'à maxN en piochant dans la file mélangée (les fichiers illisibles sont sautés) */
 async function fill(){
@@ -199,15 +223,16 @@ async function fill(){
      bloquer le tirage pendant plusieurs minutes (15 s par fichier). */
   const deadline=Date.now()+30000;
   try{
-    renderThumbs();
     while(L.media.length<maxN()&&L.queue.length){
       if(Date.now()>deadline){timedOut=true;break}
-      const m=await shrink(L.queue.shift());
-      if(m){m.key=rid();L.media.push(m);appendThumb(m,L.media.length-1);updateCount();send({k:"media",kind:m.kind,data:m.data,key:m.key});added++}
+      const f=L.queue.shift();
+      const m=await shrink(f);
+      if(m){m.key=rid();m.fid=fid(f);L.used.add(m.fid);L.media.push(m);updateCount();send({k:"media",kind:m.kind,data:m.data,key:m.key});added++}
       else skipped++;
     }
   }finally{L.busy=false}
-  renderThumbs();
+  paintThumbs();
+  if(S&&S.ph!=="lobby")libSaveMedia();
   return{added,skipped,timedOut};
 }
 async function addFiles(list,planto,redraw,append){
@@ -224,31 +249,88 @@ async function addFiles(list,planto,redraw,append){
   if(all.length>400){all=all.slice(0,400);toast("400 photos maximum par sélection")}
   if(L.busy){toast("Patiente, tirage en cours…");return}
   if(append&&L.pool&&L.pool.length){
-    const seen=new Set(L.pool.map(f=>`${f.name}|${f.size}|${f.lastModified}`));
-    const fresh=all.filter(f=>!seen.has(`${f.name}|${f.size}|${f.lastModified}`));
-    if(!fresh.length){toast("Ces photos sont déjà dans ta sélection");return}
+    const seen=new Set(L.pool.map(f=>fid(f)));
+    const fresh=all.filter(f=>!seen.has(fid(f)));
+    if(!fresh.length){toast("Ces photos sont déjà dans ta réserve");return}
     L.pool=L.pool.concat(fresh);
     L.queue=shuffle([...(L.queue||[]),...fresh]);
     const r=await fill();
-    toast(r.added?`${r.added} nouvelle(s) photo(s) ajoutée(s) ✔`:"Photos ajoutées : elles remplaceront celles que tu écartes ✔");
+    toast(r.added?`${r.added} nouvelle(s) photo(s) ajoutée(s) ✔`:"Photos ajoutées à ta réserve ✔");
   }else{
-    if(!redraw)L.pool=all;
+    L.pool=all;L.used=new Set();
     $("#redrawb").hidden=false;$("#addb").hidden=false;
     L.queue=shuffle([...L.pool]);L.media=[];send({k:"reset"});
     const r=await fill();
     toast(`${L.media.length} tirées au hasard ✔${r.skipped?` · ${r.skipped} ignorée(s) (format non lisible)`:""}${r.timedOut?" · délai dépassé, réessaie avec moins de photos":""}${L.pool.length<maxN()?" — coche plus de photos pour un vrai tirage":""}`);
   }
 }
-/* ✕ : écarte une photo et la remplace par une autre tirée au hasard dans la sélection */
+/* ✕ : écarte une photo et la remplace automatiquement par une autre de la réserve */
 async function swap(i){
   if(L.busy){toast("Patiente un instant…");return}
   if(!(i>=0&&i<L.media.length))return;
-  L.media.splice(i,1);invalidate();send({k:"drop",i});
-  if(!L.queue.length){renderThumbs();toast("Plus de photo de rechange : ajoute d’autres photos ➕");return}
+  const gone=L.media.splice(i,1)[0];
+  if(gone&&gone.fid&&gone.fid.indexOf("lib:")!==0)L.used.add(gone.fid);
+  invalidate();send({k:"drop",i});
+  const inDraw=new Set(L.media.map(m=>m.fid));
+  let f=L.pool.filter(x=>!inDraw.has(fid(x))&&!L.used.has(fid(x)));
+  if(!f.length)f=L.pool.filter(x=>!inDraw.has(fid(x)));
+  f=f.length?shuffle(f)[0]:null;
+  if(!f){paintThumbs();toast("Plus de photo de rechange : ajoute d’autres photos ➕");return}
+  const m=await shrink(f);
+  if(!m){paintThumbs();toast("Cette photo est illisible, réessaie ✕");return}
+  m.key=rid();m.fid=fid(f);L.used.add(m.fid);
+  L.media.push(m);
+  send({k:"media",kind:m.kind,data:m.data,key:m.key});
+  paintThumbs();
+}
+/* ---------- bibliothèque locale : retrouver les photos de la manche après un rechargement ---------- */
+const LIBG="photoroulette";
+const libRef=()=>S&&S.mi!=null?"m"+S.mi:"m0";
+const libId=k=>"pr:"+code+":"+libRef()+":"+k;
+function libSaveMedia(){
+  if(!window.Lib||!code||!S||S.ph==="lobby"||!L.media.length)return;
+  const ref=libRef();
+  Promise.all(L.media.map(m=>Lib.put({id:libId(m.key),game:LIBG,kind:m.kind,label:"Manche "+((S.mi||0)+1)+" · "+(L.name||""),ref,data:m.data,by:ME,partyId:code})))
+    .then(()=>Lib.list(LIBG))
+    .then(rows=>Promise.all(rows.filter(r=>r.partyId===code&&r.by===ME&&r.ref!==ref).map(r=>Lib.del(r.id))))
+    .catch(()=>{});
+}
+function libLoadMedia(){
+  if(!window.Lib||!code)return Promise.resolve([]);
+  const ref=libRef();
+  return Lib.list(LIBG).then(rows=>rows.filter(r=>r.partyId===code&&r.by===ME&&r.ref===ref&&r.data).map(r=>({kind:r.kind||"photo",data:r.data,key:(r.id.split(":").pop()||rid()),fid:"lib:"+r.id}))).catch(()=>[]);
+}
+/* Nouvelle manche : tire 16 nouvelles photos dans la réserve et les envoie à l'hôte. */
+async function prepareManche(){
+  if(!S||S.ph!=="ready"||L.readyM===S.mi)return;
+  L.readyM=S.mi;
+  L.media=[];L.validated=false;L.validKeys=null;L.ans=null;L.key="";L.queue=[];L.ownerKey="";
+  if(R)send({k:"reset"});
+  paintThumbs();
+  const restored=await libLoadMedia();
+  if(restored.length){
+    L.media=restored;
+    restored.forEach(m=>send({k:"media",kind:m.kind,data:m.data,key:m.key}));
+    paintThumbs();
+    toast("Photos de la manche restaurées ✔");
+    return;
+  }
+  if(!L.pool.length){paintThumbs();return}
+  L.queue=pickReserve(maxN());
   await fill();
 }
+function resetReserveUse(){L.used=new Set()}
 
 /* ---------- photos depuis le téléphone (QR code) ---------- */
+function addPhonePhoto(data){
+  if(!data||typeof data!=="string"||data.indexOf("data:image/")!==0)return false;
+  if(L.pool.length>=400)return false;
+  const f={name:"tel-"+Date.now()+"-"+Math.floor(Math.random()*1e6)+".jpg",size:data.length,lastModified:Date.now(),type:"image/jpeg",_data:data};
+  f._fid="ph:"+f.name+"|"+f.size;
+  L.pool.push(f);
+  if(L.media.length<maxN()&&!L.busy){L.queue.push(f);fill()}
+  return true;
+}
 async function phoneUploadPair(){
  let m=$("#phmod");if(m){m.hidden=false;return}
  const tok=(mkCode()+mkCode()).slice(0,6),url=location.origin+location.pathname+"?ph="+tok;
@@ -259,11 +341,9 @@ async function phoneUploadPair(){
  if(q)q.innerHTML=im?`<img src="${im}" width="200" height="200" alt="QR code">`:"QR indisponible : ouvre le lien ci-dessus sur ton téléphone.";
  try{PUP=await Net.join("prp-"+tok,{create:true})}catch(e){const st=$("#phrst");if(st)st.textContent="Connexion impossible : "+e.message;return}
  PUP.on("ph",d=>{
-  if(!d||typeof d.data!=="string"||!d.data.startsWith("data:image/")||d.data.length>9e6)return;
-  if(L.media.length>=maxN()){const st=$("#phrst");if(st){st.textContent="Le tirage est déjà complet ("+maxN()+").";st.className="status"}return}
-  const mm={kind:"photo",data:d.data,key:rid()};
-  invalidate();L.media.push(mm);appendThumb(mm,L.media.length-1);updateCount();syncValid();send({k:"media",kind:"photo",data:d.data,key:mm.key});
-  const st=$("#phrst");if(st){st.textContent="✔ "+L.media.length+" photo(s) reçue(s) — tu peux en envoyer d’autres";st.className="status ok"}
+  if(!d||typeof d.data!=="string"||d.data.length>9e6)return;
+  if(!addPhonePhoto(d.data)){const st=$("#phrst");if(st){st.textContent="Réserve pleine (400 photos).";st.className="status"}return}
+  const st=$("#phrst");if(st){st.textContent="✔ "+L.pool.length+" photo(s) dans ta réserve";st.className="status ok"}
  });
 }
 let PHUR=null;
@@ -308,8 +388,8 @@ async function enter(create,o){
   Sess.save("pr",{code,name,host:isHost});setInterval(()=>Sess.touch("pr"),20000);
   Party.listen(R,code,()=>Sess.clear("pr"));
   R.on("st",d=>{if(isHost||!d)return;S=d;route()});
-  R.on("ph",d=>{L.cur=d;if(S)route(true)});
-  R.on("priv",d=>{L.owner=d.own;if(S&&S.ph==="round")updLive()});
+  R.on("ph",d=>{L.cur=d;if(S&&(S.ph==="round"||S.ph==="reveal"))route(true)});
+  R.on("priv",d=>{L.ownerKey=d.mi+":"+d.q;if(S&&S.ph==="round")updLive()});
   R.on("act",d=>{if(isHost)hostAct(d)});
   R.on("rs",()=>{if(!isHost)resendAll()});
   R.onPromote(onPromoted);
@@ -317,7 +397,8 @@ async function enter(create,o){
   if(isHost){
     const snap=R.initSnap;
     if(snap&&snap.S){S=snap.S;S.host=ME;restoreH(snap.H);needResend()}
-    else{S={ph:"lobby",host:ME,pl:[],cfg:{rounds:15,time:15,media:"photo",plant:true}};}
+    else{S={ph:"lobby",host:ME,pl:[],cfg:DEFCFG()};}
+    if(!S.cfg)S.cfg=DEFCFG();
     hostLoops();
     hostAct({k:"join",p:ME,n:name});
     if(S.ph!=="lobby")resendOwnToSelf();
@@ -328,14 +409,22 @@ async function enter(create,o){
 function hostLoops(){if(!L.tk){L.tk=setInterval(tick,250);L.bk=setInterval(bc,2500)}}
 function startHello(){
   if(L.hello)return;
-  const hello=()=>{if(!R||isHost)return;if(!S||!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:L.name},"host")};
-  hello();L.hello=setInterval(hello,2000);
+  const hello=()=>{
+    if(!R||isHost)return;
+    const me=S&&S.pl.find(p=>p.id===ME);
+    if(!me){R.emit("act",{k:"join",p:ME,n:L.name},"host");return}
+    /* validation perdue (réseau, changement de phase) : on la renvoie */
+    if((S.ph==="lobby"||S.ph==="ready")&&L.validated&&L.validKeys&&L.validKeys.length&&!me.val)
+      R.emit("act",{k:"val",p:ME,keys:L.validKeys.slice()},"host");
+  };
+  hello();L.hello=setInterval(hello,4000);
 }
 /* --- passage de relais : l'hôte est parti, on reconstruit la partie avec ce que chacun a gardé --- */
-const snapH=()=>({ans:H.ans,stat:H.stat,valid:H.valid,used:[],order:(H.order||[]).map(m=>({key:m.key,owner:m.owner,by:m.by,kind:m.kind}))});
+const snapH=()=>({ans:H.ans,stat:H.stat,valid:H.valid,skip:H.skip,mok:H.mok,mn:H.mn,qdeck:(H.qdeck||[]).map(m=>({key:m.key,owner:m.owner,by:m.by||null,kind:m.kind}))});
 function restoreH(h){
-  h=h||{};H={pool:{},ans:h.ans||{},used:[],order:(h.order||[]).map(m=>({...m,data:null})),stat:h.stat||{fast:null,streak:{},cur:{},per:{}},valid:h.valid||{}};
-  H.cur=S.ph==="round"||S.ph==="reveal"?H.order[S.r]||null:null;
+  h=h||{};
+  H={pool:{},ans:h.ans||{},qdeck:(h.qdeck||[]).map(m=>({...m,data:null})),stat:h.stat||{fast:null,streak:{},cur:{},per:{}},valid:h.valid||{},skip:h.skip||{},mok:h.mok||{},mn:h.mn||{},cur:null};
+  H.cur=(S&&(S.ph==="round"||S.ph==="reveal")&&H.qdeck[S.qi])?H.qdeck[S.qi]:null;
 }
 function needResend(){H.rsUntil=Date.now()+8000;if(R)R.emit("rs",{})}
 function resendAll(){
@@ -343,12 +432,14 @@ function resendAll(){
   L.media.forEach(m=>send({k:"media",kind:m.kind,data:m.data,key:m.key}));
   (L.planted||[]).forEach(m=>send({k:"plant",to:m.to,kind:m.kind,data:m.data,key:m.key}));
   if(L.validated&&L.validKeys&&L.validKeys.length)send({k:"val",keys:L.validKeys.slice()});
+  else if(S&&S.ph==="ready"&&!L.media.length)send({k:"skip"});
 }
 function resendOwnToSelf(){resendAll()}
 function onPromoted(snap){
   isHost=true;
   if(snap&&snap.S)S=snap.S;
-  if(!S)S={ph:"lobby",host:ME,pl:[],cfg:{rounds:15,time:15,media:"photo",plant:true}};
+  if(!S)S={ph:"lobby",host:ME,pl:[],cfg:DEFCFG()};
+  if(!S.cfg)S.cfg=DEFCFG();
   S.host=ME;restoreH(snap&&snap.H);
   hostLoops();
   if(!S.pl.some(p=>p.id===ME))S.pl.push({id:ME,n:L.name,sc:0});
@@ -356,154 +447,233 @@ function onPromoted(snap){
   Sess.save("pr",{code,name:L.name,host:true});
   toast("👑 Tu es maintenant l’hôte");bc();route();
 }
-
 /* ---------- logique hôte ---------- */
 function hostAct(d){
   if(!isHost||!S)return;const p=d.p;
   if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0});}
-  else if(d.k==="reset"&&S.pl.some(x=>x.id===p)){H.pool[p]=(H.pool[p]||[]).filter(m=>m.by);if(S.ph==="lobby"){H.valid[p]=[]}}
+  else if(d.k==="reset"&&S.pl.some(x=>x.id===p)){H.pool[p]=(H.pool[p]||[]).filter(m=>m.by);if(S.ph==="lobby")H.valid[p]=[];H.skip[p]=false}
   else if(d.k==="media"&&S.pl.some(x=>x.id===p)){const a=H.pool[p]=H.pool[p]||[];if(a.filter(m=>!m.by).length<maxN()&&(d.data||"").length<9e6){const k=String(d.key||"").slice(0,12);a.push({kind:d.kind,data:d.data,by:null,owner:p,key:k});fillStub(k,d.data);if(S.ph==="lobby")H.valid[p]=[]}}
   else if(d.k==="drop"&&S.pl.some(x=>x.id===p)){const own=(H.pool[p]||[]).filter(m=>!m.by),t=own[d.i|0];if(t){H.pool[p]=H.pool[p].filter(m=>m!==t);if(S.ph==="lobby")H.valid[p]=[]}}
   else if(d.k==="plant"&&S.cfg.plant&&S.pl.some(x=>x.id===d.to)&&d.to!==p&&(d.data||"").length<9e6){{const k=String(d.key||"").slice(0,12);(H.pool[d.to]=H.pool[d.to]||[]).push({kind:d.kind,data:d.data,by:p,owner:d.to,key:k});fillStub(k,d.data)}}
-  else if(d.k==="val"&&S.ph==="lobby"&&S.pl.some(x=>x.id===p)){
-    const keys=Array.isArray(d.keys)?d.keys.filter(k=>(H.pool[p]||[]).some(m=>m.key===k&&!m.by)).slice(0,maxN()):[];
-    H.valid[p]=keys;
+  else if(d.k==="val"&&(S.ph==="lobby"||S.ph==="ready")&&S.pl.some(x=>x.id===p)){
+    const keys=Array.isArray(d.keys)?d.keys.filter(k=>typeof k==="string"&&k.length>0&&k.length<=24).slice(0,maxN()):[];
+    H.valid[p]=keys;if(keys.length)H.skip[p]=false;
   }
-  else if(d.k==="unval"&&S.pl.some(x=>x.id===p)){H.valid[p]=[]}
-  else if(d.k==="ans"&&S.ph==="round"&&S.opts.includes(d.c)&&!H.ans[p]&&p!==H.cur.owner){H.ans[p]={c:d.c,ms:Math.max(0,Math.min(d.ms|0,S.win*1000))}}
-  else if(d.k==="needph"&&S.ph!=="lobby"&&H.cur){if(H.cur.data)R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data},p);if(S.ph==="round"&&H.cur.owner===p)R.emit("priv",{own:S.r},p)}
+  else if(d.k==="unval"&&S.pl.some(x=>x.id===p)){H.valid[p]=[];H.skip[p]=false}
+  else if(d.k==="skip"&&S.ph==="ready"&&S.pl.some(x=>x.id===p)){H.valid[p]=[];H.skip[p]=true}
+  else if(d.k==="ans"&&S.ph==="round"&&S.opts.includes(d.c)&&!H.ans[p]&&H.cur&&p!==H.cur.owner){H.ans[p]={c:d.c,ms:Math.max(0,Math.min(d.ms|0,S.win*1000))}}
+  else if(d.k==="needph"&&(S.ph==="round"||S.ph==="reveal")&&H.cur){
+    if(H.cur.data)R.emit("ph",{mi:S.mi,q:S.qi,kind:H.cur.kind,data:H.cur.data},p);
+    if(H.cur.owner===p)R.emit("priv",{mi:S.mi,q:S.qi},p);
+  }
   else if(d.k==="cfg"&&p===ME&&S.ph==="lobby"){
     const mediaChanged=!!(d.cfg&&d.cfg.media&&d.cfg.media!==S.cfg.media);
     Object.assign(S.cfg,d.cfg);
-    if(mediaChanged){H.valid={};S.pl.forEach(x=>x.val=0)}
+    if(mediaChanged){H.valid={};H.skip={};S.pl.forEach(x=>{x.val=0;x.skip=false})}
   }
-  else if(d.k==="start"&&p===ME)startGame();
-  else if(d.k==="skip"&&p===ME&&S.ph==="round")reveal();
-  else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
-  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";if(d.media)S.cfg.media=d.media;H.stat={};H.valid={};H.order=[];H.ans={};S.pl.forEach(x=>x.val=0)}
+  else if(d.k==="start"&&p===ME&&S.ph==="lobby")startGame();
+  else if(d.k==="startm"&&p===ME&&S.ph==="ready")launchManche();
+  else if(d.k==="skipq"&&p===ME&&S.ph==="round")reveal();
+  else if(d.k==="nextq"&&p===ME&&S.ph==="reveal")nextQuestion();
+  else if(d.k==="nextm"&&p===ME&&S.ph==="mrecap")nextManche();
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){
+    S.sid=null;S.pl.forEach(x=>{x.sc=0;x.mpts=0;x.mok=0;x.val=0;x.skip=false});
+    S.ph="lobby";S.mi=0;S.qi=-1;S.qn=0;S.mpts={};S.mrecap=null;S.stats=null;S.res=null;S.lastQ=false;S.lastM=false;
+    H.stat={fast:null,streak:{},cur:{},per:{}};H.valid={};H.skip={};H.qdeck=[];H.ans={};H.mok={};H.mn={};H.cur=null;
+    if(d.media)S.cfg.media=d.media;
+  }
   if(S.ph==="round")S.ad=Object.keys(H.ans);
-  S.pl.forEach(x=>{x.np=(H.pool[x.id]||[]).length;x.val=(H.valid[x.id]||[]).length});
+  S.pl.forEach(x=>{x.np=(H.pool[x.id]||[]).filter(m=>!m.by).length;x.val=(H.valid[x.id]||[]).length;x.skip=!!H.skip[x.id]});
   S.on=[...R.peers(),ME];bc();route();
 }
 /* après un passage de relais : une photo de la file qui arrive enfin remplit son « trou » */
 function fillStub(k,data){
-  if(!k||!H.order)return;
-  const st=H.order.find(x=>x.key===k&&!x.data);if(!st)return;st.data=data;
-  if(st===H.cur&&S&&S.ph!=="lobby"&&R)R.emit("ph",{r:S.r,kind:st.kind,data});
-  if(st===H.cur)L.cur={r:S.r,kind:st.kind,data};
+  if(!k)return;
+  const st=(H.qdeck||[]).find(x=>x.key===k&&!x.data);
+  if(st)st.data=data;
+  if(st&&st===H.cur&&S&&S.ph!=="lobby"&&R)R.emit("ph",{mi:S.mi,q:S.qi,kind:st.kind,data});
+  if(st&&st===H.cur)L.cur={mi:S.mi,q:S.qi,kind:st.kind,data};
 }
-function startGame(){
+/* Mélange les jeux validés de tous les joueurs (16 chacun) en tourniquet. */
+function buildDeck(){
   const kind=S.cfg.media==="video"?"video":"photo";
-  if(S.pl.length<MIN)return toast("Il faut au moins 3 joueurs");
-  const missing=S.pl.filter(p=>!(H.valid[p.id]&&H.valid[p.id].length));
-  if(missing.length)return toast("En attente de la validation de "+missing.map(p=>p.n).join(", "));
-  /* Chaque joueur propose son propre jeu validé ; les photos plantées sont ajoutées en surprise. */
   const rot=shuffle(S.pl.slice()),decks=rot.map(p=>{
     const keys=H.valid[p.id]||[];
-    const own=(H.pool[p.id]||[]).filter(m=>m.kind===kind&&keys.indexOf(m.key)>=0);
-    const planted=(H.pool[p.id]||[]).filter(m=>m.kind===kind&&m.by);
+    const pool=H.pool[p.id]||[];
+    const own=keys.map(k=>{
+      const m=pool.find(x=>x.key===k&&!x.by);
+      return m?{key:m.key,owner:p.id,by:null,kind:m.kind,data:m.data||null}:{key:k,owner:p.id,by:null,kind,data:null};
+    });
+    const planted=pool.filter(m=>m.by).map(m=>({key:m.key,owner:p.id,by:m.by,kind:m.kind,data:m.data||null}));
     return shuffle(own.concat(planted));
   });
-  const order=[];let i=0;
-  while(order.length<S.cfg.rounds){
-    let added=false;
-    for(let j=0;j<decks.length&&order.length<S.cfg.rounds;j++){
-      const m=decks[j][i];
-      if(m){order.push(m);added=true}
-    }
-    if(!added)break;
+  const deck=[];let i=0,more=true;
+  while(more){
+    more=false;
+    for(const d of decks){if(d[i]){deck.push(d[i]);more=true}}
     i++;
   }
-  if(order.length<3)return toast("Il faut au moins 3 "+(kind==="video"?"vidéos":"photos")+" validées au total");
-  H.order=order;S.total=order.length;S.r=-1;H.stat={fast:null,streak:{},cur:{},per:{}};
-  S.pl.forEach(x=>x.sc=0);nextRound();
+  return deck;
 }
-function nextRound(){
-  const nx=H.order[S.r+1]; /* après un passage de relais : on laisse 8 s aux joueurs pour renvoyer leurs photos avant de passer à la suivante */
-  if(nx&&!nx.data&&H.rsUntil&&Date.now()<=H.rsUntil&&S.ph==="reveal"){setTimeout(()=>{if(isHost&&S.ph==="reveal"){nextRound();bc();route()}},800);return}
-  while(H.rsUntil&&Date.now()>H.rsUntil&&S.r+1<S.total&&H.order[S.r+1]&&!H.order[S.r+1].data){H.order.splice(S.r+1,1);S.total=H.order.length}
-  S.r++;if(S.r>=S.total){S.ph="end";S.res=null;return finish()}
-  H.cur=H.order[S.r];H.ans={};
+function startGame(){
+  if(S.pl.length<MIN)return toast("Il faut au moins 3 joueurs");
+  if(!allValidated())return toast("En attente de la validation de tout le monde");
+  S.cfg.rounds=cfgRounds();S.cfg.qper=cfgQper();
+  S.mi=0;S.qi=-1;S.qn=0;S.mpts={};S.stats=null;S.mrecap=null;S.sid=S.sid||rid();
+  H.qdeck=[];H.mok={};H.mn={};H.ans={};H.cur=null;H.stat={fast:null,streak:{},cur:{},per:{}};
+  S.pl.forEach(x=>{x.sc=0;x.mpts=0;x.mok=0});
+  launchManche();
+}
+function launchManche(){
+  const kind=S.cfg.media==="video"?"video":"photo";
+  if(S.pl.length<MIN)return toast("Il faut au moins 3 joueurs");
+  const missing=S.pl.filter(p=>!(p.val>0||p.skip));
+  if(missing.length)return toast("En attente de "+missing.map(p=>p.n).join(", "));
+  const deck=buildDeck();
+  if(deck.length<3)return toast("Il faut au moins 3 "+(kind==="video"?"vidéos":"photos")+" proposées");
+  const qn=Math.min(cfgQper(),deck.length);
+  H.qdeck=deck.slice(0,qn);
+  S.qn=qn;S.qi=-1;S.mpts={};S.mrecap=null;H.mok={};H.mn={};H.ans={};H.cur=null;
+  S.pl.forEach(x=>{x.mpts=0;x.mok=0});
+  nextQuestion();
+}
+function beginQuestion(){
+  const q=H.qdeck[S.qi];
+  if(!q)return mancheRecap();
+  H.cur=q;H.ans={};
+  S.ph="round";S.ad=[];S.t0=Net.now()+900;S.res=null;S.win=cfgTime();S.lastQ=S.qi+1>=S.qn;
   S.opts=shuffle(S.pl.map(x=>x.id));
-  S.win=S.cfg.time||15;S.ph="round";S.ad=[];S.t0=Net.now()+900;S.res=null;
-  if(H.cur.data)R.emit("ph",{r:S.r,kind:H.cur.kind,data:H.cur.data});if(H.cur.owner!==ME)R.emit("priv",{own:S.r},H.cur.owner);L.cur={r:S.r,kind:H.cur.kind,data:H.cur.data};
+  if(q.data)R.emit("ph",{mi:S.mi,q:S.qi,kind:q.kind,data:q.data});
+  if(q.owner!==ME)R.emit("priv",{mi:S.mi,q:S.qi},q.owner);
+  L.cur={mi:S.mi,q:S.qi,kind:q.kind,data:q.data};
+  bc();route();
+}
+function nextQuestion(){
+  if(!isHost||!S)return;
+  S.qi++;
+  if(S.qi>=S.qn)return mancheRecap();
+  beginQuestion();
 }
 function tick(){
-  if(!isHost||!S||S.ph!=="round")return;
+  if(!isHost||!S||S.ph!=="round"||!H.cur)return;
   const need=S.pl.filter(x=>x.id!==H.cur.owner).length,got=Object.keys(H.ans).length;
   if(got>=need||Net.now()>S.t0+S.win*1000+800)reveal();
 }
 function reveal(){
+  if(!isHost||!S||S.ph!=="round"||!H.cur)return;
   const per=[];
-  for(const x of S.pl){ if(x.id===H.cur.owner)continue;const a=H.ans[x.id],ok=!!a&&a.c===H.cur.owner;
-    const pts=ok?Math.round(300+700*(1-a.ms/(S.win*1000))):0;x.sc+=pts;
+  for(const x of S.pl){
+    if(x.id===H.cur.owner)continue;
+    const a=H.ans[x.id],ok=!!a&&a.c===H.cur.owner;
+    const pts=ok?Math.round(300+700*(1-a.ms/(S.win*1000))):0;
+    x.sc+=pts;S.mpts[x.id]=(S.mpts[x.id]||0)+pts;
+    H.mn[x.id]=(H.mn[x.id]||0)+1;if(ok)H.mok[x.id]=(H.mok[x.id]||0)+1;
     const pe=(H.stat.per=H.stat.per||{})[x.id]=H.stat.per[x.id]||{n:0,ok:0,ms:0,answered:0};
     pe.n++;if(ok)pe.ok++;if(a){pe.answered++;pe.ms+=a.ms}
     const st=H.stat.cur[x.id]=ok?(H.stat.cur[x.id]||0)+1:0;H.stat.streak[x.id]=Math.max(H.stat.streak[x.id]||0,st);
     if(ok&&(!H.stat.fast||a.ms<H.stat.fast.ms))H.stat.fast={id:x.id,ms:a.ms};
-    per.push({id:x.id,c:a?a.c:null,ok,pts,ms:a?a.ms:null})}
-  S.res={owner:H.cur.owner,by:H.cur.by,per};S.ph="reveal";S.last=S.r+1>=S.total;bc();route();
+    per.push({id:x.id,c:a?a.c:null,ok,pts,ms:a?a.ms:null});
+  }
+  S.res={owner:H.cur.owner,by:H.cur.by,per};S.ph="reveal";S.lastQ=S.qi+1>=S.qn;S.ad=Object.keys(H.ans);
+  bc();route();
+}
+function mancheRecap(){
+  if(!isHost||!S)return;
+  S.ph="mrecap";S.res=null;H.cur=null;S.lastM=S.mi+1>=cfgRounds();
+  S.mrecap=S.pl.map(p=>({id:p.id,pts:S.mpts[p.id]||0,ok:H.mok[p.id]||0,n:H.mn[p.id]||0})).sort((a,b)=>(b.pts-a.pts)||(score(b.id)-score(a.id)));
+  bc();route();
+}
+function score(id){const p=S.pl.find(x=>x.id===id);return p?p.sc:0}
+function nextManche(){
+  if(!isHost||!S||S.ph!=="mrecap")return;
+  if(S.mi+1>=cfgRounds()){S.ph="end";S.mrecap=null;finish();bc();route();return}
+  S.mi++;S.qi=-1;S.qn=0;S.mpts={};S.mrecap=null;S.res=null;S.lastQ=false;
+  H.qdeck=[];H.ans={};H.cur=null;H.mok={};H.mn={};
+  Object.keys(H.pool).forEach(p=>{H.pool[p]=(H.pool[p]||[]).filter(m=>m.by)});
+  H.valid={};H.skip={};
+  S.pl.forEach(x=>{x.val=0;x.skip=false});
+  S.ph="ready";
+  bc();route();
 }
 function finish(){
-  const best=[...S.pl].sort((a,b)=>b.sc-a.sc)[0];
+  const rank=[...S.pl].sort((a,b)=>b.sc-a.sc),best=rank[0];
   const sk=Object.entries(H.stat.streak||{}).sort((a,b)=>b[1]-a[1])[0];
   const per=H.stat.per||{},ids=Object.keys(per);
   let tot=0,cnt=0;ids.forEach(i=>{tot+=per[i].ms;cnt+=per[i].answered});
   const avgOf=i=>per[i].answered?Math.round(per[i].ms/per[i].answered):null;
   const fastAvg=ids.filter(i=>per[i].answered>=3).sort((a,b)=>avgOf(a)-avgOf(b))[0];
   const det=ids.filter(i=>per[i].n>=3).sort((a,b)=>per[b].ok/per[b].n-per[a].ok/per[a].n||per[b].ok-per[a].ok)[0];
-  S.stats={best:{id:best.id,v:best.sc},fast:H.stat.fast,streak:sk?{id:sk[0],v:sk[1]}:null,
+  S.stats={best:best?{id:best.id,v:best.sc}:null,fast:H.stat.fast,streak:sk?{id:sk[0],v:sk[1]}:null,
     avg:cnt?Math.round(tot/cnt):null,fastAvg:fastAvg?{id:fastAvg,ms:avgOf(fastAvg)}:null,det:det?{id:det,ok:per[det].ok,n:per[det].n}:null,
     per:Object.fromEntries(ids.map(i=>[i,{ok:per[i].ok,n:per[i].n,avg:avgOf(i)}]))};
   S.sid=S.sid||rid();Party.report(R,"pr",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:p.sc})));
 }
-
 /* ---------- rendu ---------- */
 function setHTML(el,h){if(el&&el._h!==h){el._h=h;el.innerHTML=h}}
+function ownQuestion(){
+  return isHost?(H.cur&&H.cur.owner===ME):(L.ownerKey===S.mi+":"+S.qi);
+}
 function route(media){
   if(!S)return;
   if(S.ph==="lobby"){
     const wasOut=L.lastPh&&L.lastPh!=="lobby";
-    L.lastPh="lobby";
+    L.lastPh="lobby";L.readyM=-1;
     if(wasOut)replayLobby();
     L.key="";view("lobby");renderLobby();return
   }
   L.lastPh=S.ph;
+  if(S.ph==="ready"){
+    view("game");
+    prepareManche();
+    const rk="ready:"+S.mi;
+    if(rk!==L.key){L.key=rk;renderGame(true)}
+    updReadyVals();
+    return
+  }
   view("game");
-  if(S.ph==="round"&&(!L.cur||L.cur.r!==S.r)){if(!isHost&&(!L.need||Date.now()-L.need>1500)){L.need=Date.now();R.emit("act",{k:"needph",p:ME},"host")}}
-  const key=S.ph+":"+(S.ph==="end"?0:S.r);
-  if(key!==L.key){L.key=key;if(S.ph==="round"&&L.ansR!==S.r)L.ans=null;renderGame(true);return}
-  /* même manche : on met à jour sans rien reconstruire (plus de scintillement) */
+  if((S.ph==="round"||S.ph==="reveal")&&L.media.length&&L.libM!==S.mi){L.libM=S.mi;libSaveMedia()}
+  if((S.ph==="round"||S.ph==="reveal")&&(!L.cur||L.cur.mi!==S.mi||L.cur.q!==S.qi)){
+    if(!isHost&&(!L.need||Date.now()-L.need>1500)){L.need=Date.now();R.emit("act",{k:"needph",p:ME},"host")}
+  }
+  const key=S.ph+":"+S.mi+":"+(S.ph==="round"||S.ph==="reveal"?S.qi:"");
+  if(key!==L.key){
+    L.key=key;
+    if(S.ph==="round"&&L.ansKey!==S.mi+":"+S.qi)L.ans=null;
+    renderGame(true);return
+  }
+  /* même question : on met à jour sans rien reconstruire (plus de scintillement) */
   if(S.ph==="round"){syncShot();updLive()}
-  else if(S.ph==="reveal"&&media===true&&L.cur&&L.cur.r===S.r){const sh=$("#shot");if(sh&&sh.dataset.m!=="1")renderGame(false)}
+  else if(S.ph==="reveal"&&media===true&&L.cur&&L.cur.mi===S.mi&&L.cur.q===S.qi){const sh=$("#shot");if(sh&&sh.dataset.m!=="1")renderGame(false)}
 }
 function replayLobby(){
-  L.validated=false;L.validKeys=null;
-  syncValid();
+  L.validated=false;L.validKeys=null;L.readyM=-1;L.ownerKey="";resetReserveUse();
+  syncValid();syncReady();
   if(R)send({k:"unval"});
   const kind=S&&S.cfg.media==="video"?"video":"photo";
-  if(L.kind&&L.kind!==kind){L.pool=[];L.media=[];L.queue=[];L.kind=kind;renderThumbs()}
+  if(L.kind&&L.kind!==kind){L.pool=[];L.media=[];L.queue=[];L.kind=kind;paintThumbs()}
   if(L.pool&&L.pool.length&&!L.replaying){
     L.replaying=true;
     addFiles(L.pool,null,true).finally(()=>{L.replaying=false});
-  }else syncValid();
+  }else{paintThumbs()}
 }
 function renderLobby(){
   const on=new Set(S.on||[]);
   const vid=S.cfg.media==="video",kind=vid?"video":"photo";
-  if(L.kind&&L.kind!==kind){L.pool=[];L.media=[];L.queue=[];L.validated=false;L.validKeys=null;renderThumbs()}
+  if(L.kind&&L.kind!==kind){L.pool=[];L.media=[];L.queue=[];L.validated=false;L.validKeys=null;paintThumbs()}
   L.kind=kind;
-  $("#pl").innerHTML=S.pl.map(p=>`<span class="chip ${p.id===S.host?"host":""} ${on.has(p.id)||p.id===ME?"":"off"}">${esc(p.n)}${p.val?" · ✔":p.np?` · ${p.np}`:""}</span>`).join("");
+  $("#pl").innerHTML=S.pl.map(p=>`<span class="chip ${p.id===S.host?"host":""} ${on.has(p.id)||p.id===ME?"":"off"}">${esc(p.n)}${p.val?" · ✔":p.skip?" · ⏭":p.np?` · ${p.np}`:""}</span>`).join("");
   $("#pc").textContent=`${S.pl.length}/${MAX}`;
   $("#mtitle").textContent=vid?"🎬 Mes vidéos":"📷 Ma pellicule";
   $("#files").accept=vid?"video/*":"image/*";
   $("#plantc").hidden=!S.cfg.plant||vid;
   $("#plto").innerHTML=S.pl.filter(p=>p.id!==ME).map(p=>`<option value="${p.id}">${esc(p.n)}</option>`).join("");
-  const nval=S.pl.filter(p=>p.val>0).length;
-  $("#ph").textContent=S.pl.length<MIN?`Il faut au moins ${MIN} joueurs (${MIN-S.pl.length} de plus).`:allValidated()?"✅ Tout le monde a validé son jeu ! L’hôte peut lancer la partie.":`${nval}/${S.pl.length} joueurs ont validé leur jeu de photos.`;
+  const nval=S.pl.filter(p=>p.val>0).length,nskip=S.pl.filter(p=>p.skip).length;
+  $("#ph").textContent=S.pl.length<MIN?`Il faut au moins ${MIN} joueurs (${MIN-S.pl.length} de plus).`:allValidated()?"✅ Tout le monde a validé son jeu ! L’hôte peut lancer la partie.":`${nval}/${S.pl.length} joueurs ont validé leur jeu${nskip?` (${nskip} sans photo)`:""}.`;
   $("#hostcfg").hidden=!isHost;$("#waith").hidden=isHost;
-  syncValid();
-  if(isHost){$("#rn").textContent=S.cfg.rounds;
+  paintThumbs();
+  if(isHost){
+   $("#rn").textContent=cfgRounds();
+   $("#qn").textContent=cfgQper();
    $("#showp").innerHTML=[10,15,20,30].map(v=>`<button class="pill ${S.cfg.time===v?"on":""}" data-a="show" data-v="${v}">${v} s</button>`).join("");
    $("#modep").innerHTML=[["photo","📸 Photos"],["video","🎬 Vidéos"]].map(([v,l])=>`<button class="pill ${S.cfg.media===v?"on":""}" data-a="mode" data-v="${v}">${l}</button>`).join("");
    $("#plp").innerHTML=[[true,"Oui"],[false,"Non"]].map(([v,l])=>`<button class="pill ${S.cfg.plant===v?"on":""}" data-a="pl" data-v="${v}">${l}</button>`).join("");
@@ -512,34 +682,75 @@ function renderLobby(){
   }
 }
 function media(c,again){return c?(c.kind==="video"?`<video src="${c.data}" autoplay muted playsinline ${again?"loop":""}></video>`:`<img src="${c.data}" alt="Photo mystère">`):`<div class="ph">Chargement…</div>`}
+function renderReady(){
+  const st=$("#stage");if(!st)return;
+  const m=S.mi+1,tot=cfgRounds();
+  st.innerHTML=`<div class="rn">Manche ${m}/${tot} · préparation</div>
+   <div class="card"><h2>🎲 Tes ${maxN()} photos</h2>
+    <p class="hint" style="margin:0 0 8px">Tirées au hasard dans ta réserve (${L.pool.length} photo(s)). ✕ écarte une photo et la remplace automatiquement.</p>
+    <div id="rthumbs" class="thumbs"></div>
+    <p id="rvalhint" class="hint center"></p>
+    <button class="btn primary big" data-a="validate" id="rvalb">✅ Valider mes photos</button>
+    <button class="btn" data-a="add">➕ Ajouter d’autres photos</button>
+    ${!L.media.length?`<button class="btn" data-a="skipm" id="skipmb">⏭ Passer cette manche</button>`:""}
+   </div>
+   <div class="card"><h2>Validations</h2><div id="rvals" class="chips"></div>
+    ${isHost?`<button class="btn primary big" data-a="startm" id="rstartb">Lancer la manche ${m} 🚀</button><p id="rstartmsg" class="hint center"></p>`:`<p class="hint center">En attente de l’hôte…</p>`}
+   </div>`;
+  paintThumbs();updReadyVals();
+}
+function updReadyVals(){
+  const el=$("#rvals");
+  if(el)el.innerHTML=S.pl.map(p=>`<span class="chip ${p.id===S.host?"host":""} ${p.val>0?"on":""}">${esc(p.n)} ${p.val>0?"✔":p.skip?"⏭":"…"}</span>`).join("");
+  const b=$("#rstartb");if(b)b.disabled=!allValidated();
+  const t=$("#rstartmsg");if(t)t.textContent=allValidated()?"Tout le monde est prêt !":"En attente des autres joueurs…";
+}
 function renderGame(fade){
-  const st=$("#stage");st.className="";if(fade){void st.offsetWidth;st.className="fade"}
+  if(!S)return;
+  const st=$("#stage");if(!st)return;
+  st.className="";if(fade){void st.offsetWidth;st.className="fade"}
+  if(S.ph==="ready"){renderReady();return}
   const me=S.pl.find(p=>p.id===ME);
-  const score=`<div class="rn">Photo ${Math.max(1,S.r+1)}/${S.total} · ${me?me.sc:0} pts</div>`;
+  const mh=(S.mi||0)+1,tot=cfgRounds();
+  const qhead=(S.ph==="round"||S.ph==="reveal")?` · Photo ${Math.min(S.qi+1,S.qn)}/${S.qn}`:"";
+  const score=`<div class="rn">Manche ${mh}/${tot}${qhead} · ${me?me.sc:0} pts</div>`;
   if(S.ph==="round"){
-    const mine=H.cur&&isHost?H.cur.owner===ME:(L.cur&&L.cur.owner===ME);
-    const owner=isHost&&H.cur?H.cur.owner===ME:false; L.isOwner=owner||L.isOwner&&!isHost;
+    const own=ownQuestion();
     st.innerHTML=`<div class="tbar"><div class="bar"><i id="tb" style="width:100%"></i></div></div>${score}
      <div class="shot" id="shot"></div>
      <div id="opts"></div>
      <p class="hint center" id="vstat" role="status"></p>
      <p class="hint center" id="ownhint"></p>
-     ${isHost?`<button class="btn big" data-a="skip">⏭ Passer le temps et révéler</button>`:""}`;
+     ${isHost?`<button class="btn big" data-a="skipq">⏭ Passer le temps et révéler</button>`:""}`;
     renderOpts();syncShot();updLive();
   }else if(S.ph==="reveal"){
-    const r=S.res,mineRes=r.per.find(x=>x.id===ME),isOwn=r.owner===ME;
-    const c=L.cur&&L.cur.r===S.r?L.cur:null;
-    const fl=L.flashK!==S.r;L.flashK=S.r;
+    const r=S.res;if(!r){st.innerHTML=score+`<p class="hint center">Chargement…</p>`;return}
+    const mineRes=r.per.find(x=>x.id===ME),isOwn=r.owner===ME;
+    const c=L.cur&&L.cur.mi===S.mi&&L.cur.q===S.qi?L.cur:null;
+    const fk=S.mi+":"+S.qi,fl=L.flashK!==fk;L.flashK=fk;
     st.innerHTML=`${score}<div class="shot ${fl?"snap":""}" id="shot" data-m="${c?1:0}">${fl?'<div class="flash" aria-hidden="true"></div>':""}${fl&&c&&c.kind!=="video"?media(c,true).replace("<img ",'<img class="dev" '):media(c,true)}${mineRes?`<div class="mark ${mineRes.ok?"ok":"ko"}">${mineRes.ok?"✓":"✗"}</div>`:""}</div>
      <div class="card center"><h2>C’était la photo de ${esc(nm(r.owner))} ${r.by?`<br><small class="hint">🌱 plantée par ${esc(nm(r.by))}</small>`:""}</h2>
       ${isOwn?"<p class='hint'>C’était la tienne 😏</p>":mineRes?`<b>${mineRes.ok?"+"+mineRes.pts+" pts · "+mineRes.ms+" ms":"Raté…"}</b>`:""}</div>
      ${[...S.pl].sort((a,b)=>b.sc-a.sc).map((p,i)=>{const x=r.per.find(q=>q.id===p.id);return`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)} ${x?(x.ok?"✓":"✗"):"📸"}<span class="pts">${p.sc}</span></div>`}).join("")}
-     <div class="row" style="justify-content:center;gap:10px;margin-top:10px"><button class="btn" data-a="again-show">🔁 Show photo again</button>
-     ${isHost?`<button class="btn primary" data-a="next">${S.last?"Résultats 🏆":"Suivante →"}</button>`:""}</div>`;
+     <div class="row" style="justify-content:center;gap:10px;margin-top:10px"><button class="btn" data-a="again-show">🔁 Revoir la photo</button>
+     ${isHost?`<button class="btn primary" data-a="nextq">${S.lastQ?"Récap de la manche 📊":"Photo suivante →"}</button>`:""}</div>`;
+  }else if(S.ph==="mrecap"){
+    const order=S.mrecap||[];
+    const rows=[...S.pl].sort((a,b)=>{
+      const ia=order.findIndex(x=>x.id===a.id),ib=order.findIndex(x=>x.id===b.id);
+      return (ia<0?99:ia)-(ib<0?99:ib);
+    }).map((p)=>{
+      const i=order.findIndex(x=>x.id===p.id),r=order[i]||{};
+      return`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)} <small class="hint" style="margin:0">+${r.pts||0} pts · ${r.ok||0}/${r.n||0} bonnes</small><span class="pts">${p.sc}</span></div>`
+    }).join("");
+    st.innerHTML=`<div class="rn">Fin de la manche ${S.mi+1}/${tot}</div>
+     <div class="center"><div class="big-emoji">📊</div><h1>Récap de la manche</h1></div>
+     <div class="card"><h2>Points de la manche</h2>${rows}</div>
+     ${isHost?`<button class="btn primary big" data-a="nextm">${S.lastM?"Résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte lance la suite.</p>`}`;
   }else if(S.ph==="end"){
     const s=S.stats||{},rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
-    st.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Results</h1><p><b>${esc(nm(rank[0].id))}</b> est le champion !</p></div>
-     <div class="title">🥇 Meilleur score<small>${esc(nm(s.best.id))} — ${s.best.v}</small></div>
+    st.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Résultats</h1><p><b>${esc(nm(rank[0].id))}</b> est le champion !</p></div>
+     <div class="title">🥇 Meilleur score<small>${s.best?esc(nm(s.best.id))+" — "+s.best.v:"—"}</small></div>
      <div class="title">⚡ Réponse la plus rapide<small>${s.fast?esc(nm(s.fast.id))+" — "+s.fast.ms+" ms":"—"}</small></div>
      <div class="title">🔥 Plus longue série<small>${s.streak&&s.streak.v?esc(nm(s.streak.id))+" — "+s.streak.v:"—"}</small></div>
      <div class="title">⏱️ Temps de réaction moyen du groupe<small>${s.avg!=null?(s.avg/1000).toFixed(2)+" s":"—"}</small></div>
@@ -547,7 +758,7 @@ function renderGame(fade){
      <div class="title">🕵️ Meilleur détective<small>${s.det?esc(nm(s.det.id))+" — "+s.det.ok+"/"+s.det.n+" ("+Math.round(100*s.det.ok/s.det.n)+" %)":"—"}</small></div>
      ${rank.map((p,i)=>{const q=(s.per||{})[p.id];return`<div class="prow ${p.id===ME?"me":""}">${i+1}. ${esc(p.n)}${q?` <small class="hint" style="margin:0">${q.ok}/${q.n}${q.avg!=null?" · "+(q.avg/1000).toFixed(1)+" s":""}</small>`:""}<span class="pts">${p.sc}</span></div>`}).join("")}
      <div id="gage"></div><div id="ptend"></div>
-     ${isHost?`<button class="btn primary big" data-a="again">Play again</button><button class="btn big" data-a="again-video">Play with videos 🎬</button>`:`<p class="hint center">L’hôte peut relancer une partie.</p>`}
+     ${isHost?`<button class="btn primary big" data-a="again">Rejouer</button><button class="btn big" data-a="again-video">Rejouer en vidéos 🎬</button>`:`<p class="hint center">L’hôte peut relancer une partie.</p>`}
      <button class="link" data-a="leave">Quitter</button>`;
     const lo=[...S.pl].sort((a,b)=>a.sc-b.sc)[0];
     Gages.mount("#gage",{R,who:lo?lo.n:"",fresh:true});
@@ -556,14 +767,15 @@ function renderGame(fade){
 }
 function renderOpts(){
   const el=$("#opts");if(!el||!S||S.ph!=="round")return;
-  const sel=L.ansR===S.r?L.ans:null,own=isHost&&H.cur?H.cur.owner===ME:L.owner===S.r;
-  setHTML(el,S.opts.map(id=>`<button class="pick${sel===id?" on":""}" data-a="ans" data-id="${id}"${sel||own?" disabled":""}>${esc(nm(id))}${sel===id?" ✓":""}</button>`).join(""));
+  const sel=L.ansKey===S.mi+":"+S.qi?L.ans:null,own=ownQuestion();
+  const armed=!S.t0||Net.now()>=S.t0;
+  setHTML(el,S.opts.map(id=>`<button class="pick${sel===id?" on":""}" data-a="ans" data-id="${id}"${sel||own||!armed?" disabled":""}>${esc(nm(id))}${sel===id?" ✓":""}</button>`).join(""));
 }
 function updLive(){
   if(S.ph!=="round")return;
-  const own=isHost&&H.cur?H.cur.owner===ME:L.owner===S.r,ad=S.ad||[],mine=L.ansR===S.r&&L.ans,reg=ad.includes(ME);
+  const own=ownQuestion(),ad=S.ad||[],mine=L.ansKey===S.mi+":"+S.qi&&L.ans,reg=ad.includes(ME);
   renderOpts();
-  const el=$("#ownhint");if(el)el.textContent=own?"C’est ta photo : tu ne joues pas ce tour 😎":"";
+  const el=$("#ownhint");if(el)el.textContent=own?"C’est ta photo : tu ne joues pas cette question 😎":"";
   const v=$("#vstat");if(v){
     v.textContent=own?"":mine?(reg?`✔ Vote enregistré · ${ad.length}/${S.pl.length-1} ont répondu`:"Envoi de ton vote…"):"Choisis qui a pris cette photo";
     v.className="hint center"+(mine&&reg?" ok":"");
@@ -574,19 +786,20 @@ function updLive(){
 /* la photo n'est réécrite que si son état change : attente → photo → masquée */
 function syncShot(){
   const sh=$("#shot");if(!sh||!S||S.ph!=="round")return;
-  const el=(Net.now()-S.t0)/1000,c=L.cur&&L.cur.r===S.r?L.cur:null;
-  const w=el<0?"wait":(c?"photo":"load");
-  if(sh.dataset.s===w)return;sh.dataset.s=w;
+  const el=(Net.now()-S.t0)/1000,c=L.cur&&L.cur.mi===S.mi&&L.cur.q===S.qi?L.cur:null;
+  const w=el<0?"wait":(c?"photo":"load"),state=w+":"+S.mi+":"+S.qi;
+  if(sh.dataset.s===state)return;sh.dataset.s=state;
   sh.innerHTML=w==="photo"?media(c):`<div class="ph">${w==="wait"?"Prépare-toi…":"Chargement…"}</div>`;
 }
 /* barre de temps */
 setInterval(()=>{
   if(!S||S.ph!=="round")return;
+  const armed=!S.t0||Net.now()>=S.t0;
+  if(armed!==L.armed){L.armed=armed;renderOpts()}
   const tb=$("#tb");if(!tb)return;
   const el=(Net.now()-S.t0)/1000;tb.style.width=(el<0?100:Math.max(0,1-el/S.win)*100)+"%";
   syncShot();
 },100);
-
 /* ---------- événements ---------- */
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
@@ -602,20 +815,24 @@ document.addEventListener("click",async e=>{
   else if(a==="phclose"){const m=$("#phmod");if(m)m.hidden=true;if(PUP){try{PUP.leave()}catch(e){}PUP=null}}
   else if(a==="phupick")$("#phufiles").click();
   else if(a==="phuclose"){if(PHUR){try{PHUR.leave()}catch(e){}PHUR=null}try{window.close()}catch(e){}location.href=location.origin}
-  else if(a==="r-"||a==="r+")send({k:"cfg",cfg:{rounds:Math.max(5,Math.min(30,S.cfg.rounds+(a==="r+"?1:-1)))}});
+  else if(a==="r-"||a==="r+")send({k:"cfg",cfg:{rounds:Math.max(1,Math.min(10,cfgRounds()+(a==="r+"?1:-1)))}});
+  else if(a==="q-"||a==="q+")send({k:"cfg",cfg:{qper:Math.max(3,Math.min(20,cfgQper()+(a==="q+"?1:-1)))}});
   else if(a==="show")send({k:"cfg",cfg:{time:+b.dataset.v}});
   else if(a==="mode")send({k:"cfg",cfg:{media:b.dataset.v}});
   else if(a==="pl")send({k:"cfg",cfg:{plant:b.dataset.v==="true"}});
   else if(a==="validate")validateDeck();
   else if(a==="start")send({k:"start"});
-  else if(a==="next")send({k:"next"});
-  else if(a==="skip")send({k:"skip"});
+  else if(a==="startm")send({k:"startm"});
+  else if(a==="skipm")send({k:"skip"});
+  else if(a==="skipq")send({k:"skipq"});
+  else if(a==="nextq")send({k:"nextq"});
+  else if(a==="nextm")send({k:"nextm"});
   else if(a==="again")send({k:"again"});
-  else if(a==="again-video"){send({k:"again",media:"video"})}
-  else if(a==="again-show"){const sh=$("#shot");const c=L.cur;if(sh&&c){sh.innerHTML=media(c,true);setTimeout(()=>{sh.innerHTML=media(c,true)},0)}}
-  else if(a==="ans"&&S.ph==="round"&&!(L.ans&&L.ansR===S.r)){
-    const owner=isHost&&H.cur?H.cur.owner:null;if(owner===ME||L.owner===S.r)return;
-    L.ans=b.dataset.id;L.ansR=S.r;L.ansMs=Math.max(0,Math.round(Net.now()-S.t0));L.ansT=Date.now();
+  else if(a==="again-video")send({k:"again",media:"video"});
+  else if(a==="again-show"){const sh=$("#shot"),c=L.cur;if(sh&&c)sh.innerHTML=media(c,true)}
+  else if(a==="ans"&&S.ph==="round"&&!(L.ans&&L.ansKey===S.mi+":"+S.qi)){
+    if(ownQuestion()||(S.t0&&Net.now()<S.t0))return;
+    L.ans=b.dataset.id;L.ansKey=S.mi+":"+S.qi;L.ansMs=Math.max(0,Math.round(Net.now()-S.t0));L.ansT=Date.now();
     renderOpts();updLive();try{navigator.vibrate&&navigator.vibrate(30)}catch(x){}
     send({k:"ans",c:L.ans,ms:L.ansMs});
   }
@@ -633,6 +850,11 @@ else {const BP=bootParams(),sv=Sess.load("pr"),pr=Profile.get();
   if(BP.host)enter(true,{name:n0,code:BP.code,retry:5});else enter(false,{name:n0,joinCode:BP.code,retry:20})}
  else if(sv&&(!BP.code||BP.code===sv.code)){msg("🔁 Retour dans le salon "+sv.code+"…");enter(false,{name:sv.name,joinCode:sv.code,resume:true,wasHost:sv.host})}}
 {const d=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML");
- ["#pl","#plto","#showp","#modep","#plp"].forEach(q=>{const el=$(q);let last;Object.defineProperty(el,"innerHTML",{get(){return d.get.call(el)},set(v){if(v!==last){last=v;d.set.call(el,v)}}})})}
+ ["#pl","#plto","#showp","#modep","#plp"].forEach(q=>{const el=$(q);if(!el)return;let last;Object.defineProperty(el,"innerHTML",{get(){return d.get.call(el)},set(v){if(v!==last){last=v;d.set.call(el,v)}}})})}
 addEventListener("beforeunload",()=>R&&R.leave());
+
+
+
+
+
 </script></body></html>
