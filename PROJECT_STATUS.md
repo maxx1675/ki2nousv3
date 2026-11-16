@@ -1,13 +1,13 @@
 # État du projet — ki2nousv3
 
-> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **15 novembre 2026**, après la refonte de **Photo Roulette en manches** (réserve, tirage de 16 photos par joueur et par manche, récap), l'ajout d'une **bibliothèque locale partagée**, l'intégration de **Codenames au Salon**, les corrections **Undercover / Blind Test / Poker Face** et le retrait des badges « Nouveau ». Modifications non commitées à la date de rédaction.
+> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **16 novembre 2026**, après la refonte de **Photo Roulette en manches**, l'ajout d'une **bibliothèque locale partagée**, l'intégration de **Codenames au Salon**, les corrections **Undercover / Blind Test** et la **réparation WebRTC de Poker Face** (tuiles noires, reconnexions, caméra ajoutée en cours de partie). Un seul fichier applicatif est modifié depuis le commit `5e872d9` : `app/public/pokerface/index.html`.
 >
 > **Emplacement réel de l'application : `app/`.** C'est le dossier qui contient `package.json`, `src/`, `public/` et `api/`. La racine du dépôt ne contient que la documentation et `.opencode/`. Toutes les commandes npm doivent être lancées depuis `app/`.
 
 ## Résumé
 **Le Hub de Soirée** est une application web de jeux de groupe : un hub React/Vite, plusieurs jeux autonomes accessibles depuis un navigateur, et un serveur Hono qui relaie les salons temps réel, conserve un instantané de reprise et gère le classement cumulé de la soirée. La logique de chaque partie est exécutée dans le navigateur de l'hôte ; le serveur ne la calcule pas.
 
-## État actuel vérifié (15 novembre 2026)
+## État actuel vérifié (16 novembre 2026)
 - Frontend du hub : React 19, TypeScript 5.9 (strict), Vite 7, React Router 7.
 - Pages des jeux : HTML/CSS/JavaScript autonomes sous `public/`, avec scripts globaux et ordre de chargement à respecter.
 - Code commun des jeux : `public/shared/` (`net.js`, `profile.js`, `party.js`, `gages.js`, `qr.js`, `theme.js`, **`library.js`**) et thèmes dans `public/themes/`.
@@ -16,7 +16,7 @@
 - Scripts npm : `dev`, `build`, `preview`, `start`, `check`, `format`, `test`.
 - Déploiement documenté : Render (`npm ci && npm run build` puis `npm start`) ou `Dockerfile`.
 - `node_modules` installé dans `app/` : `npm run check`, `npm test` et `npm run build` s'exécutent.
-- Dépôt Git : modifications non commitées (voir « Modifications récentes »). Code de `app/` commité jusqu'à `40e06ba`, documentation et skills ensuite (`74607bc`). Rien n'est poussé à la connaissance de cette session.
+- Dépôt Git : HEAD = `5e872d9` (refonte Photo Roulette). Modifications non commitées depuis : `app/public/pokerface/index.html` (correctif WebRTC) et `reprise open cocde.txt` (fichier utilisateur). Rien n'est poussé à la connaissance de cette session.
 
 ### Convention de lecture
 Dans ce document, **« terminé »** signifie : fonctionnalité présente dans le code, cohérente avec l'architecture partagée et sans bug bloquant identifié à la lecture. Cela ne vaut pas validation en navigateur ni sur plusieurs téléphones : les vérifications réellement exécutées sont indiquées plus bas.
@@ -28,7 +28,7 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 | Hub React | `src/` | Terminé dans le code : 9 tuiles (Salon + 8 jeux), carrousel, réglages, musique, PWA. Seul le badge « 18+ » subsiste. |
 | Salon de la soirée | `public/soiree/` | Terminé pour **8 jeux** : Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, Qui de nous ?, Les Petites Vérités. |
 | Undercover | `public/undercover/` | Terminé dans le code : rôles, mots personnalisables, salon public, gages, scores, snapshot. Vote dérivé côté hôte/invités depuis cette vague. |
-| Poker Face | `public/pokerface/` | Terminé dans le code : caméra/MediaPipe, médias, téléphone-caméra WebRTC, **jointure en cours de partie**, bibliothèque locale, gages, scores, flagrant délit des perdants. |
+| Poker Face | `public/pokerface/` | Terminé dans le code : caméra/MediaPipe, médias, téléphone-caméra WebRTC (**négociation symétrique**, renégociation à l'ajout de piste, reprise après reconnexion), jointure en cours de partie, bibliothèque locale, gages, scores, flagrant délit des perdants. |
 | Photo Roulette | `public/photoroulette/` | Terminé dans le code : **réserve conservée toute la partie**, **16 photos (10 vidéos) tirées par joueur et par manche**, validation, questions une par une, récap de manche, `Lib`, snapshot. |
 | Blind Test | `public/blindtest/` | Terminé dans le code : banque intégrée ou playlist YouTube, extraits 10–30 s, **reprise après geste si la lecture automatique est bloquée**, modes privé/visible, scores, snapshot. |
 | Qui de nous ? | `public/quidenous/` | Terminé dans le code : 12 types de manches, packs, photos, scores cumulés, `Party.report`. Contient un mode « piquant +18 » non signalé comme tel dans le hub (voir bugs). |
@@ -69,7 +69,9 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 - Fin de partie : podium, statistiques (meilleur score, plus rapide, série, précision), `Party.report`, rejouer repartant du lobby de proposition.
 
 ### Poker Face
-- Caméra/MediaPipe local, médias, téléphone-caméra via WebRTC (négociation `pcFor`/`offer`/`onSig`/`flush` + watchdog), jointure en cours de partie et renvoi de `join`.
+- Caméra/MediaPipe local, médias, téléphone-caméra via WebRTC, jointure en cours de partie et renvoi de `join`.
+- **WebRTC fiabilisé (16 novembre)** : négociation symétrique « perfect negotiation » (`_polite = ME > id`, rollback en cas de collision), offre émise des deux côtés au handshake `hi`, renégociation dès qu'une piste vidéo est ajoutée (caméra du téléphone branchée après l'entrée, changement de caméra), recréation des `RTCPeerConnection` `failed`/`closed`/bloquées, file d'attente des candidats ICE, cache des flux distants rattaché aux tuiles recréées, `video.play()` de secours, temporisation exponentielle des handshakes (3 s → 30 s).
+- `Net.ice()` est attendu avant `enter()`, pour que la première connexion utilise déjà STUN/TURN.
 - **Bibliothèque locale** : modale « 📚 Ma bibliothèque » alimentée par `public/shared/library.js`, auto-sauvegarde des contenus et restauration après refresh.
 - Jauge de self-control agrandie, flagrant délit des perdants consentants (~10 s), galerie plafonnée à 60, gages et scores.
 
@@ -105,6 +107,12 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 ### Bloquants
 Aucun bloquant connu à la lecture du code.
+
+### Corrigés le 16 novembre 2026 (Poker Face WebRTC)
+- **Tuiles noires (pseudo + cadre seulement)** : la vidéo distante n'était pas rattachée quand la piste arrivait après la création de la tuile, ou quand elle était ajoutée plus tard (caméra du téléphone). `ontrack` et `attachStream()` alimentent désormais un cache `L.remStreams` réutilisé par `tile()`, et toute piste ajoutée déclenche une renégociation (`requestOffer`).
+- **Deux joueurs du même salon ne se voyaient pas après reconnexion** : seul le plus petit identifiant émettait une offre, et un `hi` reçu alors qu'une connexion existait déjà était ignoré. Les deux côtés peuvent désormais offrir (perfect negotiation), le récepteur d'un `hi` propose une offre s'il a une caméra live, et `closePc()` remet le compteur de handshake à zéro.
+- **Connexions bloquées** : les PC `failed`/`closed`. `have-local-offer`/`have-remote-offer` de plus de 9 s et `disconnected` de plus de 7 s sont fermées puis recréées ; les candidats ICE précoces sont mis en file jusqu'à la description distante ; les handshakes sont retentés avec un délai exponentiel par joueur au lieu d'une boucle serrée.
+- **Vidéo silencieuse** : `video.play()` est rappelé après rattachement (autoplay parfois bloqué), et le flux local est repris sur la tuile « moi » après un changement de caméra.
 
 ### Corrigés le 15 novembre 2026 (vague de refonte)
 - **Photo Roulette refondue en manches** : réserve conservée, tirage de 16 médias par joueur et par manche, validation collective, deck mélangé, une question à la fois, récap de manche, manches suivantes avec nouveaux tirages, remplacement automatique ✕, persistance `Lib` et restauration après rechargement.
@@ -166,11 +174,23 @@ Aucun bloquant connu à la lecture du code.
 - Skills disponibles : `game-page-development` (pages de jeux), `realtime-multiplayer` (salon/réseau/relais), `verification-and-handoff` (contrôles et passation).
 - Make It Meme : `public/makeitmeme/index.html` (page + logique hôte), `templates.js` (`window.MIM_TEMPLATES`, 60 modèles), `room-state.js` (`clone`, `sanitize`, `applyPatch`, `allowedGuestPatch`), thème `public/themes/makeitmeme.css`. Le relais ignore l'expéditeur d'un `event` : l'hôte doit rendre son interface localement après diffusion.
 - **Photo Roulette** : `L.pool` = réserve de fichiers, `L.media` = tirage courant, `L.used` = fids déjà utilisés, `L.readyM` = garde anti-double tirage, `L.libM`/`libSaveMedia` = sauvegarde `Lib` par manche. `S.mi` (manche), `S.qi`/`S.qn` (question), `S.mpts`/`S.mrecap` (récap), `S.t0` (ouverture des votes), `S.lastQ`/`S.lastM`. Hôte : `H.qdeck` (deck de la manche), `H.valid[p]` (clés validées), `H.mok`/`H.mn` (bonnes réponses / questions), `H.pool[p]` (médias par joueur). `maxN()` = 16 photos / 10 vidéos. `fill()` renvoie `{added, skipped, timedOut}`. Une réserve épuisée recycle d'anciens médias.
+- **Poker Face WebRTC** : `L.pcs` = `RTCPeerConnection` par joueur, `L.q` = candidats ICE en attente, `L.remStreams` = flux distants reçus, `L.seen` = joueurs dont une piste a déjà été reçue, `L.hiN`/`L.hiT` = compteur et date du dernier handshake par joueur. `pcFor(id, force)` recrée un PC, `closePc(id)` le ferme et réarme le handshake, `offer(id)`/`requestOffer(id)` négocient sans perdre une demande pendant une négociation, `onSig` traite `hi`/`offer`/`answer`/`ice`, `flush(id)` vide la file ICE. `_polite = ME > id` décide qui cède lors d'une collision d'offres. Le watchdog (3 s) ferme les PC bloquées et renvoie `hi` avec `cam:0|1`. Ne pas revenir à une initiation par le seul plus petit identifiant : c'est ce qui bloquait les reconnexions.
 - **Bibliothèque** : `window.Lib.list(game)` / `put({id, game, kind, label, ref, data, by, partyId})` / `del(id)` / `clear(game)` / `trim(game, keep)`. Clés Photo Roulette : `pr:<code>:m<manche>:<key>`, purge des manches précédentes à chaque sauvegarde. Poker Face utilise `game: "pokerface"`.
 - Blind Test : jeu `"bt"`, salons `bt-XXXX`, préfixe DOM `bt-`, banque `window.BT` dans `public/blindtest/bank.js`. L'hôte est autoritaire et diffuse les extraits (`play`), les invités ne calculent que leurs réponses.
 - Codenames : jeu `"cn"`, salons `cn-XXXX`, identité `TK` avec `pid=ME`, snapshot `{S,H}`, score 100 pour l'équipe gagnante et 0 pour l'autre. La logique reste côté hôte ; le relais ne relaie que les événements.
 
 ## Vérifications
+
+### Réalisées le 16 novembre 2026 (Poker Face WebRTC)
+- `npm run check` (depuis `app/`) : **réussi**.
+- `npm test` : **réussi**, 16 tests (13 relais + 3 helpers Make It Meme).
+- `npm run build` : **réussi** (Vite + bundle serveur).
+- Analyse syntaxique du script inline de `pokerface/index.html` : **aucune erreur** (~58 900 caractères).
+- Navigateur (Vite local, deux onglets, patch temporaire `sessionStorage` pour distinguer les identités) : offre/réponse dans les deux sens, `signalingState=stable`, `ontrack` reçu des deux côtés, récupération après fermeture d'un PC d'un seul côté, après rechargement + rejoint, et après `R.reconnectNow()` + fermeture de PC ; le PC distant est bien recréé et renégocié.
+- Navigateur — caméra ajoutée tardivement : un PC sans expéditeur passe à un expéditeur vidéo `live` après `applyStream(canvas)`, renégociation stable et récepteur hôte mis à jour.
+- **Zéro erreur console** sur les deux onglets (uniquement la ligne INFO MediaPipe/TensorFlow).
+- **Limite de la sandbox** : le Chromium embarqué ne produit **aucun candidat ICE** (seulement des candidats hôte TCP sur `0.0.0.0:9`), donc `connectionState` reste `new`. La négociation SDP et les reprises sont validées, mais **la vidéo réelle de caméra à caméra doit être testée sur deux vrais appareils/navigateurs** (idéalement avec TURN).
+- Le patch de test de `net.js` a été **retiré** (`git checkout`, diff vide) et les serveurs de test (ports 3001/3002) arrêtés ; le serveur utilisateur du port 3000 n'a pas été touché.
 
 ### Réalisées le 15 novembre 2026 (fin de vague)
 - `npm run check` (depuis `app/`) : **réussi**.
@@ -201,12 +221,13 @@ Aucun bloquant connu à la lecture du code.
 - **Photo Roulette sur appareils réels** : tirage de 16 médias par manche depuis une grosse réserve (100–150 photos), recyclage quand la réserve s'épuise, restauration `Lib` après refresh, envoi par QR depuis un iPhone (HEIC).
 - **Codenames dans le Salon** : partie complète à deux équipes sur deux appareils (snapshot, promotion d'hôte, retour au salon, classement).
 - **Blind Test sur un vrai réseau YouTube** : playlist collée, consentement, synchronisation des extraits, vidéo indisponible.
-- **Poker Face sur plusieurs téléphones** : WebRTC/TURN en 4G, caméra téléphone, jointure en cours de partie, exclusion, flagrant délit.
+- **Poker Face sur plusieurs téléphones** : WebRTC/TURN en 4G, caméra téléphone ajoutée en cours de partie, changement de caméra, reconnexion simultanée de deux joueurs, exclusion, flagrant délit. La sandbox de test ne produit pas de candidats ICE : ce point reste **obligatoire** sur appareils réels.
 - **Undercover** : progression des votes sur appareils réels.
 - Mode sombre : vérification visuelle de chaque jeu sur mobile et bureau.
 - `npm start` sous Windows : commande POSIX toujours en échec (voir bug 5).
 
 ## Modifications récentes
+- **2026-11-16 (Poker Face WebRTC)** — `app/public/pokerface/index.html` uniquement : ajout de `L.remStreams`/`L.seen`/`L.hiN`/`L.hiT`, `camLive()`, `playVideo()`, `showStream()`, `closePc()`, `requestOffer()` ; `tile()`/`updTiles()` réutilisent les flux et nettoient l'état des joueurs partis ; `applyStream()` renégocie quand une piste est ajoutée ; `pcFor()` gère `_polite`, `onnegotiationneeded`, `onsignalingstatechange`, `ontrack` et les états de connexion ; `onSig()` réécrit (`hi`/`offer`/`answer`/`ice`, rollback, recréation de PC) ; watchdog avec reprise des états bloqués et temporisation exponentielle ; `enter()` attend `Net.ice()` et enregistre `R.onPeers` pour le handshake.
 - **2026-11-15 (vague de refonte)** — **Photo Roulette** réécrite en manches : réserve (`L.pool`), tirage de 16 médias/joueur/manche (`pickReserve`, `L.used`), remplacement ✕ (`swap`), phases `lobby`/`round`/`reveal`/`mrecap`/`ready`/`end`, deck en tourniquet (`H.qdeck`, `S.qn`), récap de manche (`S.mrecap`), persistance IndexedDB et restauration des photos de la manche. Nouveau **`public/shared/library.js`** (IndexedDB `soiree-lib`) intégré à **Poker Face** (modale « 📚 Ma bibliothèque », auto-sauvegarde) et à Photo Roulette. **Codenames** intégré au Salon (codes 4, `Net.enter`, `Sess`, `Party`, snapshot, promotion, `Party.report`, `endCard`) et ajouté à `GAMES`. **Undercover** : vote corrigé. **Poker Face** : jointure en cours de partie, négociation WebRTC renforcée, jauge agrandie. **Blind Test** : gate sonore et reprise après geste. **Hub** : badges « Nouveau » retirés, `18+` conservé.
 - **2026-11-15** — Ajout du **Blind Test** (`public/blindtest/index.html`, `bank.js`, `themes/blindtest.css`) avec tuile hub et entrée Salon. Refonte précédente de **Photo Roulette** (16 photos validées, replay). **Poker Face** : flagrant délit des perdants.
 - **2026-11-14** — Vague de corrections jeux : mode sombre partagé, Make It Meme au Salon + attente de `go`, Codenames créable, Undercover, Qui de nous, Poker Face, Photo Roulette.
@@ -215,22 +236,23 @@ Aucun bloquant connu à la lecture du code.
 
 ## Prochaines étapes de développement
 
-1. **Valider Photo Roulette sur téléphones réels** : grosse réserve, 3–10 manches, recyclage, QR iPhone/HEIC, restauration après refresh.
-2. **Valider Codenames dans le Salon** sur deux appareils : équipes, maître-espion, snapshot, promotion d'hôte, retour au salon et classement.
-3. **Valider le Blind Test sur un vrai réseau YouTube** : playlist collée, extraits synchronisés, thème intégré, retour au salon.
-4. **Sécuriser et fiabiliser le relais** : identité de connexion, limitation de débit, taille des événements, tests des cas de reconnexion et de doublons.
-5. **Corriger le classement** : éviter la réutilisation d'un code de soirée actif (codes plus longs ou génération/nettoyage explicite).
-6. **Traiter la cohérence 18+** : confirmation pour le mode piquant de Qui de nous ? et/ou badge dans le hub, sans affaiblir les barrières existantes.
-7. **Compléter la bibliothèque** : gestion (suppression, renommage, réutilisation inter-parties) et purge/quota côté client.
-8. **Assainir Make It Meme** : code admin côté client, timers via `Net.clock`, templates dédupliqués.
-9. **Outillage multiplateforme** : corriger `npm start` sous Windows, vérifier le répertoire de travail de `serveStatic`, ajouter au minimum un test du parcours de création de salon.
-10. **Documentation à aligner** : `ARCHITECTURE.md` (commandes depuis `app/`, limites du relais, `library.js`), `app/README.md` (`npm start` sous Windows), `AGENTS.md` (préciser `cd app`).
+1. **Valider Poker Face sur deux vrais téléphones** : vidéo caméra à caméra (STUN/TURN, 4G), caméra branchée en cours de partie, changement de caméra, reconnexion simultanée, tuiles noires résiduelles. C'est la seule validation manquante du correctif WebRTC.
+2. **Valider Photo Roulette sur téléphones réels** : grosse réserve, 3–10 manches, recyclage, QR iPhone/HEIC, restauration après refresh.
+3. **Valider Codenames dans le Salon** sur deux appareils : équipes, maître-espion, snapshot, promotion d'hôte, retour au salon et classement.
+4. **Valider le Blind Test sur un vrai réseau YouTube** : playlist collée, extraits synchronisés, thème intégré, retour au salon.
+5. **Sécuriser et fiabiliser le relais** : identité de connexion, limitation de débit, taille des événements, tests des cas de reconnexion et de doublons.
+6. **Corriger le classement** : éviter la réutilisation d'un code de soirée actif (codes plus longs ou génération/nettoyage explicite).
+7. **Traiter la cohérence 18+** : confirmation pour le mode piquant de Qui de nous ? et/ou badge dans le hub, sans affaiblir les barrières existantes.
+8. **Compléter la bibliothèque** : gestion (suppression, renommage, réutilisation inter-parties) et purge/quota côté client.
+9. **Assainir Make It Meme** : code admin côté client, timers via `Net.clock`, templates dédupliqués.
+10. **Outillage multiplateforme** : corriger `npm start` sous Windows, vérifier le répertoire de travail de `serveStatic`, ajouter au minimum un test du parcours de création de salon.
+11. **Documentation à aligner** : `ARCHITECTURE.md` (commandes depuis `app/`, limites du relais, `library.js`), `app/README.md` (`npm start` sous Windows), `AGENTS.md` (préciser `cd app`).
 
 ## À compléter après chaque tâche importante
-- Date : 2026-11-15
-- Objectif : refondre Photo Roulette en manches avec réserve et tirage par manche ; ajouter une bibliothèque locale ; intégrer Codenames au Salon ; corriger les votes Undercover, la lecture Blind Test et la jointure Poker Face ; retirer les badges « Nouveau ».
-- Fichiers / zones modifiés : `app/public/photoroulette/index.html` ; `app/public/shared/library.js` (nouveau) ; `app/public/pokerface/index.html` ; `app/public/blindtest/index.html` ; `app/public/codenames/index.html` ; `app/public/soiree/index.html` ; `app/public/undercover/index.html` ; `app/src/pages/Home.tsx` ; `PROJECT_STATUS.md`. `app/public/shared/net.js` restauré à l'identique (patch de test retiré).
-- Décisions techniques à conserver : hôte navigateur autoritaire, relais inchangé ; Photo Roulette = réserve locale + tirage `maxN()` par manche/joueur + recyclage, `cfg.rounds`/`cfg.qper`, phases `lobby`/`round`/`reveal`/`mrecap`/`ready`/`end`, persistance `Lib` de la manche ; bibliothèque = IndexedDB `soiree-lib` (`window.Lib`) ; Codenames = codes 4, snapshot `{S,H}`, `Party.report` 100/0.
-- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; syntaxe des scripts inline vérifiée ; parcours navigateur Photo Roulette à 3 joueurs (manches, récap, remplacement, fin de partie, zéro erreur console) ; verrouillage des votes avant `t0` vérifié.
-- Problèmes connus / limites : réserve Photo Roulette non persistée après refresh (seule la manche courante l'est) ; Codenames à valider sur appareils réels ; Blind Test à valider sur un vrai réseau YouTube ; barrière 18+ de Qui de nous inchangée ; test multi-onglets impossible sans patch `sessionStorage` (retiré).
-- Prochaine étape concrète : tester Photo Roulette sur deux téléphones avec une réserve de 100+ photos, puis une partie Codenames complète depuis le Salon.
+- Date : 2026-11-16
+- Objectif : réparer la visioconférence de Poker Face — tuiles noires, joueurs d'un même salon qui ne se voient pas après reconnexion, caméra ajoutée en cours de partie.
+- Fichiers / zones modifiés : `app/public/pokerface/index.html` uniquement (côté application) ; `PROJECT_STATUS.md`. `app/public/shared/net.js` restauré à l'identique après le patch de test.
+- Décisions techniques à conserver : perfect negotiation (`_polite = ME > id`), offre possible des deux côtés sur `hi`, renégociation à chaque piste ajoutée, recréation des PC bloquées, file ICE, cache `L.remStreams`, handshake rétroactif avec backoff, `Net.ice()` attendu avant `enter`.
+- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; syntaxe inline vérifiée ; deux onglets navigateur (négociation, `ontrack`, fermeture/reprise, reload, reconnexion relais, caméra tardive) sans erreur console.
+- Problèmes connus / limites : la sandbox Chromium ne produit aucun candidat ICE (`connectionState` reste `new`) ; **vidéo réelle à valider sur deux appareils**. Le test multi-onglets exige un patch `sessionStorage` temporaire (retiré).
+- Prochaine étape concrète : test caméra à caméra sur deux téléphones, sur le même serveur et si possible avec TURN, en coupant puis rétablissant le réseau d'un des deux joueurs.

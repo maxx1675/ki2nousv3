@@ -153,10 +153,11 @@ html[data-anim="off"] .curt{transition:none}
 const MIN=2,MAX=8,AI_VER="0.10.14";
 let R=null,S=null,isHost=false,code="";
 let H={data:{},used:[],ended:false,rdy:new Set()};
-const L={stream:null,lm:null,aiState:"load",face:false,sens:+(localStorage.getItem("soiree:pf_sens")||50),base:null,cal:[],streak:0,out:false,pcs:{},q:{},tiles:{},cur:null,key:"",started:false,name:"",mode:0,miss:0,prep:null,mine:{},snaps:[],shared:[],ice:null,jh:[],gv:0,snapOn:localStorage.getItem("soiree:pf_snap")==="1"};
+const L={stream:null,lm:null,aiState:"load",face:false,sens:+(localStorage.getItem("soiree:pf_sens")||50),base:null,cal:[],streak:0,out:false,pcs:{},q:{},tiles:{},remStreams:{},seen:{},hiN:{},hiT:{},cur:null,key:"",started:false,name:"",mode:0,miss:0,prep:null,mine:{},snaps:[],shared:[],ice:null,jh:[],gv:0,snapOn:localStorage.getItem("soiree:pf_snap")==="1"};
 const RES_MS=10000; // durée d'affichage du flagrant délit avant que l'hôte puisse enchaîner
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
 const view=id=>["home","lobby","round","result","end"].forEach(x=>$("#s-"+x).hidden=x!==id);
+const camLive=()=>!!(L.stream&&L.stream.getVideoTracks().some(t=>t.readyState==="live"));
 const msg=t=>$("#hmsg").textContent=t;
 const bc=()=>{if(isHost&&R){
  // Retire les joueurs partis depuis plus de 20 s (tuiles figées / classement fantôme).
@@ -169,11 +170,22 @@ const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
 try{$("#pname").value=localStorage.getItem("soiree:name")||"";$("#sens").value=L.sens}catch(e){}
 
 /* ---------- tuiles webcam (persistantes) ---------- */
+function playVideo(v){
+ if(!v)return;
+ try{const p=v.play&&v.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}
+}
+function showStream(id,s){
+ if(!s)return;
+ L.remStreams[id]=s;
+ const v=L.tiles[id]&&L.tiles[id].querySelector("video");
+ if(v&&v.srcObject!==s){v.srcObject=s;playVideo(v)}
+}
 function tile(id){
  if(L.tiles[id])return L.tiles[id];
  const d=document.createElement("div");d.className="tile"+(id===ME?" me":"");
  d.innerHTML='<video autoplay playsinline '+(id===ME?"muted":"")+'></video><div class="nm"><span></span><span></span></div>';
- if(id===ME&&L.stream)d.querySelector("video").srcObject=L.stream;
+ const v=d.querySelector("video"),s=id===ME?L.stream:L.remStreams[id];
+ if(s){v.srcObject=s;playVideo(v)}
  $("#tiles").append(d);return L.tiles[id]=d;
 }
 function updTiles(){
@@ -181,8 +193,8 @@ function updTiles(){
  S.pl.forEach(p=>{const t=tile(p.id);t.querySelector(".nm span").textContent=p.n;
   t.querySelector(".nm span:last-child").textContent=p.sc+" pt";
   t.classList.toggle("out",S.ph==="round"&&!!p.out);t.classList.toggle("alive",S.ph==="round"&&!p.out&&on.has(p.id))});
- for(const id in L.tiles)if(!S.pl.some(p=>p.id===id)){L.tiles[id].remove();delete L.tiles[id]}
- for(const id in L.pcs)if(!S.pl.some(p=>p.id===id)){try{L.pcs[id].close()}catch(e){}delete L.pcs[id]}
+ for(const id in L.tiles)if(!S.pl.some(p=>p.id===id)){L.tiles[id].remove();delete L.tiles[id];delete L.remStreams[id];delete L.seen[id];delete L.hiN[id];delete L.hiT[id]}
+ for(const id in L.pcs)if(!S.pl.some(p=>p.id===id)){try{L.pcs[id].close()}catch(e){}delete L.pcs[id];delete L.q[id]}
 }
 const place=id=>{const c=$("#"+id);if(c&&$("#tiles").parentNode!==c)c.append($("#tiles"))};
 
@@ -311,76 +323,158 @@ function waitIce(pc,ms){
   pc.addEventListener("icegatheringstatechange",done);
  });
 }
+/* Ajoute ou remplace la piste vidéo locale. Renvoie true si une piste a été
+   ajoutée : il faut alors une nouvelle négociation, sinon l'autre côté garde
+   une tuile noire (cas de la caméra du téléphone branchée après l'entrée). */
 function attachStream(pc){
- if(!L.stream)return;
+ if(!L.stream)return false;
+ let added=false;
  L.stream.getTracks().forEach(t=>{
+  if(t.readyState!=="live")return;
   try{ if(t.kind==="video"&&"contentHint"in t)t.contentHint="motion"; }catch(e){}
   try{
+   if(pc.getSenders().some(x=>x.track===t))return;
    const sn=pc.getSenders().find(x=>x.track&&x.track.kind===t.kind);
-   if(sn)sn.replaceTrack(t).catch(()=>{});else pc.addTrack(t,L.stream);
+   if(sn)sn.replaceTrack(t).catch(()=>{});else{pc.addTrack(t,L.stream);added=true}
   }catch(e){}
  });
+ return added;
 }
-function pcFor(id){
- if(L.pcs[id])return L.pcs[id];
- const pc=new RTCPeerConnection({...(L.ice||{iceServers:[{urls:"stun:stun.l.google.com:19302"}]}),bundlePolicy:"max-bundle",iceCandidatePoolSize:2});
- pc._makingOffer=false;pc._downSince=0;pc._offerAt=0;pc._lastOffer="";
+function closePc(id){
+ const pc=L.pcs[id];if(pc){try{pc.close()}catch(e){}delete L.pcs[id]}
+ delete L.q[id];delete L.remStreams[id];
+ // Une connexion fermée doit pouvoir être retentée tout de suite.
+ L.hiN[id]=0;L.hiT[id]=0;
+}
+function pcFor(id,force){
+ if(L.pcs[id]){
+  if(!force)return L.pcs[id];
+  closePc(id);
+ }
+ const pc=new RTCPeerConnection({...(L.ice||{iceServers:[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]}]}),bundlePolicy:"max-bundle",iceCandidatePoolSize:2});
+ pc._makingOffer=false;pc._downSince=0;pc._offerAt=0;pc._sigAt=0;pc._lastOfferAt=0;pc._polite=ME>id;
  L.pcs[id]=pc;attachStream(pc);
- pc.onicecandidate=e=>{if(e.candidate)R.emit("sig",{f:ME,t:"ice",c:e.candidate},id)};
- pc.ontrack=e=>{const v=tile(id).querySelector("video");if(v&&v.srcObject!==e.streams[0])v.srcObject=e.streams[0]};
- pc.onconnectionstatechange=()=>{const st=pc.connectionState;if(st==="connected"){pc._downSince=0;pc._offerAt=0}else if(st==="failed"||st==="disconnected"||st==="closed")pc._downSince=pc._downSince||Date.now()};
+ pc.onicecandidate=e=>{if(e.candidate&&R)R.emit("sig",{f:ME,t:"ice",c:e.candidate},id)};
+ pc.ontrack=e=>{
+  const s=(e.streams&&e.streams[0])||new MediaStream([e.track]);
+  L.seen[id]=true;L.hiN[id]=0;L.hiT[id]=0;showStream(id,s);
+  try{e.track.addEventListener("ended",()=>{if(L.remStreams[id]===s)delete L.remStreams[id]})}catch(x){}
+ };
+ /* Toute piste ajoutée plus tard (téléphone-caméra, caméra changée) déclenche
+    une renégociation automatique. */
+ pc.onnegotiationneeded=()=>{if(L.pcs[id]===pc)requestOffer(id)};
+ pc.onsignalingstatechange=()=>{if(pc._needOffer&&pc.signalingState==="stable"){pc._needOffer=false;requestOffer(id)}};
+ pc.onconnectionstatechange=()=>{const st=pc.connectionState;
+  if(st==="connected"){pc._downSince=0;pc._offerAt=0}
+  else if(st==="disconnected")pc._downSince=pc._downSince||Date.now();
+  else if(st==="failed"||st==="closed"){pc._downSince=0;pc._offerAt=0}
+ };
  return pc;
 }
-/* Un seul côté initie l'offre (le plus petit identifiant). Cela évite les offres croisées
-   quand deux joueurs se reconnectent en même temps, qui laissaient parfois des tuiles noires. */
+/* Négociation « perfect negotiation » : les deux côtés peuvent initier une offre
+   (indispensable après une reconnexion), et le plus petit identifiant gagne en
+   cas de collision. */
 async function offer(id){
- const pc=pcFor(id);
+ const pc=L.pcs[id]||pcFor(id);if(!pc)return;
  if(pc._makingOffer||pc.signalingState!=="stable")return;
- pc._makingOffer=true;pc._offerAt=Date.now();
+ const now=Date.now();
+ if(now-(pc._lastOfferAt||0)<1200)return;
+ pc._lastOfferAt=now;pc._makingOffer=true;pc._offerAt=now;
  try{
   const o=await pc.createOffer();if(pc.signalingState!=="stable")return;
   await pc.setLocalDescription(o);await waitIce(pc);
-  if(!pc.localDescription)return;pc._lastOffer=pc.localDescription.sdp;
+  if(!pc.localDescription||!R)return;
   R.emit("sig",{f:ME,t:"offer",s:pc.localDescription},id);
  }catch(e){pc._offerAt=0}
  finally{pc._makingOffer=false}
 }
+/* Demande une offre sans la perdre si une négociation est déjà en cours ou
+   trop récente (sinon une piste ajoutée entre-temps ne serait jamais envoyée). */
+function requestOffer(id){
+ const pc=L.pcs[id];if(!pc)return;
+ const wait=Math.max(0,1200-(Date.now()-(pc._lastOfferAt||0)));
+ if(wait>0){
+  clearTimeout(pc._ot);
+  pc._ot=setTimeout(()=>{if(L.pcs[id]===pc)offer(id)},wait+40);
+  return;
+ }
+ if(pc._makingOffer||pc.signalingState!=="stable"){pc._needOffer=true;return}
+ offer(id);
+}
 async function onSig(d){
- if(!d||d.f===ME)return;const id=d.f;const pc=pcFor(id);
+ if(!d||d.f===ME||!R)return;
+ const id=d.f;
  if(d.t==="hi"){
-  if(ME<id&&pc.signalingState==="stable"&&pc.connectionState!=="connected")offer(id);
+  const pc=L.pcs[id];
+  if(!pc)pcFor(id);
+  // On (re)propose une offre si on a une caméra : l'émetteur du hi signale
+  // qu'il ne voit pas notre vidéo, ou que la sienne a disparu après reconnexion.
+  if(d.cam===0&&!camLive())return;
+  const p2=L.pcs[id];if(p2){p2._lastOfferAt=0;offer(id)}
   return;
  }
  if(d.t==="offer"){
+  let pc=L.pcs[id];
+  if(pc&&(pc.connectionState==="failed"||pc.connectionState==="closed"))pc=pcFor(id,true);
+  if(!pc)pc=pcFor(id);
+  pc._sigAt=Date.now();
   try{
-   if(pc._makingOffer||pc.signalingState!=="stable"){
-    // Glare : le plus petit identifiant cède et accepte l'offre, l'autre l'ignore.
-    if(ME<id&&pc.signalingState==="have-local-offer")await pc.setLocalDescription({type:"rollback"});
-    else return;
+   const collision=pc._makingOffer||pc.signalingState!=="stable";
+   if(collision){
+    if(pc._polite)await pc.setLocalDescription({type:"rollback"});
+    else return; // l'autre côté garde son offre, on répondra à la sienne
    }
    await pc.setRemoteDescription(d.s);
    await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);
-   R.emit("sig",{f:ME,t:"answer",s:pc.localDescription},id);flush(id);
+   if(pc.localDescription)R.emit("sig",{f:ME,t:"answer",s:pc.localDescription},id);
+   flush(id);
   }catch(e){}
   return;
  }
  if(d.t==="answer"){
+  const pc=L.pcs[id];if(!pc)return;
   try{if(pc.signalingState==="have-local-offer"){await pc.setRemoteDescription(d.s);flush(id)}}catch(e){}
   return;
  }
  if(d.t==="ice"){
-  try{if(pc.remoteDescription)await pc.addIceCandidate(d.c);else(L.q[id]=L.q[id]||[]).push(d.c)}catch(e){}
+  const pc=L.pcs[id];
+  const q=L.q[id]=L.q[id]||[];
+  if(q.length<80)q.push(d.c);
+  if(pc&&pc.remoteDescription)flush(id);
  }
 }
-function flush(id){const pc=L.pcs[id];if(!pc)return;(L.q[id]||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));L.q[id]=[]}
-setInterval(()=>{ if(!R||!S)return;
- for(const id in L.pcs){const pc=L.pcs[id],st=pc.connectionState;
-  const stuck=(pc.signalingState==="have-local-offer"&&pc._offerAt&&Date.now()-pc._offerAt>9000)||
-   st==="failed"||st==="closed"||(st==="disconnected"&&pc._downSince&&Date.now()-pc._downSince>9000);
-  if(stuck){try{pc.close()}catch(e){}delete L.pcs[id]}
+function flush(id){
+ const pc=L.pcs[id];if(!pc||!pc.remoteDescription)return;
+ (L.q[id]||[]).splice(0).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));
+}
+/* Surveillance : recrée les connexions bloquées et redemande un handshake tant
+   que la liaison n'est pas établie. Un signal peut être perdu pendant une
+   reconnexion au relais : on réessaie jusqu'à ce que la vidéo revienne. */
+setInterval(()=>{
+ if(!R||!S||R.closed)return;
+ const now=Date.now();
+ for(const id in L.pcs){
+  const pc=L.pcs[id],st=pc.connectionState;
+  const stuck=(pc.signalingState==="have-local-offer"&&pc._offerAt&&now-pc._offerAt>9000)||
+   (pc.signalingState==="have-remote-offer"&&pc._sigAt&&now-pc._sigAt>9000)||
+   st==="failed"||st==="closed"||(st==="disconnected"&&pc._downSince&&now-pc._downSince>7000);
+  if(stuck)closePc(id);
  }
- if(S.pl.some(p=>p.id!==ME&&!L.pcs[p.id]))R.emit("sig",{f:ME,t:"hi"});
-},3500);
+ if(S.ph==="end")return;
+ /* Handshake avec temporisation croissante par joueur : on réessaie vite au
+    début, puis de moins en moins souvent si le réseau ne laisse pas passer la
+    vidéo (TURN absent, Wi-Fi capricieux), au lieu de renégocier sans fin. */
+ for(const p of S.pl){
+  if(p.id===ME)continue;
+  const pc=L.pcs[p.id],blind=!!(L.seen[p.id]&&!L.remStreams[p.id]);
+  if(pc&&pc.connectionState==="connected"&&!blind){L.hiN[p.id]=0;continue}
+  const n=L.hiN[p.id]||0;
+  const gap=n?Math.min(30000,3000*2**(n-1)):3000;
+  if(now-(L.hiT[p.id]||0)<gap)continue;
+  L.hiT[p.id]=now;L.hiN[p.id]=Math.min(n+1,6);
+  R.emit("sig",{f:ME,t:"hi",cam:camLive()?1:0},p.id);
+ }
+},3000);
 
 /* ---------- banque de défis : textes + sons synthétisés (aucun fichier à héberger) ---------- */
 const rid=()=>Math.random().toString(36).slice(2,8);
@@ -441,7 +535,7 @@ async function enter(create,o){
   const ok=await getCam().catch(()=>false);
   if(!ok){L.noCam=true;msg("Tu joues sans caméra : utilise ton téléphone pour être analysé 📱")}
  }else{L.noCam=true}
- Net.ice().then(x=>L.ice=x);
+ try{L.ice=await Net.ice()}catch(e){}
  const x=await Net.enter({game:"pf",room:c=>"pf-"+c,create,code:o.code,joinCode:jc,resume:o.resume,wasHost:o.wasHost,retry:o.retry,onMsg:msg});
  if(!x)return;
  R=x.R;code=x.code;isHost=R.host;
@@ -452,6 +546,9 @@ async function enter(create,o){
   if(!S.pl.some(p=>p.id===ME))R.emit("act",{k:"join",p:ME,n:L.name},"host");
   route()});
  R.on("sig",onSig);
+ // Dès qu'un joueur apparaît (ou revient), on lui envoie un handshake : les
+ // événements émis pendant sa reconnexion peuvent avoir été perdus.
+ R.onPeers(()=>{for(const id of R.peers()){if(id!==ME&&!L.pcs[id])R.emit("sig",{f:ME,t:"hi",cam:camLive()?1:0},id)}});
  R.on("content",d=>{L.cur=d;L.started=false;L.prep=null;if(S&&S.ph==="round")prepare()});
  R.on("act",d=>{if(isHost)hostAct(d)});
  R.on("rs",()=>{if(!isHost)resendItems()});
@@ -768,9 +865,17 @@ $("#fvid").addEventListener("change",async e=>{const f=e.target.files[0];e.targe
 const CAM=new URLSearchParams(location.search).get("cam");
 let PR=null,pcPh=null,qPh=[];
 function applyStream(s){
- const old=L.stream;L.stream=s;L.mode=0;L.miss=0;const t=tile(ME);t.querySelector("video").srcObject=s;
- const vt=s.getVideoTracks()[0];
- for(const id in L.pcs){const pc=L.pcs[id],sn=pc.getSenders().find(x=>x.track&&x.track.kind==="video");if(sn&&vt)sn.replaceTrack(vt).catch(()=>{});else if(vt){try{pc.addTrack(vt,s)}catch(e){}}}
+ const old=L.stream;L.stream=s;L.mode=0;L.miss=0;
+ showStream(ME,s);
+ const vt=s&&s.getVideoTracks()[0];
+ if(vt){
+  for(const id in L.pcs){
+   const pc=L.pcs[id];
+   // replaceTrack suffit pour remplacer la piste ; une piste ajoutée pour la
+   // première fois doit renégocier, sinon l'autre joueur garde un écran noir.
+   if(attachStream(pc))requestOffer(id);
+  }
+ }
  if(old&&old!==s&&!L.phoneOn)old.getTracks().forEach(x=>x.stop());
 }
 function phStatus(t,ok){const e=$("#qrst");if(e){e.textContent=t;e.className="status "+(ok?"ok":"")}const b=$("#phoneBtn");if(b)b.textContent=L.phoneOn?"📱 Téléphone connecté ✔":"📱 Utiliser mon téléphone comme caméra"}

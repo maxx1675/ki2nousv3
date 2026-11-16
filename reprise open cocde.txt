@@ -182,3 +182,26 @@ Indique :
 - Les prochaines étapes pertinentes.
 
 Ne modifie pas le code. Vérifie que la documentation reste cohérente avec l'état réel du projet.
+
+
+
+
+
+
+
+
+Reprends exactement là où tu t'es arrêté.
+
+Analyse l'historique de cette conversation ainsi que l'état actuel du projet et du code.
+
+Identifie précisément :
+- Les modifications déjà effectuées.
+- Les modifications encore incomplètes.
+- Les tâches restantes de ma demande initiale.
+- Les éventuelles erreurs ou régressions introduites.
+
+Ne recommence pas ce qui est déjà terminé. Ne supprime et ne réécris pas inutilement du code fonctionnel.
+
+Continue l'implémentation à partir du dernier point réellement terminé, en respectant l'architecture et les conventions existantes du projet.
+
+Poursuis jusqu'à ce que toute ma demande initiale soit implémentée. Effectue les vérifications et tests nécessaires, puis indique clairement ce qui est terminé et ce qui reste à faire.
