@@ -124,7 +124,7 @@ const lists=()=>{try{return JSON.parse(localStorage.getItem("cn:lists")||"{}")}c
 const saveLists=o=>{try{localStorage.setItem("cn:lists",JSON.stringify(o))}catch(e){say("Stockage indisponible")}};
 const useName=()=>localStorage.getItem("cn:use")||"";
 const parseW=t=>[...new Set(t.split(/[\n;]/).map(x=>x.trim()).filter(Boolean))];
-function pick25(){const u=useName(),l=lists()[u];const src=l&&l.length>=25?l:LIB;const a=[...new Set(src)];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,25)}
+function pick25(){const u=useName(),l=lists()[u];const src=l&&l.length>=25?l:LIB;const a=[...new Set(src.filter(w=>typeof w==="string"&&w.trim()).map(w=>w.trim()))];for(const w of LIB){if(a.length>=25)break;if(!a.includes(w))a.push(w)}for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,25)}
 function wordsModal(){
  const L=lists(),m=document.createElement("div");m.className="mod";
  m.innerHTML=`<div class="box"><h2>✏️ Mes mots</h2><p class="hint">Un mot par ligne (25 minimum). Le jeu en tire 25 au hasard.</p>

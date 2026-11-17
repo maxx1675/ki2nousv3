@@ -225,7 +225,7 @@ async function enter(create,o){
   Sess.save("bt",{code,name,host:isHost});setInterval(()=>Sess.touch("bt"),20000);
   Party.listen(R,code,()=>Sess.clear("bt"));
   R.on("st",d=>{if(isHost||!d)return;S=d;route()});
-  R.on("play",p=>{if(isHost||!p)return;L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playExtract(p);updGame()}else route()});
+  R.on("play",p=>{if(isHost||!p)return;if(!L.cur||L.cur.r!==p.r){L.ok={};L.fb=null}L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playExtract(p);updGame()}else route()});
   R.on("fb",d=>{if(d&&d.r===S.r&&d.res){L.fb={r:d.r,res:d.res,at:Date.now()};d.res.forEach(x=>{if(x.ok)L.ok[x.f]=true});updGame()}});
   R.on("act",d=>{if(isHost)hostAct(d)});
   R.on("rs",()=>{if(isHost)needResend()});
@@ -233,7 +233,12 @@ async function enter(create,o){
   R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l'hôte");route()});
   if(isHost){
     const sn=R.initSnap;
-    if(sn&&sn.S){S=sn.S;S.host=ME;restoreH(sn.H);needResend()}
+    if(sn&&sn.S){
+      S=sn.S;S.host=ME;restoreH(sn.H);
+      // Un rechargement tue toute lecture en cours : on reprend la manche au bon endroit.
+      S.loading=false;L.starting=false;
+      if(!resumeHostRound()){if(S.ph==="round")nextRound();else needResend()}
+    }
     else S=initS();
     hostLoops();hostAct({k:"join",p:ME,n:name});
   }
@@ -260,6 +265,28 @@ function needResend(){
     R.emit("play",p);
   }
 }
+/* Hôte rechargé ou promu en pleine manche : restaure l'extrait et relance la lecture. */
+function resumeHostRound(){
+  if(!S||S.ph!=="round")return false;
+  S.loading=false;L.starting=false;
+  if(!H.song||!H.song.id)return false;
+  if(S.cfg.source==="youtube"&&!H.song.title){
+    const r=S.r;S.loading=true;
+    cueMeta(H.song.id,meta=>{
+      if(!S||S.ph!=="round"||S.r!==r)return;
+      S.loading=false;L.starting=false;
+      if(!meta||!meta.title){toast("Impossible de relire cet extrait, on passe au suivant");nextRound();return}
+      H.song.title=meta.title;H.song.artist=meta.artist||"";
+      launchRound();
+    });
+    return true;
+  }
+  const now=Net.now(),extract=S.cfg.extract||15;
+  if(!S.t0||now-S.t0>=extract*1000){launchRound();return true}
+  const p={r:S.r,id:H.song.id,start:now+900,offset:(now-S.t0)/1000,extract:Math.max(2,extract-(now-S.t0)/1000)};
+  L.cur=p;L.playingR=S.r;R.emit("play",p);playExtract(p);
+  return true;
+}
 function onPromoted(snap){
   isHost=true;
   if(snap&&snap.S)S=snap.S;
@@ -267,14 +294,11 @@ function onPromoted(snap){
   S.host=ME;
   if(snap&&snap.H)restoreH(snap.H);
   if(!S.pl.some(p=>p.id===ME))S.pl.push({id:ME,n:L.name,sc:0});
+  S.loading=false;L.starting=false;
   hostLoops();
-  if(S.ph==="round"&&H.song){
-    S.t0=Net.now()+1500;S.ansUntil=S.t0+S.cfg.answer*1000;
-    const p={r:S.r,id:H.song.id,start:S.t0,offset:0,extract:S.cfg.extract};
-    L.cur=p;L.playingR=S.r;R.emit("play",p);playExtract(p);
-  }
+  if(S.ph==="round"&&!resumeHostRound())nextRound();
   Sess.save("bt",{code,name:L.name,host:true});
-  toast("👑 Tu es maintenant l'hôte");needResend();bc();route();
+  toast("👑 Tu es maintenant l’hôte");bc();route();
 }
 
 /* ---------- logique hôte ---------- */
@@ -354,7 +378,7 @@ function launchRound(){
   R.emit("play",p);playExtract(p);bc();route();
 }
 function answer(p,d){
-  if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song)return;
+  if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song||!S.pl.some(x=>x.id===p))return;
   if(!S.t0||Net.now()<S.t0-300)return;
   H.res[p]=H.res[p]||{};
   const results=[];

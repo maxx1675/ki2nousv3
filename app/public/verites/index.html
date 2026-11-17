@@ -401,12 +401,12 @@ const fmtT = s => Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
 /* ---------- Persistance hôte : le relais garde une « photo » de la partie (R.snap) ; copie locale en secours ---------- */
 function saveHost(){
   if(!isHost||!S) return;
-  try{ localStorage.setItem("lpv:host:"+code, JSON.stringify({S,H})); }catch(e){}
+  try{ localStorage.setItem("lpv:host:"+code, JSON.stringify({S,H,ts:Date.now()})); }catch(e){}
 }
 function loadHost(){
   try{ const d=JSON.parse(localStorage.getItem("lpv:host:"+code)||"null");
-    if(d&&d.S&&d.S.host===ME){ S=d.S; H=d.H; return true; } }catch(e){}
-  return false;
+    if(d&&d.S&&d.S.host===ME) return d; }catch(e){}
+  return null;
 }
 /* ---------- Reprise de session (quitter la page sans perdre sa place) ---------- */
 function saveSess(){ Sess.save("vt",{code, name:L.name, host:isHost}); }
@@ -419,7 +419,7 @@ function showRejoin(){
 }
 
 /* ---------- Diffusion ---------- */
-function bc(){ if(!isHost||!R||!S) return; if(S.ph==="lobby") S.cfg=L.cfg; R.emit("st",S).catch(()=>{}); R.snap({S,H}); saveHost(); }
+function bc(){ if(!isHost||!R||!S) return; if(S.ph==="lobby") S.cfg=L.cfg; R.emit("st",S).catch(()=>{}); const ts=Date.now(); R.snap({S,H,ts}); saveHost(); }
 function send(d){ d.p=ME; if(isHost) return hostAct(d); if(R) R.emit("act",d,"host").catch(()=>{}); }
 
 /* ---------- Configuration ---------- */
@@ -444,12 +444,16 @@ async function enter(create,o){
   bind();
   setInterval(()=>Sess.touch("vt"),20000);
   if(isHost){
-    const sn=R.initSnap;
-    if(sn&&sn.S){ S=sn.S; H=sn.H||freshH(); S.host=ME; }
-    else if(!loadHost()){
-      S = newS(); H = freshH();
-    }
+    const sn=R.initSnap, local=loadHost();
+    const snTs=sn&&typeof sn.ts==="number"?sn.ts:0;
+    const localTs=local&&typeof local.ts==="number"?local.ts:0;
+    // La « photo » du relais est différée de 900 ms : une copie locale plus récente
+    // évite de revenir à la manche précédente après un rechargement très rapide.
+    if(local&&(!sn||!sn.S||localTs>snTs)){ S=local.S; H=local.H||freshH(); S.host=ME; }
+    else if(sn&&sn.S){ S=sn.S; H=sn.H||freshH(); S.host=ME; }
+    else { S=newS(); H=freshH(); }
     hostAct({k:"join",p:ME,n:name});
+    if(S.ph==="mix"&&H) doMix();
     bc(); saveSess();
     show("lobby"); render();
   } else {
@@ -462,7 +466,7 @@ async function enter(create,o){
   Share.mount("#sw-share",{code,title:"Les Petites Vérités",text:"Rejoins-moi aux Petites Vérités (18+) ! Code : "+code});
   $("#rejoin").hidden=true;
 }
-const newS = () => ({ ph:"lobby", host:ME, pl:[], cfg:{...L.cfg}, round:0, q:"", ch:3,
+const newS = () => ({ ph:"lobby", host:ME, pl:[], banned:[], cfg:{...L.cfg}, round:0, q:"", ch:3,
             submitted:[], noted:[], readOk:[], voted:[], order:[], end:0,
             imp:null, votesN:{}, deltas:{}, ghostRound:false, parts:[] });
 function freshH(){ return { truths:{}, assign:{}, swap:null, ghost:false, votes:{}, participants:[], stats:{found:{},impWins:{},ghosts:0} }; }
@@ -485,6 +489,12 @@ function bind(){
   R.onPeers(() => { if(isHost&&S){ bc(); } render(); });
   R.onPromote(onPromoted);
   R.onDemote(() => { isHost=false; toast("Un autre joueur est devenu l’hôte"); L.rk=""; render(); });
+  R.on("kick", () => {
+    toast("L’hôte t’a retiré de la partie");
+    clearSess(); L.asg=null;
+    try{ R&&R.leave(); }catch(e){}
+    R=null; S=null; isHost=false; show("home");
+  });
   Party.listen(R,code,()=>Sess.clear("vt"));
 }
 /* Passage de relais : l'hôte a disparu, le serveur nous désigne avec la dernière « photo » de la partie */
@@ -493,15 +503,19 @@ function onPromoted(snap){
   if(snap&&snap.S){ S=snap.S; H=snap.H||null; }
   if(!S) S=newS();
   S.host=ME;
-  if(!S.pl.some(p=>p.id===ME) && S.ph==="lobby") S.pl.push({id:ME,n:L.name,score:0});
+  if(!S.pl.some(p=>p.id===ME) && S.ph!=="final") S.pl.push({id:ME,n:L.name,score:0});
   if(!H){
     H=freshH();
     if(S.ph!=="lobby" && S.ph!=="final"){ S.round=Math.max(0,S.round-1); toast("Manche relancée (l’ancien hôte est parti)"); nextRound(); }
   }
-  saveSess(); L.rk=""; toast("👑 Tu es maintenant l’hôte"); bc(); render();
+  saveSess(); L.rk=""; toast("👑 Tu es maintenant l’hôte");
+  if(S.ph==="mix"&&H) doMix();
+  bc(); render();
 }
 function onPhase(ph){
-  if(ph==="reveal"){ L.asg=null; L.asgRound=0; try{ localStorage.removeItem("lpv:asg:"+code); }catch(e){} }
+  // La vérité assignée reste nécessaire jusqu'au vote : on ne l'efface qu'au début
+  // d'une nouvelle manche, pas à l'ouverture de « reveal ».
+  if(ph==="question"){ L.asg=null; L.asgRound=0; try{ localStorage.removeItem("lpv:asg:"+code); }catch(e){} }
   if(ph==="vote"){ L.vote=[]; L.sent=false; }
   if(ph==="write"){ L.sent=false; L.draft=""; }
   const st=$("#stage"); if(st){ st.classList.remove("stage"); void st.offsetWidth; st.classList.add("stage"); }
@@ -516,9 +530,12 @@ function hostAct(d){
   if(!d||typeof d.k!=="string"||typeof d.p!=="string") return;
   let P = S.pl.find(x=>x.id===d.p);
   if(d.k==="join"){
-    if(!P && S.pl.length<MAX_P){
+    if(!P && S.pl.length<MAX_P && !(S.banned||[]).includes(d.p)){
       P = {id:d.p, n:uniq(clean(d.n)||"Joueur"), score:0};
       S.pl.push(P);
+    } else if(!P && (S.banned||[]).includes(d.p)){
+      // Si l'événement d'exclusion a été perdu, on le renvoie : le client cesse de boucler.
+      R.emit("kick",{},d.p);
     }
   }
   else if(d.k==="truth"){
@@ -552,8 +569,11 @@ function hostAct(d){
   }
   else if(d.k==="kick"){
     if(d.p===ME) return;
+    S.banned = S.banned || [];
+    if(!S.banned.includes(d.p)) S.banned.push(d.p);
     S.pl = S.pl.filter(x=>x.id!==d.p);
     H.participants = H.participants.filter(x=>x!==d.p);
+    R.emit("kick",{},d.p);
   }
   else if(!P){ return; }
   auto(); bc(); render();
@@ -582,6 +602,7 @@ function auto(){
 
 /* ---------- Étapes hôte ---------- */
 function finishGame(){
+  if(!S||S.ph==="final") return;
   S.ph="final"; S.sid=S.sid||Math.random().toString(36).slice(2,10);
   Party.report(R,"vt",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:p.score})));
   bc(); render();
@@ -664,7 +685,7 @@ function skipPhase(){
   switch(S.ph){
     case "question": S.ph="write"; break;
     case "write": doMix(); return;
-    case "mix": return;
+    case "mix": doMix(); return;
     case "reveal": S.ph="read"; S.order=shuffle(H.participants); break;
     case "read": S.ph="interro"; S.end=sharedNow()+S.cfg.timer*1000; break;
     case "interro": S.ph="vote"; break;
@@ -692,7 +713,7 @@ function render(){
   L.rk=k;
   const ta=$("#truth"); if(ta) L.draft=ta.value; // conserve la saisie en cours
   if(lastPhase!==S.ph){ lastPhase=S.ph; onPhase(S.ph); }
-  if(S.ph==="final"){ renderFinal(); show("final"); $("#admin").hidden = !isHost; return; }
+  if(S.ph==="final"){ renderFinal(); show("final"); $("#admin").hidden = true; return; }
   if(S.ph==="lobby"){ renderLobby(); show("lobby"); return; }
   show("game");
   $("#admin").hidden = !isHost;

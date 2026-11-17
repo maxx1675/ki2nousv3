@@ -1,6 +1,6 @@
 # État du projet — ki2nousv3
 
-> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **16 novembre 2026**, après la refonte de **Photo Roulette en manches**, l'ajout d'une **bibliothèque locale partagée**, l'intégration de **Codenames au Salon**, les corrections **Undercover / Blind Test** et la **réparation WebRTC de Poker Face** (tuiles noires, reconnexions, caméra ajoutée en cours de partie). Un seul fichier applicatif est modifié depuis le commit `5e872d9` : `app/public/pokerface/index.html`.
+> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **16 novembre 2026**, après une **passe de revue et de corrections de robustesse** sur les sept jeux suivants : Blind Test, Photo Roulette, Codenames, Undercover, Les Petites Vérités, Poker Face et Qui de nous ?. Sept pages de jeux sont modifiées (non commitées) depuis le commit `a3d06b7`.
 >
 > **Emplacement réel de l'application : `app/`.** C'est le dossier qui contient `package.json`, `src/`, `public/` et `api/`. La racine du dépôt ne contient que la documentation et `.opencode/`. Toutes les commandes npm doivent être lancées depuis `app/`.
 
@@ -16,7 +16,7 @@
 - Scripts npm : `dev`, `build`, `preview`, `start`, `check`, `format`, `test`.
 - Déploiement documenté : Render (`npm ci && npm run build` puis `npm start`) ou `Dockerfile`.
 - `node_modules` installé dans `app/` : `npm run check`, `npm test` et `npm run build` s'exécutent.
-- Dépôt Git : HEAD = `5e872d9` (refonte Photo Roulette). Modifications non commitées depuis : `app/public/pokerface/index.html` (correctif WebRTC) et `reprise open cocde.txt` (fichier utilisateur). Rien n'est poussé à la connaissance de cette session.
+- Dépôt Git : HEAD = `a3d06b7`. Modifications non commitées depuis : les pages Blind Test, Photo Roulette, Codenames, Undercover, Les Petites Vérités, Poker Face et Qui de nous ? (passe de robustesse du 16 novembre) et ce document. Rien n'est poussé à la connaissance de cette session.
 
 ### Convention de lecture
 Dans ce document, **« terminé »** signifie : fonctionnalité présente dans le code, cohérente avec l'architecture partagée et sans bug bloquant identifié à la lecture. Cela ne vaut pas validation en navigateur ni sur plusieurs téléphones : les vérifications réellement exécutées sont indiquées plus bas.
@@ -114,6 +114,15 @@ Aucun bloquant connu à la lecture du code.
 - **Connexions bloquées** : les PC `failed`/`closed`. `have-local-offer`/`have-remote-offer` de plus de 9 s et `disconnected` de plus de 7 s sont fermées puis recréées ; les candidats ICE précoces sont mis en file jusqu'à la description distante ; les handshakes sont retentés avec un délai exponentiel par joueur au lieu d'une boucle serrée.
 - **Vidéo silencieuse** : `video.play()` est rappelé après rattachement (autoplay parfois bloqué), et le flux local est repris sur la tuile « moi » après un changement de caméra.
 
+### Corrigés le 16 novembre 2026 (passe de robustesse)
+- **Blind Test** : `L.ok`/`L.fb` sont réinitialisés à chaque nouvelle manche côté invité ; un hôte rechargé ou promu en pleine manche retrouve l'extrait et efface `S.loading` ; les réponses d'un joueur inconnu sont ignorées ; la promotion ne diffuse plus `play` deux fois.
+- **Photo Roulette** : le remplacement ✕ envoie la clé du média et l'hôte retire le bon média (repli sur l'index si la clé manque) ; les médias plantés ne sont inclus que si `S.cfg.plant` est actif et si leur type correspond à la manche ; l'écran de fin ne plante plus avec un classement vide.
+- **Codenames** : `pick25()` nettoie, déduplique et complète depuis `LIB` pour obtenir exactement 25 mots uniques, même avec une liste personnalisée contenant des doublons ou des espaces.
+- **Undercover** : un joueur qui arrive en cours de partie reçoit un message explicite (limité à un toutes les 8 s) au lieu de rester bloqué ; il est automatiquement accepté au salon suivant.
+- **Les Petites Vérités** : la vérité assignée reste disponible jusqu'au vote ; `skipPhase("mix")` relance réellement `doMix()` ; un hôte rechargé en plein mélange reprend le mélange ; l'exclusion enregistre `S.banned`, renvoie `kick` et résiste à une nouvelle tentative de jointure ; l'écran final masque la barre d'administration et `finishGame()` est idempotent ; la promotion peut ajouter l'hôte manquant en cours de partie ; une copie locale horodatée évite de revenir à la manche précédente quand le snapshot du relais (différé de 900 ms) est plus ancien.
+- **Poker Face** : après rechargement/promotion, `restoreCur()` récupère le contenu de la manche et `syncCurData()` réutilise les fichiers renvoyés par les joueurs ; les invités renvoient aussi le contenu courant sur `rs` ; les joueurs absents ne sont plus élagués en cours de partie (les points restent) ; la calibration exige plusieurs échantillons après rechargement ; `L.out` est restauré depuis `S.pl` ; une jointure d'un joueur banni reçoit de nouveau `kick` ; `again` efface `S.banned` ; la promotion ajoute l'hôte manquant même hors salon.
+- **Qui de nous ?** : photos, consentement et morceaux de la photo sortante sont conservés dans `sessionStorage` et restaurés avant le rendu ; `needpic` permet à un invité de renvoyer sa photo après un rechargement de l'hôte ; l'intervalle `Sess.touch` n'est plus dupliqué ; les données média sont effacées en quittant.
+
 ### Corrigés le 15 novembre 2026 (vague de refonte)
 - **Photo Roulette refondue en manches** : réserve conservée, tirage de 16 médias par joueur et par manche, validation collective, deck mélangé, une question à la fois, récap de manche, manches suivantes avec nouveaux tirages, remplacement automatique ✕, persistance `Lib` et restauration après rechargement.
 - **Undercover : votes bloqués** — l'état du vote est dérivé de `H.votes[ME]` côté hôte et de `S.voted`/`S.vn`/`H.vn` côté invités ; la progression et la clôture se mettent à jour sans attendre un événement perdu.
@@ -181,6 +190,22 @@ Aucun bloquant connu à la lecture du code.
 
 ## Vérifications
 
+### Réalisées le 16 novembre 2026 (passe de robustesse)
+- `npm run check` (depuis `app/`) : **réussi**.
+- `npm test` : **réussi**, **16 tests** (13 relais + 3 helpers Make It Meme).
+- `npm run build` : **réussi** (Vite + bundle serveur).
+- Analyse syntaxique des 9 pages HTML et de leurs scripts inline : **aucune erreur** ; 6 alertes connues et revues comme faux positifs (`#shot`, `#phmod`, `#libmod`, `#qmod`, `#writtenAnswer`, `#wcount`).
+- Navigateur (Vite local sur le port 3100, quatre origines distinctes `localhost`, `127.0.0.1`, `127.0.0.2`, `127.0.0.3` pour séparer les identités `localStorage`) :
+  - **Blind Test**, 2 joueurs : création/jointure, manche 1, bonne réponse (970 pts), passage à la manche 2 avec `L.ok`/`L.fb` remis à zéro, rechargement de l'hôte en pleine manche avec reprise de `L.cur`, `S.loading=false` et invité toujours en lecture ; aucune erreur console.
+  - **Les Petites Vérités**, 4 joueurs : exclusion d'un joueur puis nouvelle tentative de jointure (deuxième `kick` reçu), vérité conservée à `reveal`, `skipPhase("mix")` qui relance le mélange, rechargement de l'hôte en plein mélange puis révélation, écran final avec barre d'admin masquée et `Party.report` appelé une seule fois ; rechargement ultra-rapide (< 900 ms) désormais résolu par la copie locale horodatée ; aucune erreur console.
+  - **Poker Face**, 2 joueurs : élagage conservé au salon mais désactivé en partie, `join` d'un banni qui réémet `kick`, `again` qui efface `S.banned`, `restoreCur()` et `syncCurData()` (avec `prepare()` appelé une fois), calibration après rechargement (base non calculée avant plusieurs échantillons), promotion en cours de partie avec hôte manquant, `L.out` restauré, rechargement réel avec `S.cur` de type image et `L.cur` retrouvé ; aucune erreur JavaScript (un POST `/event` 403 transitoire pendant un rechargement artificiel après promotion manuelle).
+  - **Qui de nous ?**, 2 joueurs : consentement + import d'une image PNG, photo et `L.out`/`PH` persistés dans `sessionStorage` et restaurés après rechargement, `needpic` renvoyant les morceaux (2 × 3000 caractères), `needpic` émis par `tick()`, `leave()` qui efface le stockage ; aucune erreur console.
+  - **Photo Roulette**, état contrôlé : `buildDeck()` ignore les médias plantés si `S.cfg.plant` est faux et filtre par type, `drop` par clé retire le bon média (repli sur l'index), écran de fin avec classement vide sans exception.
+  - **Codenames**, état contrôlé : `pick25()` renvoie 25 mots uniques après déduplication/trim d'une liste de 33 entrées, et 25 mots personnalisés quand la liste en contient 25+.
+  - **Undercover**, 2 joueurs : un `join` en cours de partie émet `late` sans ajouter le joueur, le message est limité à un par 8 s, et le même joueur est accepté au salon suivant.
+- **Limites de la sandbox** : la caméra/MediaPipe, YouTube et les vrais candidats ICE ne sont pas disponibles dans le Chromium embarqué ; les parcours Poker Face caméra-à-caméra, Blind Test sur un vrai réseau YouTube, les photos de téléphone (HEIC) et le rendu multi-appareils restent à valider manuellement. Le test d'import fait avec une image PNG de 1×1 px valide seulement la persistance, pas la qualité de compression.
+- Le serveur de test du port 3100 a été arrêté ; aucun serveur utilisateur n'a été touché.
+
 ### Réalisées le 16 novembre 2026 (Poker Face WebRTC)
 - `npm run check` (depuis `app/`) : **réussi**.
 - `npm test` : **réussi**, 16 tests (13 relais + 3 helpers Make It Meme).
@@ -227,6 +252,7 @@ Aucun bloquant connu à la lecture du code.
 - `npm start` sous Windows : commande POSIX toujours en échec (voir bug 5).
 
 ## Modifications récentes
+- **2026-11-16 (passe de robustesse)** — 7 pages de jeux modifiées : `blindtest/index.html` (reset invité, reprise d'hôte), `photoroulette/index.html` (drop par clé, deck filtré, fin vide), `codenames/index.html` (`pick25` dédupliqué), `undercover/index.html` (retour `late`), `verites/index.html` (mélange relancé, exclusion/bannissement, final idempotent, copie locale horodatée prioritaire sur un snapshot en retard), `pokerface/index.html` (restauration du contenu courant, élagage en partie désactivé, calibration, bannissement/promotion), `quidenous/index.html` (persistance `sessionStorage` des photos/morceaux et `needpic`). Aucun changement de `net.js`, `party.js` ni du relais.
 - **2026-11-16 (Poker Face WebRTC)** — `app/public/pokerface/index.html` uniquement : ajout de `L.remStreams`/`L.seen`/`L.hiN`/`L.hiT`, `camLive()`, `playVideo()`, `showStream()`, `closePc()`, `requestOffer()` ; `tile()`/`updTiles()` réutilisent les flux et nettoient l'état des joueurs partis ; `applyStream()` renégocie quand une piste est ajoutée ; `pcFor()` gère `_polite`, `onnegotiationneeded`, `onsignalingstatechange`, `ontrack` et les états de connexion ; `onSig()` réécrit (`hi`/`offer`/`answer`/`ice`, rollback, recréation de PC) ; watchdog avec reprise des états bloqués et temporisation exponentielle ; `enter()` attend `Net.ice()` et enregistre `R.onPeers` pour le handshake.
 - **2026-11-15 (vague de refonte)** — **Photo Roulette** réécrite en manches : réserve (`L.pool`), tirage de 16 médias/joueur/manche (`pickReserve`, `L.used`), remplacement ✕ (`swap`), phases `lobby`/`round`/`reveal`/`mrecap`/`ready`/`end`, deck en tourniquet (`H.qdeck`, `S.qn`), récap de manche (`S.mrecap`), persistance IndexedDB et restauration des photos de la manche. Nouveau **`public/shared/library.js`** (IndexedDB `soiree-lib`) intégré à **Poker Face** (modale « 📚 Ma bibliothèque », auto-sauvegarde) et à Photo Roulette. **Codenames** intégré au Salon (codes 4, `Net.enter`, `Sess`, `Party`, snapshot, promotion, `Party.report`, `endCard`) et ajouté à `GAMES`. **Undercover** : vote corrigé. **Poker Face** : jointure en cours de partie, négociation WebRTC renforcée, jauge agrandie. **Blind Test** : gate sonore et reprise après geste. **Hub** : badges « Nouveau » retirés, `18+` conservé.
 - **2026-11-15** — Ajout du **Blind Test** (`public/blindtest/index.html`, `bank.js`, `themes/blindtest.css`) avec tuile hub et entrée Salon. Refonte précédente de **Photo Roulette** (16 photos validées, replay). **Poker Face** : flagrant délit des perdants.
@@ -247,12 +273,14 @@ Aucun bloquant connu à la lecture du code.
 9. **Assainir Make It Meme** : code admin côté client, timers via `Net.clock`, templates dédupliqués.
 10. **Outillage multiplateforme** : corriger `npm start` sous Windows, vérifier le répertoire de travail de `serveStatic`, ajouter au minimum un test du parcours de création de salon.
 11. **Documentation à aligner** : `ARCHITECTURE.md` (commandes depuis `app/`, limites du relais, `library.js`), `app/README.md` (`npm start` sous Windows), `AGENTS.md` (préciser `cd app`).
+12. **Réduire la fenêtre de perte du snapshot** : le relais diffère l'envoi de 900 ms. Vérités compare désormais une copie locale horodatée ; généraliser ce principe aux autres jeux hôtes (Blind Test, Poker Face, Photo Roulette, Codenames) ou envoyer immédiatement un snapshot au changement de phase.
+13. **Ajouter des tests navigateur/E2E minimaux** : création + jointure + reprise d'hôte sur chaque jeu intégré, en complément des 16 tests Vitest du relais.
 
 ## À compléter après chaque tâche importante
 - Date : 2026-11-16
-- Objectif : réparer la visioconférence de Poker Face — tuiles noires, joueurs d'un même salon qui ne se voient pas après reconnexion, caméra ajoutée en cours de partie.
-- Fichiers / zones modifiés : `app/public/pokerface/index.html` uniquement (côté application) ; `PROJECT_STATUS.md`. `app/public/shared/net.js` restauré à l'identique après le patch de test.
-- Décisions techniques à conserver : perfect negotiation (`_polite = ME > id`), offre possible des deux côtés sur `hi`, renégociation à chaque piste ajoutée, recréation des PC bloquées, file ICE, cache `L.remStreams`, handshake rétroactif avec backoff, `Net.ice()` attendu avant `enter`.
-- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; syntaxe inline vérifiée ; deux onglets navigateur (négociation, `ontrack`, fermeture/reprise, reload, reconnexion relais, caméra tardive) sans erreur console.
-- Problèmes connus / limites : la sandbox Chromium ne produit aucun candidat ICE (`connectionState` reste `new`) ; **vidéo réelle à valider sur deux appareils**. Le test multi-onglets exige un patch `sessionStorage` temporaire (retiré).
-- Prochaine étape concrète : test caméra à caméra sur deux téléphones, sur le même serveur et si possible avec TURN, en coupant puis rétablissant le réseau d'un des deux joueurs.
+- Objectif : passe complète de revue, chasse aux bugs et corrections de jouabilité avant d'ajouter de nouveaux jeux.
+- Fichiers / zones modifiés : `app/public/blindtest/index.html`, `photoroulette/index.html`, `codenames/index.html`, `undercover/index.html`, `verites/index.html`, `pokerface/index.html`, `quidenous/index.html` ; `PROJECT_STATUS.md`. `app/public/shared/net.js`, `party.js`, `api/` et le hub React sont inchangés.
+- Décisions techniques à conserver : l'hôte reste autoritaire ; `Sess`/`Party`/snapshot/promotion ne changent pas ; pour Vérités, une copie locale horodatée (`ts`) est préférée au snapshot du relais s'il est plus récent ; les photos Qui de nous restent en `sessionStorage` (jamais `localStorage`) et sont effacées en quittant.
+- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; analyse syntaxique 9 pages (6 faux positifs connus) ; parcours navigateur multi-origines Blind Test/Vérités/Poker Face/Qui de nous et tests de fonctions Photo Roulette/Codenames/Undercover, sans erreur JavaScript bloquante.
+- Problèmes connus / limites : caméra/MediaPipe, YouTube et ICE réels indisponibles dans la sandbox ; import photo testé avec une image 1×1 ; snapshot du relais différé de 900 ms (corrigé pour Vérités seulement) ; tests réels multi-appareils toujours nécessaires.
+- Prochaine étape concrète : valider sur téléphones réels Poker Face (caméra/ICE), Photo Roulette (HEIC, grosse réserve) et Blind Test (YouTube), puis généraliser l'horodatage local des snapshots aux autres jeux hôtes.

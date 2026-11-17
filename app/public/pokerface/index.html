@@ -163,7 +163,8 @@ const bc=()=>{if(isHost&&R){
  // Retire les joueurs partis depuis plus de 20 s (tuiles figées / classement fantôme).
  const on=new Set([...R.peers(),ME]);
  S.pl.forEach(p=>{if(p.id===ME)return;if(on.has(p.id))delete p.miss;else p.miss=p.miss||Date.now()});
- S.pl=S.pl.filter(p=>p.id===ME||!p.miss||Date.now()-p.miss<20000);
+ // Ne retirer les absents qu'au salon : en partie, cela effaçait leurs points.
+ if(S.ph==="lobby")S.pl=S.pl.filter(p=>p.id===ME||!p.miss||Date.now()-p.miss<20000);
  R.emit("st",S).catch(()=>{});R.snap({S,H:{used:H.used}});
 }};
 const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
@@ -270,7 +271,12 @@ function analyse(){
  let rev=0;for(let i=2;i<jh.length;i++){const a=jh[i-1]-jh[i-2],b=jh[i]-jh[i-1];if(a*b<0&&Math.abs(a)+Math.abs(b)>.05)rev++}
  const talk=rev>=3;
  if(now<S.t0){L.cal.push(s);if(gf){gf.style.width="100%";gf.style.background="#27e08a"}if(gt)gt.textContent="calibration…";return}
- if(!L.base){const med=a=>{const b=[...a].sort((x,y)=>x-y);return b.length?b[Math.floor(b.length/2)]:0};L.base={};for(const k in s)L.base[k]=med(L.cal.map(x=>x[k]))}
+ if(!L.base){
+  // Après un rechargement en pleine manche, la calibration d'avant-course est perdue :
+  // sans échantillons, une base à zéro faisait craquer le joueur immédiatement.
+  if(L.cal.length<3){L.cal.push(s);if(gf){gf.style.width="100%";gf.style.background="#27e08a"}if(gt)gt.textContent="calibration…";return}
+  const med=a=>{const b=[...a].sort((x,y)=>x-y);return b.length?b[Math.floor(b.length/2)]:0};L.base={};for(const k in s)L.base[k]=med(L.cal.map(x=>x[k]))
+ }
  const thr=0.42-0.0035*L.sens;let hit=false,mx=0;
  for(const k in s){let d=s[k]-L.base[k];if(talk&&(k==="laugh"||k==="lips"))d=Math.min(d,0);if(d>thr)hit=true;mx=Math.max(mx,d/thr)}
  L.gv=L.gv*.6+Math.max(0,Math.min(1,mx))*.4;
@@ -551,16 +557,18 @@ async function enter(create,o){
  R.onPeers(()=>{for(const id of R.peers()){if(id!==ME&&!L.pcs[id])R.emit("sig",{f:ME,t:"hi",cam:camLive()?1:0},id)}});
  R.on("content",d=>{L.cur=d;L.started=false;L.prep=null;if(S&&S.ph==="round")prepare()});
  R.on("act",d=>{if(isHost)hostAct(d)});
- R.on("rs",()=>{if(!isHost)resendItems()});
+ R.on("rs",()=>{if(!isHost){resendItems();if(L.cur&&L.cur.data&&S&&S.cur&&L.cur.id===S.cur.id)send({k:"item",id:S.cur.id,kind:L.cur.kind,ref:L.cur.ref,label:S.cur.label||"",data:L.cur.data})}});
  R.on("snap",d=>addShared(d));
  R.on("kick",()=>{toast("L’hôte t’a retiré de la partie");Sess.clear("pf");try{R&&R.leave()}catch(e){}R=null;S=null;isHost=false;view("home")});
  R.onPromote(onPromoted);
  R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l’hôte");route()});
  if(isHost){
   const sn=R.initSnap;
-  if(sn&&sn.S){S=sn.S;S.host=ME;H.used=(sn.H&&sn.H.used)||[];needResend();resendItems()}
+  if(sn&&sn.S){S=sn.S;S.host=ME;H.used=(sn.H&&sn.H.used)||[];restoreCur();needResend();resendItems()}
   else S={ph:"lobby",host:ME,pl:[],items:[],r:0,cfg:{rounds:5,dur:30,bank:false}};
-  hostLoops();hostAct({k:"join",p:ME,n:name});libRestore();libCount();
+  hostLoops();hostAct({k:"join",p:ME,n:name});
+  const meP=S.pl.find(p=>p.id===ME);if(meP)L.out=!!meP.out;
+  libRestore();libCount();
  }
  startHello();
  tile(ME);$("#lcode").textContent=code;$("#who").textContent="Salon "+code;view("lobby");route();initAI();
@@ -576,6 +584,20 @@ function startHello(){
 /* Passage de relais : l'hôte a disparu, le serveur nous désigne. Les contenus (photos/vidéos) sont renvoyés par leurs propriétaires. */
 function needResend(){if(R)R.emit("rs",{})}
 function resendItems(){for(const id in L.mine){const m=L.mine[id];send({k:"item",id,kind:m.kind,label:m.label,data:m.data})}}
+/* Après un rechargement/promotion, l'hôte doit retrouver le contenu de la manche en cours
+   depuis l'instantané, puis depuis les fichiers renvoyés par les joueurs. */
+function restoreCur(){
+ if(!S||S.ph!=="round"||!S.cur)return;
+ L.cur={id:S.cur.id,kind:S.cur.kind,ref:S.cur.ref,data:H.data[S.cur.id]||""};
+ L.started=false;L.prep=null;
+}
+function syncCurData(id){
+ if(!isHost||!S||S.ph!=="round"||!S.cur||S.cur.id!==id)return;
+ if(!L.cur||L.cur.id!==id)L.cur={id:S.cur.id,kind:S.cur.kind,ref:S.cur.ref,data:""};
+ if((S.cur.kind==="img"||S.cur.kind==="vid")&&H.data[id]&&!L.cur.data){
+  L.cur={...L.cur,data:H.data[id]};L.started=false;L.prep=null;prepare();
+ }
+}
 
 /* ---------- bibliothèque locale (IndexedDB, reste sur cet appareil) ---------- */
 function libId(it){
@@ -621,7 +643,7 @@ function libRestore(){
       const r=byParty[it.id]||rows.find(x=>x.kind===it.kind&&x.label===it.label&&x.data);
       if(r&&r.data){H.data[it.id]=r.data;n++}
     });
-    if(n){bc();route()}
+    if(n){if(S.cur)syncCurData(S.cur.id);bc();route()}
   });
 }
 function onPromoted(snap){
@@ -629,7 +651,9 @@ function onPromoted(snap){
  if(snap&&snap.S)S=snap.S;
  if(!S)S={ph:"lobby",host:ME,pl:[],items:[],r:0,cfg:{rounds:5,dur:30,bank:false}};
  S.host=ME;H.used=(snap&&snap.H&&snap.H.used)||H.used||[];H.rdy=new Set();
- if(!S.pl.some(p=>p.id===ME)&&S.ph==="lobby")S.pl.push({id:ME,n:L.name,sc:0,w:0,o:0,out:false});
+ if(!S.pl.some(p=>p.id===ME)&&S.ph!=="end")S.pl.push({id:ME,n:L.name,sc:0,w:0,o:0,out:false});
+ const meP=S.pl.find(p=>p.id===ME);if(meP)L.out=!!meP.out;
+ restoreCur();
  hostLoops();needResend();resendItems();
  Sess.save("pf",{code,name:L.name,host:true});
  L.hostSig="";toast("👑 Tu es maintenant l’hôte");libRestore();bc();route();
@@ -641,13 +665,14 @@ function addItem(p,d){
  if(!["yt","emb","vurl","iurl","img","vid","txt","snd"].includes(kind))return;
  let id=String(d.id||"").replace(/[^a-z0-9]/gi,"").slice(0,8);
  const ex=id&&S.items.find(i=>i.id===id);
- if(ex){if(d.data&&String(d.data).length<12e6)H.data[id]=d.data;libSave({id,partyId:id,kind:ex.kind,ref:ex.ref,label:ex.label,data:H.data[id]||""});return}
+ if(ex){if(d.data&&String(d.data).length<12e6)H.data[id]=d.data;libSave({id,partyId:id,kind:ex.kind,ref:ex.ref,label:ex.label,data:H.data[id]||""});syncCurData(id);return}
  if(S.items.length>=40||String(d.data||"").length>=12e6)return;
  if(!id)id=rid();
  const ref=kind==="snd"?(SND[d.ref]?d.ref:"boing"):kind==="txt"?String(d.ref||"").replace(/[<>]/g,"").slice(0,200):String(d.ref||"");
  if(kind==="txt"&&!ref.trim())return;
  S.items.push({id,kind,label:String(d.label||"").slice(0,60),ref,by:p});if(d.data)H.data[id]=d.data;
  libSave({id,partyId:id,kind,ref,label:String(d.label||"").slice(0,60),data:d.data||""});
+ syncCurData(id);
 }
 function addPack(){
  const have=new Set(S.items.map(i=>i.ref));
@@ -661,7 +686,8 @@ function hostAct(d){
  // Une partie peut déjà être lancée : un joueur qui recharge sa page (ou arrive en cours de route)
  // doit pouvoir reprendre sa place, et non rester spectateur bloqué sur le lobby.
  if(d.k==="join"){if(!pp&&!(S.banned||[]).includes(p)&&S.pl.length<MAX&&S.ph!=="end"){
-   S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0,w:0,o:0,out:false})}}
+   S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0,w:0,o:0,out:false})}
+   else if(!pp&&(S.banned||[]).includes(p))R.emit("kick",{},p)}
  else if(d.k==="kick"&&p===ME&&S.ph==="lobby"&&d.id!==ME){S.banned=S.banned||[];if(!S.banned.includes(d.id))S.banned.push(d.id);S.pl=S.pl.filter(x=>x.id!==d.id);R.emit("kick",{},d.id)}
  else if(d.k==="item"&&pp)addItem(p,d);
  else if(d.k==="rm"){const it=S.items.find(i=>i.id===d.id);if(it&&(it.by===p||p===S.host)){S.items=S.items.filter(i=>i.id!==d.id);delete H.data[d.id]}}
@@ -672,7 +698,7 @@ function hostAct(d){
  else if(d.k==="out"&&pp&&S.ph==="round"&&S.t0&&!pp.out&&Net.now()>=S.t0-300){pp.out=true;pp.o++}
  else if(d.k==="next"&&p===ME&&S.ph==="result")nextRound();
  else if(d.k==="skip"&&p===ME&&S.ph==="round"&&S.t0&&Net.now()>=S.t0)endRound();
- else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>{x.sc=0;x.w=0;x.o=0});S.r=0;S.ph="lobby"}
+ else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.banned=[];S.pl.forEach(x=>{x.sc=0;x.w=0;x.o=0});S.r=0;S.ph="lobby"}
  S.on=[...R.peers(),ME];bc();route();
 }
 function startRound(){
@@ -743,7 +769,7 @@ function lobby(){
 function round(){
  view("round");place("tl-round");$("#skipb").hidden=!isHost||!S.t0;
  const key="r"+S.r;
- if(key!==L.key){L.key=key;L.started=false;L.prep=null;L.base=null;L.cal=[];L.streak=0;L.out=false;L.gv=0;L.jh=[];$("#lost").hidden=true;$("#media").innerHTML="";$("#stage").classList.remove("open");
+ if(key!==L.key){L.key=key;L.started=false;L.prep=null;L.base=null;L.cal=[];L.streak=0;L.out=!!(S.pl.find(p=>p.id===ME)||{}).out;L.gv=0;L.jh=[];$("#lost").hidden=!L.out;$("#media").innerHTML="";$("#stage").classList.remove("open");
   if(!isHost&&(!L.cur||L.cur.id!==S.cur.id))R.emit("act",{k:"needc",p:ME},"host");else prepare()}
  $("#rinfo").textContent=`Manche ${S.r}/${S.cfg.rounds}`;rank("#rank-r",p=>p.out?" 💀":"");
 }

@@ -153,7 +153,8 @@ function startVote(){
 function act(d){
  if(!isHost||!S)return;const p=d.p;const host=local()||p===S.host;
  const k=d.k;
- if(k==="join"){if(!pl(p)&&S.ph==="lobby"&&S.pl.length<BASE_MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),alive:true,sc:0,gh:false});}
+ if(k==="join"){if(!pl(p)&&S.ph==="lobby"&&S.pl.length<BASE_MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),alive:true,sc:0,gh:false});
+  else if(!pl(p)&&S.ph!=="lobby"&&R)R.emit("late",{},p);}
  else if(k==="add"&&host&&local()&&S.ph==="lobby"&&S.pl.length<BASE_MAX){const n=(d.n||"").trim().slice(0,14);if(n)S.pl.push({id:uid(),n,alive:true,sc:0,gh:false})}
  else if(k==="del"&&host&&S.ph==="lobby")S.pl=S.pl.filter(x=>x.id!==d.id);
  else if(k==="cfg"&&host&&S.ph==="lobby")deepSet(S.cfg,d.path,d.v);
@@ -422,6 +423,7 @@ async function startOnline(mode,create,joinCode,o){
   if(S.ph!=="vote"||d.vn!==L.vn)L.voted=false;
   L.vn=d.vn;if(votersNow.includes(ME))L.voted=true;render()});
  R.on("priv",d=>{L.priv=d;render()});
+ R.on("late",()=>{if(L.lateT&&Date.now()-L.lateT<8000)return;L.lateT=Date.now();toast("La partie a déjà commencé : tu rejoindras le salon à la prochaine partie.")});
  R.on("act",d=>{if(isHost)act(d)});
  R.onPromote(onPromoted);
  R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l’hôte");render()});
