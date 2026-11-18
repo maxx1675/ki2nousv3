@@ -161,6 +161,32 @@ const GAMES: Game[] = [
     tilt: 1.9,
     pattern: "grid",
   },
+  {
+    id: "skyjo",
+    title: "Skyjo",
+    tagline: "Le plus petit score gagne",
+    emoji: "🎴",
+    path: "/skyjo/index.html",
+    players: "2 – 8 joueurs",
+    duration: "15 – 35 min",
+    desc: "Douze cartes, quatre colonnes, deux révélations : échange, retourne et vide tes colonnes. Le plus petit total marque, mais attention au doublement du déclencheur.",
+    color: "#2d7ff9",
+    tilt: -1.7,
+    pattern: "dots",
+  },
+  {
+    id: "uno",
+    title: "UNO",
+    tagline: "Le +4 que personne ne conteste",
+    emoji: "🃏",
+    path: "/uno/index.html",
+    players: "2 – 10 joueurs",
+    duration: "10 – 30 min",
+    desc: "Le classique des soirées : couleurs, +2, inversion et jokers. Annonce UNO, conteste les +4 douteux et sois le premier à poser ta dernière carte.",
+    color: "#e53935",
+    tilt: 1.3,
+    pattern: "stripes",
+  },
 ];
 
 function useClock() {

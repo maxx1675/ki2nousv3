@@ -746,7 +746,9 @@ function renderGame(fade){
     st.innerHTML=`<div class="rn">Fin de la manche ${S.mi+1}/${tot}</div>
      <div class="center"><div class="big-emoji">📊</div><h1>Récap de la manche</h1></div>
      <div class="card"><h2>Points de la manche</h2>${rows}</div>
+     <div id="ptmid"></div>
      ${isHost?`<button class="btn primary big" data-a="nextm">${S.lastM?"Résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte lance la suite.</p>`}`;
+    if(!S.lastM)Party.endCard("#ptmid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("pr")});
   }else if(S.ph==="end"){
     const s=S.stats||{},rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
     st.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Résultats</h1><p>${rank[0]?`<b>${esc(nm(rank[0].id))}</b> est le champion !`:"Partie terminée."}</p></div>

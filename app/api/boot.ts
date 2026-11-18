@@ -3,11 +3,13 @@ import type { HttpBindings } from "@hono/node-server";
 import { env } from "./lib/env";
 import { log } from "./lib/logger";
 import { roomsRoutes, startSweeper } from "./routes/rooms";
+import { youtubeRoutes } from "./routes/youtube";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 // Pas de journal des requêtes /api/rooms/* : un événement de jeu = une requête, ça ferait des milliers de lignes.
 app.route("/api/rooms", roomsRoutes);
+app.route("/api/youtube", youtubeRoutes);
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 

@@ -136,7 +136,15 @@ function privOf(id){
 function sendPrivs(){S.pl.forEach(p=>{if(p.id===ME)L.priv=privOf(p.id);else R&&R.emit("priv",privOf(p.id),p.id)})}
 function startRound(){
  if(!local())sendPrivs();S.r++;S.clues=[];S.tally=null;S.rv=null;H.votes={};S.fal=null;H.fal=null;S.cand=null;S.revoted=false;
- const al=shuffle(aliveIds());S.order=al;S.turn=0;
+ // Nouvel ordre à chaque manche : on évite qu'un mélange retombe sur le même
+ // ordre (ou le même premier joueur), ce qui donnait l'impression qu'il ne changeait pas.
+ const prev=S.order.slice();let al=shuffle(aliveIds());
+ if(al.length>1){
+  const pa=prev.filter(id=>al.includes(id));
+  if(pa.length===al.length&&pa.every((id,i)=>id===al[i]))al=[...al.slice(1),al[0]];
+  if(prev[0]===al[0]){const j=1+Math.floor(Math.random()*(al.length-1));[al[0],al[j]]=[al[j],al[0]]}
+ }
+ S.order=al;S.turn=0;
  S.meme=S.cfg.meme&&al.length?pickR(al):null;
  S.ph="describe";S.end=S.cfg.tDesc?Net.now()+S.cfg.tDesc*1000:0;
  const fs=al.find(i=>H.role[i].sp.includes("falafel"));
@@ -368,7 +376,9 @@ function rResult(){
  ${card("Déroulé",S.log.slice(-8).map(l=>`<div>${esc(l)}</div>`).join("")||"—")}
  ${S.tally&&S.tally.length?card("Votes",S.tally.map(t=>`<div>${esc(nm(t.f))} → <b>${esc(nm(t.t))}</b></div>`).join("")):""}
  ${S.win?`<div class="ban">${S.win==="civil"?"Il ne reste que des Civils !":"Il ne reste qu’un seul Civil !"}</div>`:""}
+ <div id="ptmid"></div>
  ${isHost?`<button class="btn primary big" data-a="next">${S.win?"Voir les résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte continue…</p>`}`;
+ if(!local()&&R&&code&&!S.win)Party.endCard("#ptmid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("uc")});
 }
 function rEnd(){
  const w=S.win,txt=w==="civil"?"Les Civils gagnent ! 🎉":w==="inf"?"Les infiltrés gagnent ! 😈":"Mr. White a deviné le mot ! 🎯";

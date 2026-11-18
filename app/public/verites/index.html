@@ -848,7 +848,9 @@ function render(){
           </div>`).join("")}
         </div>
       </div>
+      <div id="vtmid"></div>
       ${isHost?`<button class="btn primary big" data-act="next">${S.round>=S.cfg.rounds?"Voir le final 🏁":"Manche suivante ▶️"}</button>`:`<p class="hint center">En attente de l’hôte pour la suite…</p>`}`;
+    if(S.round<S.cfg.rounds)Party.endCard("#vtmid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("vt")});
   }
 }
 

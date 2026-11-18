@@ -682,6 +682,10 @@ function render(){
     if(ae&&(ae.tagName==="TEXTAREA"||ae.tagName==="INPUT")&&ae.closest("#game")&&L.rk===k){ const w=$("#wcount"); if(w) w.textContent=wcount(); return; }
     const sk=[S.i,S.st,S.sub,S.gi].join("|"), nw=L.sk!==sk; L.sk=sk;
     game(); L.rk=k;
+    if(S.st==="res"&&S.i<(S.N||1)-1){
+      const d=document.createElement("div");d.id="midLobby";$("#game").append(d);
+      Party.endCard(d,{R,code,isHost,compact:true,onLeave:()=>Sess.clear("qdn")});
+    }
     $("#game").classList.toggle("stepfx",nw);
     if(nw&&(S.st==="res"||S.sub==="r")) confetti();
   }
