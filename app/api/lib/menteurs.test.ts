@@ -5,10 +5,9 @@ const CFG: Partial<MenteursConfig> = { max: 4, lives: 2, rounds: 5, think: 20, c
 
 function setup(extra: Partial<MenteursConfig> = {}) {
   let t = 1000;
-  let chamber = 1;
   const e = new MenteursEngine({
     now: () => t,
-    roll: () => chamber,
+    roll: () => 1,
     shuffle: (a) => [...a],
   });
   const create = e.create({ room: "ABCD", id: "a", name: "Alice", avatar: "sherif", config: { ...CFG, ...extra } });
@@ -19,10 +18,11 @@ function setup(extra: Partial<MenteursConfig> = {}) {
     t += ms;
     e.sweep();
   };
-  const setChamber = (n: number) => {
-    chamber = n;
+  const setGun = (id: string, bullet: number, chamber = 1) => {
+    const p = e.rooms.get("ABCD")?.players.find((x) => x.id === id);
+    if (p) p.gun = { bullet, chamber };
   };
-  return { e, create, join, adv, setChamber, code: "ABCD", ta: create.token, tb: join.token };
+  return { e, create, join, adv, setGun, code: "ABCD", ta: create.token, tb: join.token };
 }
 
 function view(e: MenteursEngine, code: string, id: string, token: string) {
@@ -82,8 +82,8 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     expect(bad.ok).toBe(false);
   });
 
-  it("révèle un mensonge et applique le revolver (1/6) côté serveur", () => {
-    const { e, code, ta, tb, adv, setChamber } = setup();
+  it("révèle un mensonge et tire avec le revolver personnel du lanceur", () => {
+    const { e, code, ta, tb, adv, setGun } = setup();
     e.action(code, "a", ta, { k: "start" });
     adv(5_100);
     const room = e.rooms.get(code)!;
@@ -91,7 +91,7 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     room.target = "R";
     const a = room.players.find((p) => p.id === "a")!;
     a.hand = [{ v: "9", s: "" }, { v: "V", s: "" }];
-    setChamber(1); // balle
+    setGun("b", 1); // la balle de Bob est en première chambre
     const claim = e.action(code, "a", ta, { k: "claim", cards: [0] });
     expect(claim.ok).toBe(true);
     const ch = e.action(code, "b", tb, { k: "challenge" });
@@ -102,64 +102,82 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     expect(rv.reveal?.victim).toBe("a");
     expect(rv.reveal?.shooter).toBe("b");
     expect(rv.reveal?.bullet).toBe(true);
-    expect(rv.players.find((p) => p.id === "a")!.lives).toBe(1);
+    expect(rv.reveal?.chamber).toBe(1);
+    expect(rv.reveal?.remaining).toBe(5);
+    expect(rv.players.find((p) => p.id === "a")!.lives).toBe(0);
+    expect(rv.players.find((p) => p.id === "a")!.alive).toBe(false);
     adv(6000);
-    expect(view(e, code, "a", ta).phase).toBe("claim");
+    const fin = view(e, code, "b", tb);
+    expect(fin.phase).toBe("end");
+    expect(fin.winner).toBe("b");
   });
 
   it("tire sur l'accusateur quand l'annonce était vraie", () => {
-    const { e, code, ta, tb, setChamber, adv } = setup();
+    const { e, code, ta, tb, setGun, adv } = setup();
     e.action(code, "a", ta, { k: "start" });
     adv(5_100);
     const room = e.rooms.get(code)!;
     room.turnId = "a";
     room.target = "R";
     room.players.find((p) => p.id === "a")!.hand = [{ v: "R", s: "" }];
-    setChamber(1);
+    setGun("a", 1);
     e.action(code, "a", ta, { k: "claim", cards: [0] });
     e.action(code, "b", tb, { k: "challenge" });
     const rv = view(e, code, "b", tb);
     expect(rv.reveal?.liar).toBe(false);
     expect(rv.reveal?.victim).toBe("b");
     expect(rv.reveal?.shooter).toBe("a");
-    expect(rv.players.find((p) => p.id === "b")!.lives).toBe(1);
+    expect(rv.reveal?.bullet).toBe(true);
+    expect(rv.players.find((p) => p.id === "b")!.lives).toBe(0);
+    expect(rv.players.find((p) => p.id === "b")!.alive).toBe(false);
   });
 
-  it("une chambre vide ne retire pas de vie", () => {
-    const { e, code, ta, tb, setChamber, adv } = setup();
+  it("une chambre vide laisse vivre la cible et augmente les chances du prochain tir", () => {
+    const { e, code, ta, tb, setGun, adv } = setup();
     e.action(code, "a", ta, { k: "start" });
     adv(5_100);
     const room = e.rooms.get(code)!;
     room.turnId = "a";
     room.target = "R";
     room.players.find((p) => p.id === "a")!.hand = [{ v: "9", s: "" }];
-    setChamber(3);
+    setGun("b", 3, 1); // balle en chambre 3 : les deux premiers tirs sont vides
     e.action(code, "a", ta, { k: "claim", cards: [0] });
     e.action(code, "b", tb, { k: "challenge" });
     const rv = view(e, code, "b", tb);
     expect(rv.reveal?.bullet).toBe(false);
+    expect(rv.reveal?.chamber).toBe(1);
+    expect(rv.reveal?.remaining).toBe(5);
     expect(rv.players.find((p) => p.id === "a")!.lives).toBe(2);
+    expect(rv.players.find((p) => p.id === "a")!.alive).toBe(true);
+    expect(rv.players.find((p) => p.id === "b")!.gun).toEqual({ chamber: 2, remaining: 5 });
   });
 
-  it("élimine un joueur à 0 vie et termine la partie", () => {
-    const { e, code, ta, tb, adv, setChamber } = setup({ lives: 1 });
+  it("une balle élimine la victime, les survivants continuent et leurs revolvers sont réarmés", () => {
+    const { e, code, ta, tb, adv, setGun } = setup({ lives: 2 });
+    const joinC = e.join({ room: code, id: "c", name: "Cara", avatar: "cowgirl" });
+    if (!joinC.ok) throw new Error(joinC.error);
     e.action(code, "a", ta, { k: "start" });
     adv(5_100);
     const room = e.rooms.get(code)!;
     room.turnId = "a";
     room.target = "R";
     room.players.find((p) => p.id === "a")!.hand = [{ v: "9", s: "" }];
-    setChamber(1);
+    setGun("b", 1);
+    setGun("c", 4, 3);
     e.action(code, "a", ta, { k: "claim", cards: [0] });
     e.action(code, "b", tb, { k: "challenge" });
     let rv = view(e, code, "b", tb);
     expect(rv.reveal?.liar).toBe(true);
     expect(rv.players.find((p) => p.id === "a")!.alive).toBe(false);
+    expect(rv.players.find((p) => p.id === "b")!.alive).toBe(true);
+    expect(rv.players.find((p) => p.id === "c")!.alive).toBe(true);
+    expect(rv.players.find((p) => p.id === "b")!.gun).toEqual({ chamber: 1, remaining: 6 });
+    expect(rv.players.find((p) => p.id === "c")!.gun).toEqual({ chamber: 1, remaining: 6 });
     adv(6000);
     rv = view(e, code, "b", tb);
-    expect(rv.phase).toBe("end");
-    expect(rv.winner).toBe("b");
-    expect(rv.endReason).toBe("last");
+    expect(rv.phase).toBe("claim");
+    expect(rv.players.find((p) => p.id === "a")!.alive).toBe(false);
+    expect(rv.players.filter((p) => p.alive).length).toBe(2);
   });
 
   it("ne tire que des figures ou l'As comme carte cible", () => {

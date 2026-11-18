@@ -20,6 +20,17 @@
 button.sj-card{font-family:inherit;cursor:pointer}
 .sj-card.act{outline:3px solid var(--pink);outline-offset:1px;animation:sjpick .8s infinite alternate}
 @keyframes sjpick{to{transform:translateY(-2px)}}
+.sj-card.sj-take{animation:sjTake .45s ease-out both}
+@keyframes sjTake{0%{transform:translateY(-12px) scale(.8);opacity:.25}60%{transform:translateY(2px) scale(1.07);opacity:1}100%{transform:none}}
+.sj-card.sj-place{animation:sjPlace .5s cubic-bezier(.2,.9,.3,1.35) both}
+@keyframes sjPlace{0%{transform:scale(.5) rotate(-9deg);opacity:.15}60%{transform:scale(1.12) rotate(3deg);opacity:1}100%{transform:none}}
+.sj-card.sj-flip{animation:sjFlip .55s ease both;transform-origin:center}
+@keyframes sjFlip{0%{transform:rotateY(90deg) scale(.9);opacity:.25}100%{transform:none;opacity:1}}
+.sj-card.sj-discard-in{animation:sjDiscardIn .5s cubic-bezier(.2,.8,.3,1) both}
+@keyframes sjDiscardIn{0%{transform:translate(46px,-56px) rotate(16deg) scale(1.2);opacity:.35}100%{transform:none;opacity:1}}
+.sj-card.sj-col-out{animation:sjColOut .82s cubic-bezier(.3,.7,.2,1) both;animation-delay:var(--d,0ms);pointer-events:none;z-index:2}
+@keyframes sjColOut{0%{transform:none;opacity:1;filter:brightness(1)}28%{transform:translateY(-10px) rotate(-3deg) scale(1.09);filter:brightness(1.4)}100%{transform:translateY(28px) rotate(13deg) scale(.12);opacity:0;filter:brightness(1.7)}}
+@media(prefers-reduced-motion:reduce){.sj-card.sj-take,.sj-card.sj-place,.sj-card.sj-flip,.sj-card.sj-discard-in,.sj-card.sj-col-out{animation:none}}
 .sj-card.back{background:repeating-linear-gradient(45deg,#243b63 0 7px,#1a2c4e 7px 14px);color:#cfe6ff;font-size:clamp(.9rem,4vw,1.3rem);text-shadow:0 1px 0 #000}
 .sj-card.back::after{content:"";position:absolute;inset:5px;border:1.5px dashed rgba(255,255,255,.28);border-radius:6px}
 .sj-card.empty{background:transparent;border-style:dashed;border-color:color-mix(in srgb,var(--edge) 35%,transparent);box-shadow:none;opacity:.36}
@@ -81,7 +92,8 @@ detail.sj-help summary{cursor:pointer;font-weight:800;color:var(--ink)}
    concerné par un message ciblé. */
 const MIN=2,MAX=8,COLS=4,ROWS=3,CARDS=COLS*ROWS;
 let R=null,S=null,H=null,isHost=false,code="";
-const L={name:"",drawn:null,sig:"",hl:null,hello:null,touch:null};
+const L={name:"",drawn:null,sig:"",hl:null,hello:null,touch:null,fxSeen:""};
+let FXACTIVE=null;
 const app=$("#app");
 const pl=id=>S&&S.pl.find(p=>p.id===id);
 const nm=id=>(pl(id)||{n:"?"}).n;
@@ -91,6 +103,7 @@ const fmtGain=n=>n>0?"+"+n:""+n;
 const msg=t=>{const e=$("#hmsg");if(e)e.textContent=t||""};
 const send=d=>{d.p=ME;if(isHost)act(d);else R&&R.emit("act",d,"host")};
 const log=m=>{if(!S)return;S.log=(S.log||[]).slice(-11);S.log.push(m)};
+const setFx=o=>{if(!S)return;S.fx={...o,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),at:Net.now()}};
 const sortAsc=()=>[...S.pl].sort((a,b)=>a.sc-b.sc||a.n.localeCompare(b.n,"fr"));
 
 /* ===================== HÔTE : paquet, grilles, scores ===================== */
@@ -98,7 +111,7 @@ function newState(){
  return{ph:"lobby",host:ME,pl:[],cfg:{target:100},r:0,sid:null,order:[],turn:0,
   drawnFrom:"",drawnCard:null,pendingFlip:false,finishing:false,queue:[],trigger:null,
   board:{},discardTop:null,deckN:0,discardN:0,roundResult:null,over:false,reported:false,
-  starter:null,log:[]};
+  starter:null,fx:null,log:[]};
 }
 function newHost(){
  return{deck:[],discard:[],grids:{},removed:{},drawn:null};
@@ -170,7 +183,7 @@ function dealRound(){
  H.discard.push(H.deck.pop());
  S.r++;S.ph="reveal";S.order=[];S.turn=0;S.drawnFrom="";S.drawnCard=null;
  S.pendingFlip=false;S.finishing=false;S.queue=[];S.trigger=null;S.starter=null;
- S.roundResult=null;S.over=false;L.drawn=null;
+ S.roundResult=null;S.over=false;S.fx=null;L.drawn=null;
  S.log=[];
  log("Manche "+S.r+" : chaque joueur retourne 2 cartes.");
 }
@@ -192,16 +205,19 @@ function startGame(){
 function checkColumns(id){
  const g=H.grids[id];if(!g)return 0;
  const rem=H.removed[id]||(H.removed[id]=[]);
- let n=0;
+ let n=0;const found=[];
  for(let c=0;c<COLS;c++){
   if(rem.includes(c))continue;
   const a=g[c*ROWS],b=g[c*ROWS+1],d=g[c*ROWS+2];
   if(a&&b&&d&&!a.gone&&!b.gone&&!d.gone&&a.up&&b.up&&d.up&&a.v===b.v&&b.v===d.v){
    rem.push(c);n++;
+   const vals=[a.v,b.v,d.v];
    [a,b,d].forEach(x=>{x.gone=true;x.up=false});
    log("✨ Colonne de 3 × "+fmt(a.v)+" retirée chez "+nm(id)+" !");
+   found.push({c,vals});
   }
  }
+ if(found.length)setFx({t:"col",p:id,cols:found});
  return n;
 }
 function hasHidden(id){
@@ -219,8 +235,8 @@ function endRound(){
  const rows=[];
  S.pl.forEach(p=>{
   const base=sums[p.id];
-  // Le déclencheur double s'il n'a pas STRICTEMENT le plus petit total.
-  const doubled=!!tr&&p.id===tr&&base>=min;
+  // Le déclencheur voit toujours son score doublé, même s'il a le plus petit total.
+  const doubled=!!tr&&p.id===tr;
   const score=doubled?base*2:base;
   p.round=score;p.doubled=doubled;p.sc+=score;
   rows.push({id:p.id,base,score,doubled,total:p.sc});
@@ -320,7 +336,7 @@ function hostLoops(){
 function backToLobby(){
  if(!S)return;
  S.ph="lobby";S.sid=null;S.r=0;S.order=[];S.turn=0;S.drawnFrom="";S.drawnCard=null;
- S.pendingFlip=false;S.finishing=false;S.queue=[];S.trigger=null;S.roundResult=null;S.over=false;S.reported=false;
+ S.pendingFlip=false;S.finishing=false;S.queue=[];S.trigger=null;S.roundResult=null;S.over=false;S.reported=false;S.fx=null;
  S.board={};S.pl.forEach(p=>{p.sc=0;p.round=0;p.doubled=false});
  H=newHost();L.drawn=null;
  toast("Partie interrompue : retour au salon");
@@ -360,6 +376,7 @@ function act(d){
   const c=g[i];if(!c||c.up||c.gone)return;
   if(g.filter(x=>x.up).length>=2)return;
   c.up=true;
+  setFx({t:"flip",p,i,v:c.v});
   if(S.pl.every(x=>(H.grids[x.id]||[]).filter(y=>y.up).length>=2))startPlay();
  }
  else if(k==="autoReveal"&&host&&S.ph==="reveal"){
@@ -378,12 +395,14 @@ function act(d){
    if(!H.discard.length)return;
    const v=H.discard.pop();
    H.drawn=v;S.drawnFrom="discard";S.drawnCard=v;
+   setFx({t:"draw",p,src:"discard",v});
    log("🃏 "+nm(p)+" prend la défausse ("+fmt(v)+").");
   }else{
    reshuffle();
    if(!H.deck.length)return toast("Plus de cartes à piocher");
    const v=H.deck.pop();
    H.drawn=v;S.drawnFrom="deck";S.drawnCard=null;
+   setFx({t:"draw",p,src:"deck"});
    log("🃏 "+nm(p)+" pioche une carte.");
   }
   L.drawn=H.drawn;
@@ -398,13 +417,16 @@ function act(d){
   const old=c.v;
   H.discard.push(old);
   c.v=H.drawn;c.up=true;c.gone=false;
+  setFx({t:"swap",p,i,from:old,to:c.v});
   log("🔄 "+nm(p)+" échange "+fmt(H.drawn)+" contre "+fmt(old)+" (défausse).");
   H.drawn=null;L.drawn=null;
   checkColumns(p);
   endTurn(p);
  }
  else if(k==="drop"&&S.ph==="play"&&S.order[S.turn]===p&&S.drawnFrom==="deck"&&!S.pendingFlip){
+  const dv=H.drawn;
   H.discard.push(H.drawn);
+  setFx({t:"discard",p,v:dv});
   log("🗑️ "+nm(p)+" défausse "+fmt(H.drawn)+" et doit révéler une carte.");
   H.drawn=null;L.drawn=null;S.drawnFrom="";S.drawnCard=null;S.pendingFlip=true;
   if(!hasHidden(p))endTurn(p);
@@ -416,6 +438,7 @@ function act(d){
   if((H.removed[p]||[]).includes(col))return;
   const c=g[i];if(!c||c.up||c.gone)return;
   c.up=true;
+  setFx({t:"flip",p,i,v:c.v});
   log("👁️ "+nm(p)+" révèle un "+fmt(c.v)+".");
   checkColumns(p);
   S.pendingFlip=false;
@@ -448,21 +471,30 @@ function cardFace(v,extra){
 function gridHtml(pid,o){
  o=o||{};
  const b=(S.board&&S.board[pid])||{cells:[],cols:[]};
- const cols=b.cols||[],action=o.action||null;
+ const cols=b.cols||[],action=o.action||null,fx=FXACTIVE;
  let h='<div class="sj-grid">';
  for(let c=0;c<COLS;c++){
   h+='<div class="sj-col">';
   for(let r=0;r<ROWS;r++){
    const i=c*ROWS+r,v=b.cells[i];
-   if(cols.includes(c)){h+='<span class="sj-card empty" aria-hidden="true"></span>';continue}
+   if(cols.includes(c)){
+    const cf=fx&&fx.t==="col"&&fx.p===pid?(fx.cols||[]).find(x=>x.c===c):null;
+    if(cf){
+     for(let k=0;k<ROWS;k++){const cv=cf.vals[k];h+=`<span class="sj-card ${valClass(cv)} sj-col-out" style="--d:${k*85}ms" aria-hidden="true">${fmt(cv)}</span>`}
+    }else{
+     for(let k=0;k<ROWS;k++)h+='<span class="sj-card empty" aria-hidden="true"></span>';
+    }
+    continue;
+   }
+   const extra=fx&&fx.p===pid&&fx.i===i?(fx.t==="swap"?"sj-place":(fx.t==="flip"||fx.t==="reveal")?"sj-flip":""):"";
    if(v==null){
     if(action==="swap"||action==="flip"||action==="reveal"){
      const a=action==="reveal"?"reveal":action;
      h+=`<button type="button" class="sj-card back act" data-a="${a}" data-i="${i}" aria-label="Carte face cachée">❄</button>`;
     }else h+='<span class="sj-card back" aria-hidden="true">❄</span>';
    }else{
-    if(action==="swap")h+=`<button type="button" class="sj-card ${valClass(v)} act" data-a="swap" data-i="${i}" aria-label="Remplacer cette carte">${fmt(v)}</button>`;
-    else h+=cardFace(v);
+    if(action==="swap")h+=`<button type="button" class="sj-card ${valClass(v)} act ${extra}" data-a="swap" data-i="${i}" aria-label="Remplacer cette carte">${fmt(v)}</button>`;
+    else h+=cardFace(v,extra);
    }
   }
   h+='</div>';
@@ -486,6 +518,8 @@ function render(){
  const sig=JSON.stringify([S,L.drawn]);
  if(sig===L.sig)return;
  L.sig=sig;
+ FXACTIVE=S.fx&&S.fx.id!==L.fxSeen?S.fx:null;
+ if(FXACTIVE)L.fxSeen=FXACTIVE.id;
  $("#who").textContent=code?"Salon "+code:"";
  if(S.ph==="lobby")renderLobby();
  else if(S.ph==="reveal")renderReveal();
@@ -505,7 +539,7 @@ function renderHome(){
   <li>Chaque joueur a 12 cartes en 4 colonnes de 3. Deux sont révélées au départ.</li>
   <li>À ton tour : pioche ou prends la défausse, puis échange la carte avec une des tiennes. Si tu pioches, tu peux aussi défausser et révéler une carte cachée.</li>
   <li>Trois cartes identiques dans une colonne : la colonne disparaît et compte 0.</li>
-  <li>Dès qu'un joueur a retourné toutes ses cartes, les autres jouent un dernier tour. Le plus petit total marque. Le déclencheur double son score s'il n'est pas strictement le plus bas.</li>
+  <li>Dès qu'un joueur a retourné toutes ses cartes, les autres jouent un dernier tour. Le plus petit total marque. Le déclencheur voit toujours son score doublé.</li>
   <li>Partie en 100 points : le plus petit score cumulé gagne.</li>
  </ul></details></div>`;
  const c=bootParams().code;if(c&&$("#pcode"))$("#pcode").value=c;
@@ -549,6 +583,7 @@ function renderPlay(){
  const canFlip=myTurn&&S.pendingFlip;
  const action=canSwap?"swap":canFlip?"flip":null;
  const hidden=hiddenCount(ME);
+ const fx=FXACTIVE,drawFx=fx&&fx.t==="draw",discardFx=fx&&fx.t==="discard";
  let hint="";
  if(canDraw)hint=`À toi de jouer : pioche une carte ou prends la défausse.`;
  else if(canSwap)hint=drawn!=null?`Tu as pioché <b>${fmt(drawn)}</b>. Touche une de tes cartes pour l’échanger, ou défausse-la.`:`Choisis une de tes cartes à remplacer.`;
@@ -559,11 +594,11 @@ function renderPlay(){
  <div class="sj-banner ${S.finishing?"last":""}">${S.finishing?`🔔 Dernier tour ! ${esc(nm(S.trigger))} a retourné toutes ses cartes.`:`<span class="sj-turn"><span class="dotlive"></span>${myTurn?"C’est à toi !":"Au tour de "+esc(current)}</span>`}</div>
  <div class="card">
   <div class="sj-piles">
-   <div class="sj-pile"><button type="button" class="sj-card back ${canDraw?"drawable":""}" data-a="${canDraw?"draw":""}" ${canDraw?"":"disabled"} data-src="deck" aria-label="Piocher">❄</button><small>Pioche · ${S.deckN}</small></div>
-   <div class="sj-pile">${S.discardTop!=null?`<button type="button" class="sj-card ${valClass(S.discardTop)} ${canDraw?"drawable":""}" data-a="${canDraw?"draw":""}" ${canDraw?"":"disabled"} data-src="discard" aria-label="Prendre la défausse">${fmt(S.discardTop)}</button>`:'<span class="sj-card empty" aria-hidden="true"></span>'}<small>Défausse · ${S.discardN}</small></div>
+   <div class="sj-pile"><button type="button" class="sj-card back ${canDraw?"drawable":""} ${drawFx&&drawFx.src==="deck"?"sj-take":""}" data-a="${canDraw?"draw":""}" ${canDraw?"":"disabled"} data-src="deck" aria-label="Piocher">❄</button><small>Pioche · ${S.deckN}</small></div>
+   <div class="sj-pile">${S.discardTop!=null?`<button type="button" class="sj-card ${valClass(S.discardTop)} ${canDraw?"drawable":""} ${discardFx?"sj-discard-in":""}" data-a="${canDraw?"draw":""}" ${canDraw?"":"disabled"} data-src="discard" aria-label="Prendre la défausse">${fmt(S.discardTop)}</button>`:'<span class="sj-card empty" aria-hidden="true"></span>'}<small>Défausse · ${S.discardN}</small></div>
   </div>
   <p class="center" style="margin:8px 0 0">${hint}</p>
-  ${canSwap&&S.drawnFrom==="deck"&&drawn!=null?`<div class="center" style="margin-top:8px"><span class="hint" style="display:block;margin:0 0 4px">Ta pioche</span><span style="display:inline-block;width:64px">${cardFace(drawn)}</span></div>`:""}
+  ${canSwap&&drawn!=null?`<div class="center" style="margin-top:8px"><span class="hint" style="display:block;margin:0 0 4px">${S.drawnFrom==="deck"?"Ta pioche":"Carte prise"}</span><span style="display:inline-block;width:64px">${cardFace(drawn,drawFx?"sj-place":"")}</span></div>`:""}
   ${canSwap&&S.drawnFrom==="deck"?`<div class="sj-actions"><button class="btn" data-a="drop">🗑️ Défausser et révéler une carte</button></div>`:""}
  </div>
  <div class="card sj-own"><h2>Ta grille <span class="hint" style="display:inline">${hidden} cachée${hidden>1?"s":""} · ${me.cells.filter(v=>v!=null).reduce((a,b)=>a+b,0)} pts visibles</span></h2>${gridHtml(ME,{action})}</div>
@@ -580,7 +615,7 @@ function renderRound(){
  app.innerHTML=`<div class="center"><div class="big-emoji">📊</div><h1>Manche ${S.r} terminée</h1><p class="hint">${rr.trigger?`<b>${esc(nm(rr.trigger))}</b> a déclenché la fin de manche.`:"Fin de manche."}</p></div>
  <div class="card"><h2>Scores de la manche</h2>
   ${rows.map(p=>{const r=byId[p.id]||{};return`<div class="sj-score-row"><span><b>${esc(p.n)}</b>${p.doubled?' <span class="sj-double">×2</span>':""}<br><small class="hint" style="margin:0">${r.base!=null?"somme "+fmt(r.base):""}</small></span><span class="big">${fmtGain(r.score||0)}</span><span class="tot">${p.sc}</span></div>`}).join("")}
-  <p class="hint" style="margin-top:8px">Le déclencheur double son score s’il n’a pas strictement le plus petit total.</p>
+  <p class="hint" style="margin-top:8px">Le déclencheur voit toujours son score doublé, même s’il a le plus petit total.</p>
  </div>
  <div class="card"><h2>Classement cumulé</h2>${rows.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}
   ${S.over?`<div class="sj-banner last">🎯 Objectif de ${S.cfg.target} points atteint : la partie se termine.</div>`:`<p class="hint">Objectif : ${S.cfg.target} points. Le plus petit score cumulé gagne.</p>`}

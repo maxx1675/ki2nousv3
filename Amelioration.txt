@@ -1,8 +1,9 @@
--Bouton home sur make it meme comme sur tous les autres et le bouton home de salon de soirée est buggé aussi genre pas d'interface, tout petit, pas au bonne endroit fin voila
--s'assurere que sur photo roulette on puisse bien mettre plus de 30 photos, pas besoin de tester ça serait trop long mais voila le but est quand meme de pouvoir en selectionner un maximum.
--code admin : admin
--Ajoute make it meme au salon de la soirée
--Je sais pas quel est le probleme que tu dis avec codenames mais regle le
--pour photo roulette si possible, faire que quand on joue sur pc, on puisse avec un lien/qrcode, prendre les photos de notre tel
--pour pokerface c'est tres bien je sais pas ce que t'en penses si tu as des idées en tout cas pour le moment fait juste en sorte que la caméra soit pas inversqé parce que genre quand je tourne la tete a gauche, sur la vidéo ca met comme si je tournais a droite
--pour pokerface ou
+UNO : animation bouton uno/contreuno, possibilité additionner les +2, ajoute la règle du coupé : si un joueur a exactement la meme carte que celle qui vient d'etre posée, il peut la mettre quelque soit son tours si il la place assez rapidement avec que la personne normalement apres joue sa carte. Si il y arrive ça passe le tour de celui entre celui qui a posé la carte et celui qui a coupé ert passe au suivant. Si tu as pas tout compris cherche sur google tu trouveras.
+
+SKYJO : animation carte, quand on enleve une colonne, c'esrt les cartes de la colonne qui sont au dessus, pas celle remplacée, score du termineur doublée meme avec plus petite somme en fin de manche
+
+Table des menteurs : Pas 1/6 mais chargeur de 6 balles dont 1 vraie
+
+Blind test marche encore et toujours pas, ni le lien, ni le pack de base
+
+Les vidéosq sur poker face se lancent directement, pas a nous de cliquer sur le lanceur, pareil trop indulgent cette fois trouve l'entre deux parce que là un sourire ca marche plus il faut que la bouche soit ouverte et un vrai rire

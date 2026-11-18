@@ -46,7 +46,7 @@
         <h1>La Table Des Menteurs</h1>
         <p class="tagline">Un saloon, des cartes face cachée, des annonces douteuses… et un revolver à six coups.
           Bluffe, accuse, survis. <b>Une seule balle sur six.</b></p>
-        <span class="badge">🔫 1 chance sur 6 · 2 à 8 joueurs · téléphone &amp; ordinateur</span>
+        <span class="badge">🔫 Revolver à 6 chambres · 2 à 8 joueurs · téléphone &amp; ordinateur</span>
       </div>
 
       <div class="home-grid">
@@ -141,11 +141,13 @@ Déroulement d'une manche
    Personne ne conteste : le tour passe, les cartes restent cachées.
 5. Révélation : le serveur retourne les cartes et vérifie l'annonce.
 
-Le revolver (1 chance sur 6)
-• Chaque joueur a SON revolver, posé devant lui sur la table. Il ne le prend qu'au moment de tirer.
+Le revolver (une balle cachée par joueur)
+• Chaque joueur a SON revolver à 6 chambres, avec une balle placée au hasard. Il ne le prend qu'au moment de tirer.
 • Contestation juste (le joueur a menti) : l'accusateur tire sur le menteur.
 • Contestation fausse (l'annonce était vraie) : le menteur retourne l'arme contre l'accusateur.
-• Chaque tir fait tourner le barillet. Une balle = élimination. Un clic = chambre vide, la cible survit.
+• Chaque tir vide une chambre : 1 chance sur 6, puis 1 sur 5, 1 sur 4, etc.
+• Une balle = élimination immédiate. Un clic = chambre vide, la cible survit.
+• Après une élimination, les survivants repartent avec un barillet neuf (1 chance sur 6).
 
 Cartes spéciales (option)
 • JOKER : compte comme la cible. Ce sont des cartes de bluff supplémentaires.
@@ -848,7 +850,7 @@ function renderHud() {
   else if (S.phase === "reveal") turn = S.reveal ? (S.reveal.liar ? "🤥 Mensonge démasqué" : "✅ Annonce véridique") : "Révélation…";
   $("#hudTurn").textContent = turn;
   $("#hudSub").textContent = [
-    me.lives > 0 ? "❤️".repeat(Math.min(5, me.lives)) : "💀",
+    "🔫 1 chance sur " + (me.gun?.remaining ?? 6),
     "Score " + me.score,
     "Bluffs " + me.bluffs,
     me.spectator ? "spectateur" : "",
@@ -1129,15 +1131,15 @@ function updateRevealResult() {
   } else if (elapsed < 3450) {
     el.textContent = "😰 Il hésite… le canon tremble.";
   } else if (rv.bullet) {
-    el.textContent = `💥 BANG ! ${nameOf(rv.victim)} perd une vie.`;
+    el.textContent = `💥 BANG ! ${nameOf(rv.victim)} est éliminé.`;
   } else {
-    el.textContent = `*clic* Chambre vide : ${nameOf(rv.victim)} survit.`;
+    el.textContent = `*clic* Chambre vide : ${nameOf(rv.victim)} survit. ${nameOf(rv.shooter)} : 1 chance sur ${Math.max(1, rv.remaining ?? 6)} au prochain tir.`;
   }
 }
 
 function renderPlayersMini() {
   const focusId = S.phase === "challenge" ? S.claim?.by : S.turnId;
-  const sig = [focusId, S.phase, S.players.map((p) => [p.id, p.name, p.avatar, p.alive, p.lives, p.score, p.spectator, p.raised ? 1 : 0]).join(";")].join("|");
+  const sig = [focusId, S.phase, S.players.map((p) => [p.id, p.name, p.avatar, p.alive, p.lives, p.gun?.remaining, p.score, p.spectator, p.raised ? 1 : 0]).join(";")].join("|");
   if (sig === playersSig) return;
   playersSig = sig;
   const list = S.players.filter((p) => !p.spectator);
@@ -1154,7 +1156,7 @@ function renderPlayersMini() {
           <span class="pav">${av}</span>
           <span class="pn">${esc(p.name)}${p.id === ME ? " · toi" : ""}</span>
           <span class="praise ${raised ? "up" : "down"}" title="${raised ? "Cartes levées" : "Cartes baissées"}">${raised ? "🃏↑" : "🃏↓"}</span>
-          <span class="pl">${p.alive ? "❤".repeat(Math.min(5, p.lives)) : "💀"}</span>
+          <span class="pl" title="${p.alive ? "Chambres restantes avant la balle" : "Éliminé"}">${p.alive ? "🔫" + (p.gun?.remaining ?? 6) : "💀"}</span>
           <span class="pl" style="color:#ffd98a">${p.score ? "⭐" + p.score : ""}</span>
         </div>`;
       })
