@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>La Table Des Menteurs — saloon 3D multijoueur</title>
+<meta name="theme-color" content="#170d07">
+<meta name="description" content="Bluff, accusations et revolver à six coups : un jeu de menteurs dans un saloon 3D, de 2 à 8 joueurs.">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
+<link rel="stylesheet" href="/menteurs/menteurs.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="scene" aria-label="Saloon 3D"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">🤠 <span>La Table Des Menteurs</span><span class="brand-sub">· saloon</span></div>
+    <div class="top-actions">
+      <span id="roomPill" class="pill hidden"></span>
+      <span id="turnPill" class="pill hidden"></span>
+      <button id="btnAudio" class="icon-btn" type="button" title="Couper le son" aria-label="Couper le son">🔊</button>
+      <button id="btnHelp" class="icon-btn" type="button" title="Règles et réglages" aria-label="Règles et réglages">❔</button>
+      <a class="icon-btn" href="/" title="Retour au hub" aria-label="Retour au hub">🏠</a>
+    </div>
+  </header>
+
+  <div id="bigmsg" class="bigmsg hidden" role="status" aria-live="polite"></div>
+
+  <!-- ======================= ACCUEIL ======================= -->
+  <section id="screen-home" class="screen">
+    <div class="panel">
+      <div class="home-hero">
+        <h1>La Table Des Menteurs</h1>
+        <p class="tagline">Un saloon, des cartes face cachée, des annonces douteuses… et un revolver à six coups.
+          Bluffe, accuse, survis. <b>Une seule balle sur six.</b></p>
+        <span class="badge">🔫 1 chance sur 6 · 2 à 8 joueurs · téléphone &amp; ordinateur</span>
+      </div>
+
+      <div class="home-grid">
+        <div class="card">
+          <h2>Ton profil</h2>
+          <label for="pname">Pseudo</label>
+          <input id="pname" maxlength="18" placeholder="Ton pseudo" autocomplete="nickname" enterkeyhint="next">
+          <label>Personnage</label>
+          <div id="avatarPick" class="avatar-grid" role="group" aria-label="Choisir un personnage"></div>
+        </div>
+
+        <div class="card">
+          <h2>Créer une table</h2>
+          <p class="hint">Tu deviens l'hôte : tu règles la table, tu lances la partie et tu obtiens un code
+            à partager (QR code inclus).</p>
+          <button id="btnCreate" class="btn big" type="button">🎲 Créer la table</button>
+        </div>
+
+        <div class="card">
+          <h2>Rejoindre</h2>
+          <label for="jcode">Code à 4 caractères</label>
+          <input id="jcode" class="code-input" maxlength="4" placeholder="CODE"
+                 autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go">
+          <button id="btnJoin" class="btn big" type="button">🚪 Rejoindre la table</button>
+        </div>
+      </div>
+
+      <p id="homeMsg" class="msg" role="status"></p>
+      <div class="home-foot">
+        <span id="openTables">Tables ouvertes : —</span>
+        <span>Reconnexion automatique · règles vérifiées par le serveur</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= SALON ======================= -->
+  <section id="screen-lobby" class="screen hidden">
+    <div class="panel">
+      <div class="lobby-head">
+        <div>
+          <h1>Salon</h1>
+          <p class="hint">Partage le code ou le QR code. La partie peut commencer dès 2 joueurs.</p>
+          <div class="code-row">
+            <span id="lcode" class="code">----</span>
+            <button id="btnCopyCode" class="btn small dk" type="button">🔗 Copier le lien</button>
+          </div>
+        </div>
+        <div id="shareMount" class="share-box"></div>
+      </div>
+
+      <div class="lobby-body">
+        <div class="card">
+          <h2>Joueurs <span id="pcount" class="hint" style="font-size:.85rem"></span></h2>
+          <div id="plist" class="plist"></div>
+        </div>
+
+        <div id="hostPanel" class="card hidden">
+          <h2>Panneau de l'hôte</h2>
+          <div class="cfg-grid">
+            <div><label for="cfgMax">Joueurs max</label><input id="cfgMax" type="number" min="2" max="8" inputmode="numeric"></div>
+            <div><label for="cfgLives">Vies</label><input id="cfgLives" type="number" min="1" max="1" inputmode="numeric" value="1"></div>
+            <div><label for="cfgRounds">Manches max</label><input id="cfgRounds" type="number" min="1" max="20" inputmode="numeric"></div>
+            <div><label for="cfgThink">Réflexion (s)</label><input id="cfgThink" type="number" min="5" max="60" inputmode="numeric"></div>
+            <div><label for="cfgChallenge">Contestation (s)</label><input id="cfgChallenge" type="number" min="3" max="30" inputmode="numeric"></div>
+            <div class="cfg-check"><input id="cfgSpecial" type="checkbox"><label for="cfgSpecial">Cartes spéciales</label></div>
+          </div>
+          <p class="hint">Les réglages sont verrouillés après le lancement. En cours de partie, l'hôte peut
+            uniquement mettre en pause, reprendre ou terminer.</p>
+          <button id="btnStart" class="btn big" type="button">🎬 Lancer la partie</button>
+        </div>
+      </div>
+
+      <div class="row lobby-actions">
+        <button id="btnLeave" class="btn dk" type="button">← Quitter</button>
+        <span id="lobbyMsg" class="msg" style="margin:0"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= AIDE ======================= -->
+  <section id="screen-help" class="screen hidden">
+    <div class="panel">
+      <h2>🤠 Règles — La Table Des Menteurs</h2>
+      <div class="help-body">But du jeu : être le dernier survivant. Chaque joueur n'a qu'une seule vie : une balle suffit.
+
+Déroulement d'une manche
+1. Un paquet complet de 52 cartes (4 couleurs × As, 2 à 10, Valet, Dame, Roi) est mélangé, plus 2 jokers si l'option est active. Chaque joueur reçoit des cartes secrètes.
+2. Une carte cible sort au centre de la table (Valet, Dame, Roi ou As — jamais une autre carte). Elle reste affichée toute la manche.
+3. Le joueur actif pose 1 à 3 cartes face cachée. Il annonce automatiquement : « N × cible ».
+   S'il pose autre chose, c'est un bluff.
+4. Les autres joueurs peuvent CONTESTER ou CROIRE pendant le chrono de contestation.
+   Personne ne conteste : le tour passe, les cartes restent cachées.
+5. Révélation : le serveur retourne les cartes et vérifie l'annonce.
+
+Le revolver (1 chance sur 6)
+• Chaque joueur a SON revolver, posé devant lui sur la table. Il ne le prend qu'au moment de tirer.
+• Contestation juste (le joueur a menti) : l'accusateur tire sur le menteur.
+• Contestation fausse (l'annonce était vraie) : le menteur retourne l'arme contre l'accusateur.
+• Chaque tir fait tourner le barillet. Une balle = élimination. Un clic = chambre vide, la cible survit.
+
+Cartes spéciales (option)
+• JOKER : compte comme la cible. Ce sont des cartes de bluff supplémentaires.
+
+Fin de partie
+• Dernier survivant, ou fin du nombre de manches maximum.
+• Le classement de la soirée est mis à jour automatiquement.
+
+Commandes
+• Vue à la première personne : tes cartes sont devant toi. Utilise « 🃏 Lever / Baisser » (ou clique une carte 3D) pour les voir ou dégager la table.
+• Sélectionne 1 à 3 cartes dans ta main, puis « Poser ».
+• Clique « Contester ! » si tu crois à un mensonge.
+• L'hôte peut mettre en pause, passer un tour bloqué ou terminer la partie.
+
+Le serveur est autoritaire : mains privées, chronos, annonces, contestations, tirage du barillet,
+éliminations et classement sont calculés côté serveur. Aucun résultat ne vient du navigateur.
+
+Crédits : saloon, cartes et personnages 3D procéduraux (projet) ; revolver low-poly « Revolver »
+de Quaternius, CC0, téléchargé sur Poly Pizza.</div>
+      <div class="row" style="margin-top:14px">
+        <label for="vol" style="margin:0;white-space:nowrap">🔊 Volume</label>
+        <input id="vol" type="range" min="0" max="100" step="1" aria-label="Volume"
+               style="flex:1;max-width:260px;padding:0;background:none;border:0;min-height:28px">
+        <button id="btnMute2" class="btn small dk" type="button">Couper le son</button>
+        <button id="btnCloseHelp" class="btn small" type="button">Fermer</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= HUD DE PARTIE ======================= -->
+  <div id="hud" class="hud hidden">
+    <div class="hud-top">
+      <div class="hud-box brief">
+        <div class="brief-line">
+          <span id="hudRound">Manche 1</span>
+          <span class="sep">·</span>
+          <span id="hudTarget">Cible : —</span>
+        </div>
+        <div id="hudTurn" class="hud-turn">—</div>
+        <div id="hudSub" class="hud-sub"></div>
+        <div class="timer-wrap">
+          <div class="timer-bar" id="timerBar"><i id="timerFill"></i></div>
+          <span id="hudTimer" class="timer">--</span>
+        </div>
+        <div id="hostGamePanel" class="host-game hidden">
+          <button id="btnPause" class="btn small dk" type="button">⏸️ Pause</button>
+          <button id="btnResume" class="btn small dk hidden" type="button">▶️ Reprendre</button>
+          <button id="btnNext" class="btn small dk" type="button">⏭️ Passer</button>
+          <button id="btnEndGame" class="btn small danger" type="button">⛔ Terminer</button>
+        </div>
+      </div>
+      <div class="log-box hud-box">
+        <div class="log-head">Événements</div>
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+
+    <div class="hud-middle">
+      <div id="pauseBanner" class="pause-banner hidden">⏸️ Partie en pause</div>
+      <div id="dealBanner" class="deal-banner hidden" role="status">
+        <span class="deal-card">🎴</span>
+        <span class="deal-text">La carte cible sort…</span>
+        <b id="dealCount">5</b><span>s</span>
+      </div>
+      <div id="challengeBar" class="challenge-bar hidden" role="alert">
+        <span id="challengeText" class="challenge-text"></span>
+        <button id="btnChallengeBig" class="btn danger challenge-big" type="button">⚔️ Il ment !</button>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="hud-box your-area">
+        <div id="hudNotice" class="hud-notice"></div>
+        <div id="hudAction" class="hud-action"></div>
+        <div class="hand-head">
+          <b>Ta main</b>
+          <span id="handHint" class="hint"></span>
+          <button id="btnCards" class="btn small dk card-toggle" type="button" title="Lever ou baisser les cartes 3D">🃏 Baisser</button>
+        </div>
+        <div id="hand" class="hand"></div>
+      </div>
+      <div class="hud-box side-panel">
+        <div id="targetMini" class="target-mini hidden" title="Carte cible de la manche">
+          <span class="tm-label">Cible</span>
+          <span id="targetMiniCard" class="tm-card"></span>
+        </div>
+        <div id="playersMini" class="players-mini"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= FIN DE PARTIE ======================= -->
+  <section id="screen-end" class="screen hidden">
+    <div class="panel">
+      <div id="endHero" class="end-hero"></div>
+      <div id="endRank" class="end-rank"></div>
+      <div id="endActions" class="end-actions">
+        <button id="btnRematch" class="btn big hidden" type="button">🔄 Nouvelle partie</button>
+        <button id="btnWaitHost" class="btn big dk hidden" type="button" disabled>⏳ En attente de l'hôte…</button>
+        <button id="btnLeaveEnd" class="btn dk" type="button">← Quitter</button>
+      </div>
+      <div id="endMount"></div>
+    </div>
+  </section>
+</div>
+
+<script src="/shared/net.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/party.js"></script>
+<script type="module">
+"use strict";
+import { SaloonScene, AVATARS } from "./scene.js";
+import { initAudio, startAmbient, stopAmbient, setMuted, isMuted, setVolume, getVolume, sfx } from "./audio.js";
+
+/* ------------------------------------------------------------------ */
+/* Constantes et petits utilitaires                                    */
+/* ------------------------------------------------------------------ */
+const $ = (s) => document.querySelector(s);
+const GAME = "mt";
+const ROOM = (c) => "mt-" + c;
+const AVATAR_LIST = ["sherif", "bandit", "cowboy", "cowgirl", "barman", "chasseur", "horslaloi", "prospecteur"];
+const AVATAR_SHORT = {
+  sherif: "Shérif",
+  bandit: "Bandit",
+  cowboy: "Cowboy",
+  cowgirl: "Cowgirl",
+  barman: "Barman",
+  chasseur: "Chasseur",
+  horslaloi: "Hors-la-loi",
+  prospecteur: "Prospecteur",
+};
+const VAL_LABEL = {
+  A: "As", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7",
+  "8": "8", "9": "9", "10": "10", V: "Valet", D: "Dame", R: "Roi",
+  JOKER: "Joker", MIROIR: "Miroir",
+};
+const REASON = {
+  last: "Dernier survivant de la table",
+  rounds: "Nombre maximum de manches atteint",
+  host: "Partie arrêtée par l'hôte",
+  leave: "Un joueur a quitté la table",
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clamp = (n, min, max, def) => {
+  const v = Math.floor(Number(n));
+  return Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : def;
+};
+const labelOf = (v) => VAL_LABEL[v] || String(v || "—");
+const isSpecial = (c) => c && (c.v === "JOKER" || c.v === "MIROIR");
+const suitOf = (c) => (c && c.s ? c.s : isSpecial(c) ? "★" : "");
+const isRedCard = (c) => !!c && (c.s === "♥" || c.s === "♦");
+const notify = (m) => {
+  try {
+    if (typeof toast === "function") toast(m);
+    else console.log(m);
+  } catch (_) {
+    /* le toast partagé ne doit jamais casser le jeu */
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* État client                                                         */
+/* ------------------------------------------------------------------ */
+let R = null;
+let code = "";
+let token = "";
+let S = null;
+let serverOffset = 0;
+let meName = "";
+let meAvatar = "cowboy";
+let sel = new Set();
+let busy = false;
+let reqSeq = 0;
+let appliedSeq = 0;
+let pollTimer = 0;
+let pingTimer = 0;
+let pubTimer = 0;
+let lastPub = 0;
+let lastZeroRefresh = 0;
+let lastNetToast = 0;
+let lastClaimAnnounced = 0;
+let lastRevealAnnounced = 0;
+let believedTs = 0;
+let lastEndKey = "";
+let lastLobbySig = "";
+let handSig = "";
+let actionSig = "";
+let noticeSig = "";
+let playersSig = "";
+let logSig = "";
+let bigTimer = 0;
+let bigSeq = 0;
+let cfgTimer = 0;
+let dealSig = "";
+let challengeSig = "";
+let targetMiniSig = "";
+let lastRaisedSent = null;
+let lastDealRemain = 0;
+let audioStarted = false;
+let muted = false;
+let sessionExpiring = false;
+
+const scene = (() => {
+  try {
+    return new SaloonScene($("#scene"), $("#labels"));
+  } catch (e) {
+    console.warn("[menteurs] décor 3D indisponible", e);
+    notify("Décor 3D indisponible : le jeu reste jouable.");
+    return null;
+  }
+})();
+
+if (scene) {
+  scene.onCardPick = (i) => toggleCard(i);
+  scene.onRaiseChange = (raised) => {
+    updateCardButton();
+    sendRaise(raised);
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Petits états partagés (cible / contestation / cartes levées)        */
+/* ------------------------------------------------------------------ */
+/** Durée d'affichage de la carte cible en début de manche (ms). */
+const DEAL_HOLD = 5000;
+
+/** Temps restant avant que la table redevienne jouable (ms). */
+function dealRemain() {
+  if (!S || S.phase !== "claim" || !S.roundAt) return 0;
+  return Math.max(0, S.roundAt + DEAL_HOLD - (Date.now() + serverOffset));
+}
+
+/** Puis-je poser des cartes maintenant ? (pause + dévoilement de la cible) */
+function canClaimNow() {
+  return !!S && S.phase === "claim" && S.turnId === ME && amAlive() && !S.paused && dealRemain() <= 0;
+}
+
+/** Signale aux autres joueurs si mes cartes sont levées ou baissées. */
+function sendRaise(v) {
+  if (!S || !code || !token) return;
+  const val = !!v;
+  if (lastRaisedSent === val) return;
+  lastRaisedSent = val;
+  try {
+    Promise.resolve(postAction({ k: "raise", v: val })).catch(() => {});
+  } catch (_) {
+    /* purement visuel : jamais bloquant */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Audio                                                               */
+/* ------------------------------------------------------------------ */
+try {
+  muted = localStorage.getItem("mt:mute") === "1";
+  const v = Number(localStorage.getItem("mt:vol"));
+  if (Number.isFinite(v) && v >= 0 && v <= 1) setVolume(v);
+} catch (_) {
+  /* stockage indisponible */
+}
+setMuted(muted);
+
+function ensureAudio() {
+  if (audioStarted) return;
+  try {
+    initAudio();
+    startAmbient();
+    audioStarted = true;
+  } catch (_) {
+    /* audio refusé par le navigateur */
+  }
+}
+function updateAudioButtons() {
+  const a = $("#btnAudio");
+  if (a) {
+    a.textContent = muted ? "🔇" : "🔊";
+    a.title = muted ? "Activer le son" : "Couper le son";
+    a.setAttribute("aria-label", a.title);
+  }
+  const b = $("#btnMute2");
+  if (b) b.textContent = muted ? "Activer le son" : "Couper le son";
+}
+function toggleMute() {
+  muted = !muted;
+  setMuted(muted);
+  try {
+    localStorage.setItem("mt:mute", muted ? "1" : "0");
+  } catch (_) {
+    /* stockage indisponible */
+  }
+  updateAudioButtons();
+  if (!muted) ensureAudio();
+}
+
+/* ------------------------------------------------------------------ */
+/* Profil et avatar                                                    */
+/* ------------------------------------------------------------------ */
+function initProfile() {
+  try {
+    const p = Profile.get();
+    if (p && p.name) $("#pname").value = p.name;
+    else {
+      const n = localStorage.getItem("mt:name") || "";
+      if (n) $("#pname").value = n;
+    }
+    const saved = localStorage.getItem("mt:avatar") || "";
+    meAvatar = AVATAR_LIST.includes(saved) ? saved : "cowboy";
+  } catch (_) {
+    meAvatar = "cowboy";
+  }
+  const box = $("#avatarPick");
+  box.innerHTML = "";
+  for (const id of AVATAR_LIST) {
+    const meta = AVATARS[id] || {};
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "avatar-btn" + (id === meAvatar ? " on" : "");
+    b.dataset.avatar = id;
+    b.setAttribute("aria-pressed", id === meAvatar ? "true" : "false");
+    b.innerHTML = `<span class="emo">${meta.emoji || "🤠"}</span><span>${esc(AVATAR_SHORT[id])}</span>`;
+    b.onclick = () => {
+      meAvatar = id;
+      try {
+        localStorage.setItem("mt:avatar", id);
+      } catch (_) {
+        /* stockage indisponible */
+      }
+      box.querySelectorAll(".avatar-btn").forEach((x) => {
+        const on = x.dataset.avatar === id;
+        x.classList.toggle("on", on);
+        x.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      sfx("click");
+    };
+    box.appendChild(b);
+  }
+}
+function requireName() {
+  const el = $("#pname");
+  const v = String(el.value || "").replace(/[<>\u0000-\u001f]/g, "").trim().slice(0, 18);
+  if (!v) {
+    setHomeMsg("Entre ton pseudo pour continuer.", "err");
+    el.focus();
+    return "";
+  }
+  el.value = v;
+  meName = v;
+  try {
+    Profile.set({ name: v });
+    localStorage.setItem("mt:name", v);
+  } catch (_) {
+    /* stockage indisponible */
+  }
+  return v;
+}
+
+/* ------------------------------------------------------------------ */
+/* Session et jetons                                                   */
+/* ------------------------------------------------------------------ */
+const tokKey = (c) => "mt:tok:" + c;
+function getTok(c) {
+  try {
+    return localStorage.getItem(tokKey(c)) || "";
+  } catch (_) {
+    return "";
+  }
+}
+function setTok(c, t) {
+  try {
+    if (t) localStorage.setItem(tokKey(c), t);
+    else localStorage.removeItem(tokKey(c));
+  } catch (_) {
+    /* stockage indisponible */
+  }
+}
+function saveSession() {
+  if (!code) return;
+  try {
+    Sess.save(GAME, { code, name: meName || S?.you?.name || "", avatar: meAvatar, host: amHost(), token });
+  } catch (_) {
+    /* stockage indisponible */
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* API serveur                                                         */
+/* ------------------------------------------------------------------ */
+async function postApi(path, body) {
+  const r = await fetch("/api/menteurs" + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  let j = null;
+  try {
+    j = await r.json();
+  } catch (_) {
+    /* réponse non JSON */
+  }
+  if (!j) j = { ok: false, error: "Serveur injoignable (" + r.status + ")" };
+  return j;
+}
+function newAid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function postAction(action) {
+  return postApi("/action", { room: code, pid: ME, token, action, aid: newAid() });
+}
+
+/* ------------------------------------------------------------------ */
+/* Helpers d'état                                                      */
+/* ------------------------------------------------------------------ */
+function amHost() {
+  return !!S && S.hostId === ME;
+}
+function amAlive() {
+  return !!S && S.you && S.you.alive && !S.you.spectator;
+}
+function nameOf(id) {
+  if (!id || !S) return "";
+  const p = S.players.find((x) => x.id === id);
+  return p ? p.name : "";
+}
+function avatarOf(id) {
+  const p = S && S.players.find((x) => x.id === id);
+  return (p && AVATARS[p.avatar]?.emoji) || "🤠";
+}
+function phaseActive() {
+  return !!S && (S.phase === "claim" || S.phase === "challenge" || S.phase === "reveal");
+}
+
+/* ------------------------------------------------------------------ */
+/* Messages                                                            */
+/* ------------------------------------------------------------------ */
+function setHomeMsg(text, cls) {
+  const el = $("#homeMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "msg" + (cls ? " " + cls : "");
+}
+function big(text, ms = 2200) {
+  const el = $("#bigmsg");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove("hidden");
+  const seq = ++bigSeq;
+  clearTimeout(bigTimer);
+  bigTimer = setTimeout(() => {
+    if (seq === bigSeq) el.classList.add("hidden");
+  }, ms);
+}
+function hideBig() {
+  const el = $("#bigmsg");
+  if (el) el.classList.add("hidden");
+}
+
+/* ------------------------------------------------------------------ */
+/* Application d'un état serveur                                       */
+/* ------------------------------------------------------------------ */
+function applyState(st) {
+  if (!st || (st.code && code && st.code !== code)) return;
+  const prevPhase = S ? S.phase : "";
+  const prevHost = S ? S.hostId : "";
+  S = st;
+  serverOffset = (Number(st.serverNow) || Date.now()) - Date.now();
+  if (st.you) {
+    if (st.you.name) meName = st.you.name;
+    if (st.you.avatar) meAvatar = st.you.avatar;
+  }
+  const handLen = (st.you.hand || []).length;
+  sel = new Set([...sel].filter((i) => Number.isInteger(i) && i >= 0 && i < handLen));
+
+  if (prevHost !== st.hostId) {
+    saveSession();
+    if (st.hostId === ME) notify("👑 Tu es le nouvel hôte de la table.");
+  }
+
+  try {
+    scene?.sync(st);
+    if (scene && typeof scene.raised === "boolean") sendRaise(scene.raised);
+  } catch (e) {
+    /* le rendu 3D ne doit jamais bloquer le jeu */
+    console.warn("[menteurs] scene", e);
+  }
+  renderAll();
+  tick();
+  announceFromState(st, prevPhase);
+
+  if (st.phase === "lobby") publishPresence();
+  else if (prevPhase === "lobby") publishPresence(true);
+}
+
+function announceFromState(st, prevPhase) {
+  if (st.claim && st.claim.ts && st.claim.ts !== lastClaimAnnounced) {
+    lastClaimAnnounced = st.claim.ts;
+    big(`${nameOf(st.claim.by)} annonce ${st.claim.count} × ${labelOf(st.claim.target)}`, 2000);
+  }
+  if (st.reveal && st.reveal.ts && st.reveal.ts !== lastRevealAnnounced) {
+    lastRevealAnnounced = st.reveal.ts;
+    const rv = st.reveal;
+    big(rv.liar ? "🤥 Mensonge démasqué !" : "✅ C'était la vérité !", 1800);
+    const ts = rv.ts;
+    setTimeout(() => {
+      if (!S || !S.reveal || S.reveal.ts !== ts) return;
+      big(rv.bullet ? "💥 BANG !" : "*clic* Chambre vide", 2300);
+    }, 1250);
+  }
+  if (prevPhase !== "end" && st.phase === "end") {
+    if (st.winner) big(`🏆 ${nameOf(st.winner)} remporte la table !`, 3200);
+    else big("🏁 Fin de la partie", 2600);
+    publishPresence(true);
+  }
+  if (prevPhase && prevPhase !== "lobby" && st.phase === "lobby") hideBig();
+}
+
+/* ------------------------------------------------------------------ */
+/* Rendu global                                                        */
+/* ------------------------------------------------------------------ */
+function renderAll() {
+  if (!S) return;
+  $("#roomPill").textContent = "Salon " + S.code;
+  $("#roomPill").classList.remove("hidden");
+
+  const isLobby = S.phase === "lobby";
+  const isEnd = S.phase === "end";
+  const inGame = !isLobby && !isEnd;
+
+  $("#screen-home").classList.add("hidden");
+  $("#screen-lobby").classList.toggle("hidden", !isLobby);
+  $("#screen-end").classList.toggle("hidden", !isEnd);
+  $("#hud").classList.toggle("hidden", !inGame);
+  if (!isEnd) lastEndKey = "";
+
+  $("#turnPill").classList.toggle("hidden", !inGame);
+  if (inGame) $("#turnPill").textContent = "Tour : " + (nameOf(S.turnId) || "—");
+
+  if (isLobby) renderLobby();
+  else if (isEnd) renderEnd();
+  else renderHud();
+}
+
+function renderLobby() {
+  $("#lcode").textContent = S.code;
+  $("#pcount").textContent = S.players.length + "/" + S.config.max;
+
+  const sig = JSON.stringify([
+    S.code,
+    S.hostId,
+    S.config.max,
+    S.players.map((p) => [p.id, p.name, p.avatar, p.connected, p.spectator, p.lives]),
+    amHost(),
+  ]);
+  if (sig !== lastLobbySig) {
+    lastLobbySig = sig;
+    const rows = S.players
+      .map((p) => {
+        const me = p.id === ME;
+        const host = p.id === S.hostId;
+        const av = AVATARS[p.avatar]?.emoji || "🤠";
+        const canKick = amHost() && !me && !host;
+        return `<div class="plist-row${me ? " me" : ""}">
+          <span class="pav">${av}</span>
+          <span class="pstate${p.connected || me ? "" : " off"}" title="${p.connected || me ? "Connecté" : "Déconnecté"}"></span>
+          <span class="pmeta">
+            <span class="pname">${esc(p.name)}${me ? ' <small style="opacity:.6">(toi)</small>' : ""}${host ? ' <span class="host-badge">HÔTE</span>' : ""}</span>
+            <span class="psub">${host ? "Chef de la table" : p.spectator ? "Spectateur" : "❤ " + p.lives + " vie" + (p.lives > 1 ? "s" : "")}</span>
+          </span>
+          ${canKick ? `<button class="kick" type="button" data-kick="${esc(p.id)}" title="Exclure" aria-label="Exclure ${esc(p.name)}">✕</button>` : ""}
+        </div>`;
+      })
+      .join("");
+    $("#plist").innerHTML = rows || '<p class="hint">La table est vide.</p>';
+  }
+
+  const host = amHost();
+  $("#hostPanel").classList.toggle("hidden", !host);
+  if (host) {
+    syncCfgInputs();
+    $("#btnStart").disabled = busy || S.players.filter((p) => !p.spectator).length < 2;
+  }
+  const n = S.players.filter((p) => !p.spectator).length;
+  $("#lobbyMsg").textContent = host
+    ? n < 2
+      ? "Invite au moins un joueur (code ou QR code) pour lancer."
+      : "Tout est prêt : tu peux lancer la partie."
+    : "En attente du lancement par l'hôte…";
+  $("#lobbyMsg").className = "msg" + (host && n < 2 ? " err" : "");
+  $("#btnLeave").disabled = false;
+}
+
+function syncCfgInputs() {
+  if (!S) return;
+  const map = [
+    ["#cfgMax", "max"],
+    ["#cfgLives", "lives"],
+    ["#cfgRounds", "rounds"],
+    ["#cfgThink", "think"],
+    ["#cfgChallenge", "challenge"],
+  ];
+  for (const [sel, key] of map) {
+    const el = $(sel);
+    if (el && document.activeElement !== el) el.value = S.config[key];
+  }
+  const sp = $("#cfgSpecial");
+  if (sp && document.activeElement !== sp) sp.checked = !!S.config.special;
+}
+
+function renderHud() {
+  const me = S.you;
+  $("#hudRound").textContent = `Manche ${Math.max(1, S.round)}/${S.config.rounds}`;  $("#hudTarget").innerHTML = `Cible <span class="brief-target">${esc(labelOf(S.target))}</span>`;
+
+  let turn = "";
+  if (S.phase === "claim") turn = S.turnId === ME ? "🎯 À toi de jouer" : "Au tour de " + (nameOf(S.turnId) || "—");
+  else if (S.phase === "challenge") turn = "Annonce de " + (nameOf(S.claim?.by) || "—");
+  else if (S.phase === "reveal") turn = S.reveal ? (S.reveal.liar ? "🤥 Mensonge démasqué" : "✅ Annonce véridique") : "Révélation…";
+  $("#hudTurn").textContent = turn;
+  $("#hudSub").textContent = [
+    me.lives > 0 ? "❤️".repeat(Math.min(5, me.lives)) : "💀",
+    "Score " + me.score,
+    "Bluffs " + me.bluffs,
+    me.spectator ? "spectateur" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const notice = buildNotice();
+  const nsig = notice.signature;
+  if (nsig !== noticeSig) {
+    noticeSig = nsig;
+    const el = $("#hudNotice");
+    el.innerHTML = notice.html;
+    el.classList.toggle("muted", !notice.html);
+  }
+  renderAction();
+  renderHand();
+  renderPlayersMini();
+  renderLog();
+  renderHostGame();
+  $("#pauseBanner").classList.toggle("hidden", !S.paused);
+  renderDealBanner();
+  renderTargetMini();
+  renderChallengeBar();
+}
+
+/* --- Bandeau « la carte cible sort » (5 s sans jouer) --------------- */
+function renderDealBanner() {
+  const el = $("#dealBanner");
+  if (!el) return;
+  const remain = dealRemain();
+  const show = remain > 0 && !S.paused && S.phase === "claim";
+  el.classList.toggle("hidden", !show);
+  if (!show) return;
+  const n = Math.max(1, Math.ceil(remain / 1000));
+  const c = $("#dealCount");
+  if (c && c.textContent !== String(n)) c.textContent = String(n);
+  const lbl = el.querySelector(".deal-text");
+  if (lbl) lbl.innerHTML = `La table sort <b>${esc(labelOf(S.target))}</b>… personne ne joue encore`;
+}
+
+/* --- Carte cible mini (coin bas-droite, au-dessus des joueurs) ------ */
+function renderTargetMini() {
+  const box = $("#targetMini");
+  const card = $("#targetMiniCard");
+  if (!box || !card) return;
+  const inGame = S.phase === "claim" || S.phase === "challenge" || S.phase === "reveal";
+  const show = inGame && !!S.target && dealRemain() <= 0;
+  box.classList.toggle("hidden", !show);
+  const sig = show ? S.target : "";
+  if (sig === targetMiniSig) return;
+  targetMiniSig = sig;
+  card.innerHTML = show
+    ? `<b class="tm-v">${esc(labelOf(S.target))}</b><span class="tm-suits">♠ ♥ ♦ ♣</span>`
+    : "";
+}
+
+/* --- Grande barre « Il ment ! » ------------------------------------ */
+function renderChallengeBar() {
+  const bar = $("#challengeBar");
+  if (!bar) return;
+  const claim = S.claim;
+  const show =
+    S.phase === "challenge" && !S.paused && !S.challenger && !!claim && claim.by !== ME && amAlive();
+  bar.classList.toggle("hidden", !show);
+  if (!show) return;
+  const sig = [claim.ts || 0, claim.by, claim.count, claim.target].join("|");
+  if (sig === challengeSig) return;
+  challengeSig = sig;
+  const txt = $("#challengeText");
+  if (txt)
+    txt.innerHTML = `<b>${esc(nameOf(claim.by))}</b> annonce <b>${claim.count} × ${esc(labelOf(claim.target))}</b> — tu le crois ?`;
+  const btn = $("#btnChallengeBig");
+  if (btn) btn.disabled = false;
+}
+
+function buildNotice() {
+  let html = "";
+  if (S.paused) html = "⏸️ Partie en pause — l'hôte peut reprendre.";
+  else if (S.you.spectator || (!S.you.alive && S.phase !== "end")) html = "👁️ Tu es spectateur : tu observes la table.";
+  else if (S.phase === "claim") {
+    html =
+      S.turnId === ME
+        ? `Choisis 1 à 3 cartes : tu annonces qu'elles sont des <b>${esc(labelOf(S.target))}</b>.`
+        : `La table attend <b>${esc(nameOf(S.turnId))}</b>…`;
+  } else if (S.phase === "challenge") {
+    html = `Annonce : <b>${S.claim?.count || 0} × ${esc(labelOf(S.claim?.target || S.target))}</b> par <b>${esc(nameOf(S.claim?.by))}</b>.`;
+  } else if (S.phase === "reveal" && S.reveal) {
+    const rv = S.reveal;
+    const cards = rv.cards.map(miniCard).join("");
+    html = `<div><b>${rv.liar ? "Mensonge !" : "Vérité !"}</b> ${esc(nameOf(rv.shooter))} → ${esc(nameOf(rv.victim))}</div><div class="reveal-line">${cards}</div>`;
+  }
+  return { html, signature: [S.phase, S.paused, S.you.alive, S.you.spectator, S.turnId, S.claim?.ts || 0, S.claim?.by || "", S.reveal?.ts || 0, S.claim?.count || 0, S.reveal?.liar].join("|") };
+}
+
+function miniCard(c) {
+  const special = isSpecial(c);
+  const red = isRedCard(c) || special;
+  const v = c.v === "JOKER" ? "JOKER" : c.v === "MIROIR" ? "MIROIR" : c.v;
+  const l = special ? (c.v === "JOKER" ? "Joker" : "Miroir") : "";
+  return `<span class="mini-card${special ? " special" : ""}${red ? " red" : ""}">
+    <b class="mc-v">${esc(v)}</b>
+    <span class="mc-s">${esc(suitOf(c))}</span>
+    <small>${esc(l)}</small>
+  </span>`;
+}
+
+function toggleCard(i) {
+  if (!S) return;
+  const hand = S.you.hand || [];
+  if (S.phase === "claim" && S.turnId === ME && amAlive() && !S.paused && dealRemain() > 0) {
+    notify("🎴 La carte cible se dévoile encore…");
+    return;
+  }
+  const can = canClaimNow();
+  if (!can || !Number.isInteger(i) || i < 0 || i >= hand.length) return;
+  if (sel.has(i)) sel.delete(i);
+  else {
+    if (sel.size >= 3) {
+      notify("Maximum 3 cartes par annonce.");
+      return;
+    }
+    sel.add(i);
+  }
+  sfx("card");
+  renderHand();
+  renderAction();
+}
+
+function updateCardButton() {
+  const b = $("#btnCards");
+  if (!b) return;
+  const raised = scene ? scene.raised !== false : true;
+  b.textContent = raised ? "🃏 Baisser" : "🃏 Lever";
+  b.title = raised ? "Baisser les cartes pour voir la table" : "Lever les cartes devant soi";
+}
+
+function renderHand() {
+  const hand = S.you.hand || [];
+  const can = canClaimNow();
+  const sig = [
+    S.phase, S.turnId, S.paused, S.you.alive, S.you.spectator,
+    hand.map((c, i) => i + ":" + c.v + (c.s || "")).join(","),
+    [...sel].join(","),
+  ].join("|");
+  const hint = $("#handHint");
+  if (sig !== handSig) {
+    handSig = sig;
+    const box = $("#hand");
+    box.innerHTML = "";
+    if (!hand.length) {
+      box.innerHTML = '<span class="empty-hand">Aucune carte en main.</span>';
+    } else {
+      hand.forEach((c, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "pc" + (sel.has(i) ? " sel" : "") + (isSpecial(c) ? " special" : "") + (isRedCard(c) ? " red" : "");
+        b.disabled = !can;
+        b.setAttribute("aria-pressed", sel.has(i) ? "true" : "false");
+        b.innerHTML = `<span class="pc-corner"><span class="pc-v">${esc(c.v === "JOKER" ? "JOKER" : c.v === "MIROIR" ? "MIROIR" : c.v)}</span><span class="pc-suit">${esc(suitOf(c))}</span></span>
+          <span class="pc-center">${isSpecial(c) ? "🃏" : esc(suitOf(c))}</span>
+          <span class="pc-l">${esc(labelOf(c.v))}</span>`;
+        b.onclick = () => toggleCard(i);
+        box.appendChild(b);
+      });
+    }
+  }
+  if (hint) hint.textContent = can ? (sel.size ? `${sel.size}/3 sélectionnée${sel.size > 1 ? "s" : ""}` : "1 à 3 cartes") : "";
+  updateCardButton();
+  try {
+    scene?.setHand(hand, [...sel], can);
+  } catch (e) {
+    console.warn("[menteurs] main 3D", e);
+  }
+}
+
+function renderAction() {
+  const a = $("#hudAction");
+  const sig = [
+    S.phase,
+    S.turnId,
+    S.paused,
+    S.you.alive,
+    S.you.spectator,
+    S.claim?.ts || 0,
+    S.claim?.by || "",
+    S.challenger,
+    S.reveal?.ts || 0,
+    sel.size,
+    amHost(),
+    dealRemain() > 0 ? 1 : 0,
+  ].join("|");
+  if (sig === actionSig) return;
+  actionSig = sig;
+  a.innerHTML = "";
+
+  if (S.phase === "claim" && S.turnId === ME && amAlive() && !S.paused) {
+    if (dealRemain() > 0) {
+      a.innerHTML = `<span class="hint grow" style="margin:0">🎴 La carte cible sort… tu joues dans <b>${Math.max(1, Math.ceil(dealRemain() / 1000))}</b> s</span>`;
+      return;
+    }
+    const n = sel.size;
+    a.innerHTML = `<span class="hint grow" style="margin:0">Annonce : <b>${n || "?"} × ${esc(labelOf(S.target))}</b></span>
+      <button id="btnClaim" class="btn" type="button"${n < 1 ? " disabled" : ""}>🃏 Poser ${n || ""} carte${n > 1 ? "s" : ""}</button>`;
+    const b = $("#btnClaim");
+    if (b)
+      b.onclick = () => {
+        if (!sel.size) return;
+        doAction({ k: "claim", cards: [...sel].sort((x, y) => x - y) });
+      };
+    return;
+  }
+
+  if (S.phase === "challenge") {
+    const claim = S.claim;
+    if (!claim) {
+      a.innerHTML = '<span class="hint">Aucune annonce sur la table.</span>';
+      return;
+    }
+    if (S.paused) {
+      a.innerHTML = '<span class="hint">Partie en pause.</span>';
+      return;
+    }
+    if (S.challenger) {
+      a.innerHTML = `<span class="hint">⚔️ <b>${esc(nameOf(S.challenger))}</b> a contesté ! Révélation imminente…</span>`;
+      return;
+    }
+    if (amAlive() && claim.by !== ME) {
+      a.innerHTML = `<button id="btnChallenge" class="btn danger challenge-btn" type="button">⚔️ Contester !</button>
+        <button id="btnBelieve" class="btn believe" type="button">🤝 Croire</button>`;
+      const c = $("#btnChallenge");
+      if (c)
+        c.onclick = () => {
+          c.disabled = true;
+          doAction({ k: "challenge" });
+        };
+      const b = $("#btnBelieve");
+      if (b)
+        b.onclick = () => {
+          if (believedTs === claim.ts) return;
+          believedTs = claim.ts;
+          b.disabled = true;
+          doAction({ k: "believe" });
+        };
+      return;
+    }
+    if (claim.by === ME) {
+      a.innerHTML = '<span class="hint">🫥 Ton annonce est sur la table. Les autres peuvent contester.</span>';
+    } else {
+      a.innerHTML = '<span class="hint">👁️ Tu observes la contestation.</span>';
+    }
+    return;
+  }
+
+  if (S.phase === "reveal") {
+    const rv = S.reveal;
+    if (!rv) {
+      a.innerHTML = '<span class="hint">Révélation…</span>';
+      return;
+    }
+    a.innerHTML = `<span id="revealResult" class="hint grow" style="margin:0"></span>`;
+    updateRevealResult();
+    return;
+  }
+
+  a.innerHTML = '<span class="hint">En attente de la suite…</span>';
+}
+
+function updateRevealResult() {
+  const el = document.getElementById("revealResult");
+  if (!el || !S || !S.reveal) return;
+  const rv = S.reveal;
+  const elapsed = Date.now() + serverOffset - rv.ts;
+  if (elapsed < 1250) {
+    el.textContent = "🔫 Le barillet tourne…";
+  } else if (rv.bullet) {
+    el.textContent = `💥 BANG ! ${nameOf(rv.victim)} perd une vie.`;
+  } else {
+    el.textContent = `*clic* Chambre vide : ${nameOf(rv.victim)} survit.`;
+  }
+}
+
+function renderPlayersMini() {
+  const focusId = S.phase === "challenge" ? S.claim?.by : S.turnId;
+  const sig = [focusId, S.phase, S.players.map((p) => [p.id, p.name, p.avatar, p.alive, p.lives, p.score, p.spectator, p.raised ? 1 : 0]).join(";")].join("|");
+  if (sig === playersSig) return;
+  playersSig = sig;
+  const list = S.players.filter((p) => !p.spectator);
+  $("#playersMini").innerHTML =
+    list
+      .map((p) => {
+        const av = AVATARS[p.avatar]?.emoji || "🤠";
+        const cls = ["pmini"];
+        if (p.id === focusId) cls.push("turn");
+        if (p.id === ME) cls.push("me");
+        if (!p.alive) cls.push("dead");
+        const raised = p.raised !== false;
+        return `<div class="${cls.join(" ")}">
+          <span class="pav">${av}</span>
+          <span class="pn">${esc(p.name)}${p.id === ME ? " · toi" : ""}</span>
+          <span class="praise ${raised ? "up" : "down"}" title="${raised ? "Cartes levées" : "Cartes baissées"}">${raised ? "🃏↑" : "🃏↓"}</span>
+          <span class="pl">${p.alive ? "❤".repeat(Math.min(5, p.lives)) : "💀"}</span>
+          <span class="pl" style="color:#ffd98a">${p.score ? "⭐" + p.score : ""}</span>
+        </div>`;
+      })
+      .join("") || '<p class="hint">Aucun joueur.</p>';
+}
+
+function renderLog() {
+  const log = S.log || [];
+  const sig = log.length + ":" + (log[0]?.id || "");
+  if (sig === logSig) return;
+  logSig = sig;
+  const box = $("#log");
+  const top = box.scrollTop;
+  box.innerHTML = log
+    .slice(0, 45)
+    .map((l) => `<div class="k-${esc(l.kind)}">${esc(l.msg)}</div>`)
+    .join("") || '<div class="hint">La table est calme…</div>';
+  box.scrollTop = top;
+}
+
+function renderHostGame() {
+  const show = amHost() && (S.phase === "claim" || S.phase === "challenge" || S.phase === "reveal");
+  $("#hostGamePanel").classList.toggle("hidden", !show);
+  if (!show) return;
+  $("#btnPause").classList.toggle("hidden", S.paused);
+  $("#btnResume").classList.toggle("hidden", !S.paused);
+  $("#btnNext").disabled = S.paused || busy;
+}
+
+function renderEnd() {
+  const key = [S.phase, S.winner, S.endReason, S.ranking.map((r) => r.id).join(",")].join("|");
+  if (key === lastEndKey) return;
+  lastEndKey = key;
+
+  const w = S.players.find((p) => p.id === S.winner);
+  $("#endHero").innerHTML = w
+    ? `<span class="crown">👑</span><h1>${esc(w.name)}</h1><p class="sub">Dernier survivant de la table</p>`
+    : `<span class="crown">🏁</span><h1>Fin de la partie</h1><p class="sub">${esc(REASON[S.endReason] || "La table s'arrête.")}</p>`;
+
+  const med = ["🥇", "🥈", "🥉"];
+  $("#endRank").innerHTML = S.ranking
+    .map((r, i) => {
+      const p = S.players.find((x) => x.id === r.id);
+      const av = (p && AVATARS[p.avatar]?.emoji) || "🤠";
+      const cls = "end-row" + (r.id === S.winner ? " win" : "") + (r.alive ? "" : " dead");
+      return `<div class="${cls}">
+        <span class="medal">${med[i] || i + 1 + "."}</span>
+        <span class="eav">${av}</span>
+        <span class="en">${esc(r.name)}${r.id === ME ? " (toi)" : ""}</span>
+        <span class="estats">${r.alive ? "❤" + r.lives : "💀"} · ⭐${r.score} · 🤫${r.bluffs}</span>
+      </div>`;
+    })
+    .join("");
+
+  const host = amHost();
+  $("#btnRematch").classList.toggle("hidden", !host);
+  $("#btnWaitHost").classList.toggle("hidden", host);
+  $("#btnLeaveEnd").classList.remove("hidden");
+
+  try {
+    Party.endCard("#endMount", {
+      code,
+      isHost: host,
+      R,
+      onLeave: () => {
+        Sess.clear(GAME);
+        setTok(code, "");
+      },
+    });
+  } catch (e) {
+    console.warn("[menteurs] classement de soirée", e);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Chronomètre (basé sur l'horloge serveur)                            */
+/* ------------------------------------------------------------------ */
+/** Met à jour les éléments qui dépendent du dévoilement de la cible. */
+function syncHoldUi() {
+  if (!S) return;
+  const remain = dealRemain();
+  const banner = $("#dealBanner");
+  if (banner) {
+    const show = remain > 0 && !S.paused && S.phase === "claim";
+    banner.classList.toggle("hidden", !show);
+    if (show) {
+      const c = $("#dealCount");
+      const n = Math.max(1, Math.ceil(remain / 1000));
+      if (c && c.textContent !== String(n)) c.textContent = String(n);
+    }
+  }
+  try {
+    document.body.classList.toggle("deal-hold", remain > 0);
+  } catch (_) {
+    /* ignore */
+  }
+  renderTargetMini();
+  renderChallengeBar();
+  if (lastDealRemain > 0 && remain <= 0) {
+    // La table redevient jouable : on redonne la main au joueur concerné.
+    actionSig = "";
+    handSig = "";
+    if (S.phase === "claim") renderHud();
+  }
+  lastDealRemain = remain;
+}
+
+function tick() {
+  if (!S) return;
+  syncHoldUi();
+  const bar = $("#timerBar");
+  const fill = $("#timerFill");
+  const t = $("#hudTimer");
+  if (!bar || !fill || !t) return;
+
+  const active = phaseActive();
+  if (!active || !S.deadline) {
+    fill.style.width = "0%";
+    t.textContent = "--";
+    bar.classList.remove("low");
+    t.classList.remove("low");
+    return;
+  }
+  const phase = S.phase;
+  const total = phase === "claim" ? S.config.think * 1000 : phase === "challenge" ? (S.pileCount >= 12 ? 2200 : S.config.challenge * 1000) : 4800;
+  const now = Date.now() + serverOffset;
+  const remain = S.paused ? Math.max(0, S.pauseRemain || 0) : Math.max(0, S.deadline - now);
+  const pct = total > 0 ? Math.max(0, Math.min(1, remain / total)) : 0;
+  fill.style.width = (pct * 100).toFixed(1) + "%";
+  bar.classList.toggle("low", !S.paused && remain < 6000);
+  t.classList.toggle("low", !S.paused && remain < 6000);
+  t.textContent = S.paused ? "⏸" : Math.ceil(remain / 1000) + "s";
+  if (phase === "reveal") updateRevealResult();
+
+  if (!S.paused && remain <= 0) {
+    const nowMs = Date.now();
+    if (nowMs - lastZeroRefresh > 1600) {
+      lastZeroRefresh = nowMs;
+      refreshState();
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Rafraîchissement et réseau                                          */
+/* ------------------------------------------------------------------ */
+async function refreshState() {
+  if (!code || !token || !R) return;
+  const my = ++reqSeq;
+  try {
+    const r = await fetch(
+      `/api/menteurs/state?room=${encodeURIComponent(code)}&pid=${encodeURIComponent(ME)}&token=${encodeURIComponent(token)}`,
+      { cache: "no-store" },
+    );
+    const j = await r.json().catch(() => null);
+    if (my < appliedSeq) return;
+    if (!j) return;
+    appliedSeq = my;
+    if (j.ok) {
+      applyState(j.state);
+    } else {
+      handleStateError(j);
+    }
+  } catch (_) {
+    if (Date.now() - lastNetToast > 7000) {
+      lastNetToast = Date.now();
+      notify("📶 Connexion instable, nouvelle tentative…");
+    }
+  }
+}
+
+function sessionErrorText(j) {
+  const c = j && j.code;
+  if (c === "gone") return "Tu as été exclu de la table.";
+  if (c === "token") return "Session expirée : recrée une table ou demande un nouveau lien.";
+  if (c === "noroom") return "La table n'existe plus.";
+  return (j && j.error) || "La partie n'existe plus.";
+}
+
+function handleStateError(j) {
+  const c = j && j.code;
+  if (c === "noroom" || c === "token" || c === "gone" || /inconnu|invalide/i.test(j?.error || "")) {
+    expireSession(sessionErrorText(j));
+  } else if (Date.now() - lastNetToast > 5000) {
+    lastNetToast = Date.now();
+    notify(j?.error || "Synchronisation impossible.");
+  }
+}
+
+function expireSession(msg) {
+  if (sessionExpiring) return;
+  sessionExpiring = true;
+  const old = code;
+  const wasHost = amHost();
+  stopPolling();
+  try {
+    if (old && wasHost) Net.pub({ room: ROOM(old), game: GAME, close: true });
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    R?.leave();
+  } catch (_) {
+    /* ignore */
+  }
+  R = null;
+  S = null;
+  code = "";
+  token = "";
+  sel.clear();
+  Sess.clear(GAME);
+  if (old) setTok(old, "");
+  try {
+    scene?.sync({ players: [], phase: "lobby", turnId: "", claim: null, reveal: null, challenger: "", winner: "" });
+    scene?.showLobby();
+  } catch (_) {
+    /* ignore */
+  }
+  $("#roomPill").classList.add("hidden");
+  $("#turnPill").classList.add("hidden");
+  $("#screen-lobby").classList.add("hidden");
+  $("#screen-end").classList.add("hidden");
+  $("#hud").classList.add("hidden");
+  $("#screen-home").classList.remove("hidden");
+  setHomeMsg(msg || "La partie n'existe plus.", "err");
+  history.replaceState(null, "", location.pathname);
+  refreshOpenTables();
+  setTimeout(() => {
+    sessionExpiring = false;
+  }, 1500);
+}
+
+function startPolling() {
+  stopPolling();
+  pollTimer = setInterval(() => refreshState(), 2500);
+  pingTimer = setInterval(pingServer, 10000);
+  pubTimer = setInterval(() => publishPresence(), 15000);
+  refreshState();
+  pingServer();
+}
+function stopPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  if (pingTimer) clearInterval(pingTimer);
+  if (pubTimer) clearInterval(pubTimer);
+  pollTimer = 0;
+  pingTimer = 0;
+  pubTimer = 0;
+}
+async function pingServer() {
+  if (!code || !token) return;
+  try {
+    await postApi("/ping", { room: code, pid: ME, token });
+  } catch (_) {
+    /* silencieux : le prochain /state corrigera */
+  }
+}
+
+function publishPresence(force) {
+  if (!code) return;
+  // Seul l'hôte publie (et ferme) l'entrée publique de la table : sinon un
+  // joueur qui rejoint ou quitte effacerait la table du hub.
+  if (!S || S.phase !== "lobby" || !amHost()) return;
+  try {
+    const now = Date.now();
+    if (!force && now - lastPub < 15000) return;
+    lastPub = now;
+    Net.pub({
+      room: ROOM(code),
+      game: GAME,
+      host: meName || S.you.name || "",
+      count: S.players.length,
+      max: S.config.max,
+    });
+  } catch (_) {
+    /* présence best-effort */
+  }
+}
+
+async function refreshOpenTables() {
+  if (code) return;
+  const el = $("#openTables");
+  if (!el) return;
+  try {
+    const list = await Net.pubList("mt");
+    const n = Array.isArray(list) ? list.length : 0;
+    el.textContent = n ? `🟢 ${n} table${n > 1 ? "s" : ""} ouverte${n > 1 ? "s" : ""} en ce moment` : "Aucune table ouverte pour l'instant";
+  } catch (_) {
+    el.textContent = "Tables ouvertes : —";
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Connexion (relais + moteur autoritaire)                             */
+/* ------------------------------------------------------------------ */
+function wireRelay() {
+  if (!R) return;
+  const room = R;
+  room.on("mt-state", () => refreshState());
+  room.onHostChange(() => refreshState());
+  try {
+    Party.listen(room, code, () => {
+      Sess.clear(GAME);
+      setTok(code, "");
+    });
+  } catch (_) {
+    /* classement de soirée optionnel */
+  }
+}
+
+function afterEnter(st, opts = {}) {
+  sel.clear();
+  lastClaimAnnounced = 0;
+  lastRevealAnnounced = 0;
+  believedTs = 0;
+  lastEndKey = "";
+  lastLobbySig = "";
+  handSig = "";
+  actionSig = "";
+  noticeSig = "";
+  playersSig = "";
+  logSig = "";
+  hideBig();
+  S = null;
+  applyState(st);
+  meName = (st.you && st.you.name) || meName;
+  saveSession();
+  $("#jcode").value = code;
+  $("#screen-help").classList.add("hidden");
+  history.replaceState(null, "", location.pathname + "?c=" + encodeURIComponent(code));
+  try {
+    Share.mount("#shareMount", {
+      code,
+      url: location.origin + "/menteurs/index.html?c=" + code,
+      title: "La Table Des Menteurs",
+      text: "Rejoins ma table ! Code : " + code,
+    });
+  } catch (e) {
+    console.warn("[menteurs] partage", e);
+  }
+  ensureAudio();
+  startPolling();
+  publishPresence(true);
+  if (opts.joinedMidGame && st.phase !== "lobby" && st.you.spectator) {
+    notify("La partie a commencé : tu entres en spectateur.");
+  } else if (opts.resumed) {
+    notify("🔁 Reconnecté à la table " + code);
+  }
+}
+
+async function startCreate() {
+  ensureAudio();
+  if (busy) return;
+  const name = requireName();
+  if (!name) return;
+  busy = true;
+  $("#btnCreate").disabled = true;
+  setHomeMsg("Création de la table…", "");
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const out = await Net.enter({
+        game: GAME,
+        room: ROOM,
+        create: true,
+        onMsg: (m) => setHomeMsg(m, "err"),
+      });
+      if (!out) return;
+      const res = await postApi("/create", { room: out.code, pid: ME, name, avatar: meAvatar });
+      if (res.ok) {
+        R = out.R;
+        code = out.code;
+        token = res.token;
+        setTok(code, token);
+        wireRelay();
+        afterEnter(res.state);
+        return;
+      }
+      try {
+        out.R.leave();
+      } catch (_) {
+        /* ignore */
+      }
+      if (res.code !== "exists") {
+        setHomeMsg(res.error || "Création impossible.", "err");
+        return;
+      }
+    }
+    setHomeMsg("Impossible de trouver un code libre, réessaie.", "err");
+  } catch (e) {
+    console.error(e);
+    setHomeMsg("Connexion impossible. Vérifie le réseau.", "err");
+  } finally {
+    busy = false;
+    $("#btnCreate").disabled = false;
+  }
+}
+
+async function startJoin(rawCode, resume) {
+  ensureAudio();
+  if (busy) return;
+  const c = String(rawCode || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+  if (!/^[A-Z0-9]{4}$/.test(c)) {
+    setHomeMsg("Code invalide : 4 caractères (lettres ou chiffres).", "err");
+    $("#jcode").focus();
+    return;
+  }
+  // En reprise, on garde le pseudo et le personnage enregistrés dans la
+  // session : le profil partagé du navigateur ne doit pas écraser l'identité
+  // de la table (utile quand plusieurs onglets/appareils partagent un profil).
+  const sess = resume
+    ? (() => {
+        try {
+          return Sess.load(GAME, 12 * 3600e3);
+        } catch (_) {
+          return null;
+        }
+      })()
+    : null;
+  const sameSession = !!(sess && sess.code === c && sess.name);
+  const name = sameSession ? sess.name : requireName();
+  if (!name) return;
+  if (sameSession) {
+    meName = sess.name;
+    $("#pname").value = sess.name;
+    if (sess.avatar && AVATAR_LIST.includes(sess.avatar)) meAvatar = sess.avatar;
+  }
+  busy = true;
+  $("#btnJoin").disabled = true;
+  const hadSession = !!getTok(c);
+  setHomeMsg(resume ? "Reprise de la table " + c + "…" : "Connexion à la table " + c + "…", "");
+  try {
+    const out = await Net.enter({
+      game: GAME,
+      room: ROOM,
+      joinCode: c,
+      resume: !!resume,
+      retry: resume ? 0 : 2,
+      onMsg: (m) => setHomeMsg(m, "err"),
+    });
+    if (!out) {
+      if (resume) setTok(c, "");
+      return;
+    }
+    const res = await postApi("/join", {
+      room: c,
+      pid: ME,
+      name,
+      avatar: meAvatar,
+      token: getTok(c) || undefined,
+    });
+    if (!res.ok) {
+      try {
+        out.R.leave();
+      } catch (_) {
+        /* ignore */
+      }
+      let m = res.error || "Impossible de rejoindre cette table.";
+      if (res.code === "full") m = "La table est complète.";
+      else if (res.code === "noroom") m = "Cette table n'existe plus. Demande un nouveau code.";
+      else if (res.code === "token") m = "Session expirée : recrée une table ou demande un nouveau lien.";
+      setHomeMsg(m, "err");
+      if (res.code === "token" || res.code === "noroom") setTok(c, "");
+      return;
+    }
+    R = out.R;
+    code = c;
+    token = res.token;
+    setTok(code, token);
+    wireRelay();
+    afterEnter(res.state, { resumed: !!resume && hadSession, joinedMidGame: !resume });
+  } catch (e) {
+    console.error(e);
+    setHomeMsg("Connexion impossible. Vérifie le réseau.", "err");
+  } finally {
+    busy = false;
+    $("#btnJoin").disabled = false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Actions de jeu                                                      */
+/* ------------------------------------------------------------------ */
+async function doAction(action) {
+  if (!code || !token || busy) return false;
+  busy = true;
+  try {
+    const j = await postAction(action);
+    if (j.ok) {
+      if (action.k === "claim") sel.clear();
+      applyState(j.state);
+      return true;
+    }
+    notify(j.error || "Action refusée par le serveur.");
+    if (j.code === "noroom" || j.code === "gone" || j.code === "token") expireSession(sessionErrorText(j));
+    else refreshState();
+    return false;
+  } catch (_) {
+    notify("Action impossible : vérifie ta connexion.");
+    return false;
+  } finally {
+    busy = false;
+  }
+}
+
+async function sendConfigNow() {
+  if (!S || S.phase !== "lobby" || !amHost() || !code || !token) return false;
+  const cfg = readConfig();
+  const j = await postAction({ k: "config", config: cfg });
+  if (j.ok) {
+    applyState(j.state);
+    return true;
+  }
+  notify(j.error || "Réglages refusés.");
+  return false;
+}
+function scheduleConfig() {
+  clearTimeout(cfgTimer);
+  cfgTimer = setTimeout(() => {
+    sendConfigNow();
+  }, 500);
+}
+function readConfig() {
+  return {
+    max: clamp($("#cfgMax").value, 2, 8, 6),
+    lives: clamp($("#cfgLives").value, 1, 1, 1),
+    rounds: clamp($("#cfgRounds").value, 1, 20, 10),
+    think: clamp($("#cfgThink").value, 5, 60, 20),
+    challenge: clamp($("#cfgChallenge").value, 3, 30, 12),
+    special: !!$("#cfgSpecial").checked,
+  };
+}
+
+async function startGame() {
+  if (!amHost() || busy) return;
+  const name = requireName();
+  if (!name) return; // pseudo requis même après un rechargement
+  busy = true;
+  $("#btnStart").disabled = true;
+  try {
+    const cfg = readConfig();
+    let j = await postAction({ k: "config", config: cfg });
+    if (!j.ok) {
+      notify(j.error || "Réglages refusés.");
+      return;
+    }
+    applyState(j.state);
+    j = await postAction({ k: "start" });
+    if (j.ok) {
+      applyState(j.state);
+      publishPresence(true);
+      sfx("whoosh");
+    } else {
+      notify(j.error || "Lancement impossible.");
+      if (j.code) handleStateError(j);
+    }
+  } catch (_) {
+    notify("Lancement impossible : vérifie ta connexion.");
+  } finally {
+    busy = false;
+    $("#btnStart").disabled = false;
+    renderLobby();
+  }
+}
+
+function leaveRoom(goHome = true) {
+  const old = code;
+  const t = token;
+  const wasHost = amHost();
+  stopPolling();
+  hideBig();
+  if (old && t) {
+    // Pas d'attente : l'utilisateur peut quitter immédiatement, même si la
+    // navigation vers le hub interrompt la requête (keepalive).
+    fetch("/api/menteurs/leave", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room: old, pid: ME, token: t }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+  try {
+    if (old && wasHost) Net.pub({ room: ROOM(old), game: GAME, close: true });
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    R?.leave();
+  } catch (_) {
+    /* ignore */
+  }
+  R = null;
+  S = null;
+  code = "";
+  token = "";
+  sel.clear();
+  Sess.clear(GAME);
+  if (old) setTok(old, "");
+  try {
+    scene?.sync({ players: [], phase: "lobby", turnId: "", claim: null, reveal: null, challenger: "", winner: "" });
+    scene?.showLobby();
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    stopAmbient();
+    audioStarted = false;
+  } catch (_) {
+    /* ignore */
+  }
+  $("#roomPill").classList.add("hidden");
+  $("#turnPill").classList.add("hidden");
+  $("#screen-lobby").classList.add("hidden");
+  $("#screen-end").classList.add("hidden");
+  $("#hud").classList.add("hidden");
+  $("#screen-help").classList.add("hidden");
+  $("#screen-home").classList.remove("hidden");
+  history.replaceState(null, "", location.pathname);
+  setHomeMsg("");
+  if (goHome) refreshOpenTables();
+}
+
+/* ------------------------------------------------------------------ */
+/* Câblage de l'interface                                              */
+/* ------------------------------------------------------------------ */
+function wireUi() {
+  $("#btnCreate").addEventListener("click", startCreate);
+  $("#btnJoin").addEventListener("click", () => startJoin($("#jcode").value, false));
+  $("#jcode").addEventListener("input", () => {
+    const el = $("#jcode");
+    el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+  });
+  $("#jcode").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") startJoin($("#jcode").value, false);
+  });
+  $("#pname").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      ($("#jcode").value ? $("#btnJoin") : $("#btnCreate")).focus();
+    }
+  });
+
+  $("#btnLeave").addEventListener("click", () => {
+    const mid = !!S && S.phase !== "lobby" && S.phase !== "end";
+    if (confirm(mid ? "Quitter la partie ? Tu seras éliminé et deviendras spectateur." : "Quitter la table ?")) leaveRoom(true);
+  });
+  $("#btnLeaveEnd").addEventListener("click", () => leaveRoom(true));
+  // Le lien maison de la barre du haut doit aussi fermer proprement la table :
+  // sinon un joueur qui part en pleine partie restait connecté jusqu'au délai.
+  const hubLink = document.querySelector('.topbar a[href="/"]');
+  if (hubLink) {
+    hubLink.addEventListener("click", (e) => {
+      if (!code) return;
+      e.preventDefault();
+      const mid = !!S && S.phase !== "lobby" && S.phase !== "end";
+      if (!confirm(mid ? "Quitter la partie ? Tu seras éliminé et deviendras spectateur." : "Quitter la table ?")) return;
+      leaveRoom(false);
+      location.href = "/";
+    });
+  }
+  $("#btnStart").addEventListener("click", startGame);
+  $("#btnRematch").addEventListener("click", () => doAction({ k: "rematch" }));
+  $("#btnPause").addEventListener("click", () => doAction({ k: "pause" }));
+  $("#btnResume").addEventListener("click", () => doAction({ k: "resume" }));
+  $("#btnNext").addEventListener("click", () => doAction({ k: "nextTurn" }));
+  $("#btnEndGame").addEventListener("click", () => {
+    if (confirm("Terminer la partie maintenant ?")) doAction({ k: "end" });
+  });
+
+  $("#btnAudio").addEventListener("click", toggleMute);
+  $("#btnMute2").addEventListener("click", toggleMute);
+  $("#btnCards").addEventListener("click", () => {
+    ensureAudio();
+    if (!scene) return;
+    scene.toggleRaise();
+    updateCardButton();
+    sendRaise(scene.raised);
+    sfx("card");
+  });
+  $("#btnChallengeBig").addEventListener("click", () => {
+    ensureAudio();
+    if (!S || S.phase !== "challenge" || !S.claim || S.claim.by === ME || !amAlive()) return;
+    const b = $("#btnChallengeBig");
+    if (b) b.disabled = true;
+    sfx("accuse");
+    doAction({ k: "challenge" });
+  });
+  $("#btnHelp").addEventListener("click", () => {
+    ensureAudio();
+    $("#screen-help").classList.toggle("hidden");
+  });
+  $("#btnCloseHelp").addEventListener("click", () => $("#screen-help").classList.add("hidden"));
+  $("#screen-help").addEventListener("click", (e) => {
+    if (e.target === $("#screen-help")) $("#screen-help").classList.add("hidden");
+  });
+
+  $("#vol").value = String(Math.round(getVolume() * 100));
+  $("#vol").addEventListener("input", (e) => {
+    setVolume(Number(e.target.value) / 100);
+    try {
+      localStorage.setItem("mt:vol", String(getVolume()));
+    } catch (_) {
+      /* stockage indisponible */
+    }
+  });
+
+  $("#btnCopyCode").addEventListener("click", async () => {
+    const url = location.origin + "/menteurs/index.html?c=" + code;
+    try {
+      await navigator.clipboard.writeText(url);
+      notify("🔗 Lien de la table copié");
+    } catch (_) {
+      prompt("Copie ce lien :", url);
+    }
+  });
+
+  $("#plist").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-kick]");
+    if (!b || !amHost() || !S || S.phase !== "lobby") return;
+    const id = b.dataset.kick;
+    if (confirm(`Exclure ${nameOf(id) || "ce joueur"} du salon ?`)) doAction({ k: "kick", id });
+  });
+
+  for (const sel of ["#cfgMax", "#cfgLives", "#cfgRounds", "#cfgThink", "#cfgChallenge", "#cfgSpecial"]) {
+    const el = $(sel);
+    el.addEventListener("input", scheduleConfig);
+    el.addEventListener("change", scheduleConfig);
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && code) refreshState();
+  });
+  addEventListener("online", () => {
+    if (code) refreshState();
+  });
+  addEventListener("pointerdown", ensureAudio, { once: true });
+  addEventListener("keydown", ensureAudio, { once: true });
+  updateAudioButtons();
+}
+
+/* ------------------------------------------------------------------ */
+/* Démarrage                                                           */
+/* ------------------------------------------------------------------ */
+function boot() {
+  initProfile();
+  wireUi();
+  refreshOpenTables();
+  // Le chrono doit avancer entre deux états serveur (sinon la barre reste figée).
+  setInterval(tick, 250);
+  setInterval(() => {
+    if (!code) refreshOpenTables();
+  }, 25000);
+
+  const bp = bootParams();
+  const sess = (() => {
+    try {
+      return Sess.load(GAME, 12 * 3600e3);
+    } catch (_) {
+      return null;
+    }
+  })();
+  const nm = String($("#pname").value || (sess && sess.name) || "").trim();
+  if (!String($("#pname").value || "").trim() && sess && sess.name) $("#pname").value = sess.name;
+  if (sess && sess.avatar && AVATAR_LIST.includes(sess.avatar)) {
+    meAvatar = sess.avatar;
+    document.querySelectorAll("#avatarPick .avatar-btn").forEach((b) => {
+      const on = b.dataset.avatar === meAvatar;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  const bpToken = bp.code ? getTok(bp.code) : "";
+  const sessToken = sess && sess.code ? getTok(sess.code) : "";
+
+  if (bp.code) {
+    $("#jcode").value = bp.code;
+    if (nm && (bpToken || !sess || sess.code !== bp.code)) {
+      setTimeout(() => startJoin(bp.code, !!bpToken), 250);
+    } else if (!nm) {
+      $("#pname").focus();
+    }
+  } else if (sess && sess.code && sessToken && nm) {
+    setHomeMsg("Reprise de la table " + sess.code + "…", "");
+    setTimeout(() => startJoin(sess.code, true), 250);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

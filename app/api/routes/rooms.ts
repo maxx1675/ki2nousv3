@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { Relay, type Sink } from "../lib/relay";
+import type { Sink } from "../lib/relay";
+import { relay } from "../lib/relay-singleton";
 import { getIceServers, turnConfigured } from "../lib/ice";
 
 /**
@@ -16,7 +17,7 @@ import { getIceServers, turnConfigured } from "../lib/ice";
  *   GET  /api/rooms/ice                     -> { iceServers, turn }
  *   POST/GET /api/rooms/public              -> salons publics
  */
-export const relay = new Relay();
+export { relay };
 export const roomsRoutes = new Hono();
 const enc = new TextEncoder();
 

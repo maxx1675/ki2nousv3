@@ -161,6 +161,19 @@ const GAMES: Game[] = [
     tilt: 1.9,
     pattern: "grid",
   },
+  {
+    id: "menteurs",
+    title: "La Table Des Menteurs",
+    tagline: "Bluff, poker et revolver au saloon",
+    emoji: "🤠",
+    path: "/menteurs/index.html",
+    players: "2 – 8 joueurs",
+    duration: "15 – 35 min",
+    desc: "Bluff, accusations et trahisons dans un saloon 3D du Far West : pose tes cartes, mens si tu l’oses… et tente ta chance face au revolver (1 balle sur 6).",
+    color: "#8b4513",
+    tilt: -1.2,
+    pattern: "stripes",
+  },
 ];
 
 function useClock() {

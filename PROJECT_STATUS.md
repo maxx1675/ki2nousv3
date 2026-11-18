@@ -1,18 +1,18 @@
 # État du projet — ki2nousv3
 
-> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **15 novembre 2026**, après la refonte de **Photo Roulette en manches** (réserve, tirage de 16 photos par joueur et par manche, récap), l'ajout d'une **bibliothèque locale partagée**, l'intégration de **Codenames au Salon**, les corrections **Undercover / Blind Test / Poker Face** et le retrait des badges « Nouveau ». Modifications non commitées à la date de rédaction.
+> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **18 novembre 2026**, après la finition de **La Table Des Menteurs** (jeu 3D temps réel autoritaire côté serveur) : carte cible limitée aux figures et à l'As, dévoilement de 5 s, contestation géante, levée/abaissement des cartes visible par tous, main 3D recadrée, personnages assis corrigés et éclairage du saloon renforcé. Modifications non commitées à la date de rédaction.
 >
 > **Emplacement réel de l'application : `app/`.** C'est le dossier qui contient `package.json`, `src/`, `public/` et `api/`. La racine du dépôt ne contient que la documentation et `.opencode/`. Toutes les commandes npm doivent être lancées depuis `app/`.
 
 ## Résumé
-**Le Hub de Soirée** est une application web de jeux de groupe : un hub React/Vite, plusieurs jeux autonomes accessibles depuis un navigateur, et un serveur Hono qui relaie les salons temps réel, conserve un instantané de reprise et gère le classement cumulé de la soirée. La logique de chaque partie est exécutée dans le navigateur de l'hôte ; le serveur ne la calcule pas.
+**Le Hub de Soirée** est une application web de jeux de groupe : un hub React/Vite, plusieurs jeux autonomes accessibles depuis un navigateur, et un serveur Hono qui relaie les salons temps réel, conserve un instantané de reprise et gère le classement cumulé de la soirée. La logique de chaque partie est exécutée dans le navigateur de l'hôte ; le serveur ne la calcule pas, **sauf pour La Table Des Menteurs**, dont le moteur est autoritaire côté serveur.
 
 ## État actuel vérifié (15 novembre 2026)
 - Frontend du hub : React 19, TypeScript 5.9 (strict), Vite 7, React Router 7.
 - Pages des jeux : HTML/CSS/JavaScript autonomes sous `public/`, avec scripts globaux et ordre de chargement à respecter.
 - Code commun des jeux : `public/shared/` (`net.js`, `profile.js`, `party.js`, `gages.js`, `qr.js`, `theme.js`, **`library.js`**) et thèmes dans `public/themes/`.
 - Backend : Hono 4 + `@hono/node-server`, relais SSE + REST sous `api/`, sans base de données.
-- Tests présents : `api/lib/relay.test.ts` (13 tests du relais) et `api/lib/makeitmeme-room.test.ts` (3 tests des helpers de salon Make It Meme), soit **16 tests Vitest**.
+- Tests présents : `api/lib/relay.test.ts` (13 tests du relais), `api/lib/makeitmeme-room.test.ts` (3 tests des helpers de salon Make It Meme) et `api/lib/menteurs.test.ts` (14 tests du moteur La Table Des Menteurs), soit **30 tests Vitest**.
 - Scripts npm : `dev`, `build`, `preview`, `start`, `check`, `format`, `test`.
 - Déploiement documenté : Render (`npm ci && npm run build` puis `npm start`) ou `Dockerfile`.
 - `node_modules` installé dans `app/` : `npm run check`, `npm test` et `npm run build` s'exécutent.
@@ -26,7 +26,7 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 | Espace | Chemin | Statut réel |
 |---|---|---|
 | Hub React | `src/` | Terminé dans le code : 9 tuiles (Salon + 8 jeux), carrousel, réglages, musique, PWA. Seul le badge « 18+ » subsiste. |
-| Salon de la soirée | `public/soiree/` | Terminé pour **8 jeux** : Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, Qui de nous ?, Les Petites Vérités. |
+| Salon de la soirée | `public/soiree/` | Terminé pour **9 jeux** : Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, La Table Des Menteurs, Qui de nous ?, Les Petites Vérités. |
 | Undercover | `public/undercover/` | Terminé dans le code : rôles, mots personnalisables, salon public, gages, scores, snapshot. Vote dérivé côté hôte/invités depuis cette vague. |
 | Poker Face | `public/pokerface/` | Terminé dans le code : caméra/MediaPipe, médias, téléphone-caméra WebRTC, **jointure en cours de partie**, bibliothèque locale, gages, scores, flagrant délit des perdants. |
 | Photo Roulette | `public/photoroulette/` | Terminé dans le code : **réserve conservée toute la partie**, **16 photos (10 vidéos) tirées par joueur et par manche**, validation, questions une par une, récap de manche, `Lib`, snapshot. |
@@ -35,6 +35,7 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 | Les Petites Vérités | `public/verites/` | Terminé dans le code : barrage 18+ explicite, vérités, échange, bluff, scores. |
 | Codenames | `public/codenames/` | **Intégré au Salon** : codes 4 caractères, `Net.enter`, `Sess`, `Party.listen`/`report`/`endCard`, snapshot `{S,H}`, `R.onPromote`, score de soirée 100/0. |
 | Make It Meme | `public/makeitmeme/` | Multijoueur via le relais Hono : salons 4 caractères, hôte autoritaire, reprise, bots, vote, classement de soirée, proposé dans le Salon. |
+| La Table Des Menteurs | `public/menteurs/` + `api/lib/menteurs.ts` | **Jeu 3D temps réel autoritaire côté serveur** : saloon Three.js, 2–8 joueurs, cartes réelles, cible V/D/R/A, dévoilement 5 s, contestation au revolver, reprise, classement de soirée. |
 | Petit Bac Boom | — | **Supprimé** : la tuile du hub a été retirée ; plus aucune référence dans `src/`. |
 
 ## Fonctionnalités terminées (dans le code)
@@ -51,10 +52,10 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 - Présence en direct, couronne de l'hôte, passage de relais automatique, reprise après rechargement.
 - Choix du jeu par l'hôte diffusé à tous (`go`), classement de soirée cumulé, gages partagés.
 - Retour au salon depuis chaque jeu intégré (`Party.endCard`, `Party.listen`).
-- La liste `GAMES` expose les **8 jeux** du hub (Codenames ajouté).
+- La liste `GAMES` expose les **9 jeux** du hub (Codenames et La Table Des Menteurs ajoutés).
 
-### Jeux intégrés au salon (8)
-- Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, Qui de nous ?, Les Petites Vérités : `Net.enter`/`Net.join`, session `Sess`, `Party.report`, snapshot `R.snap`, `onPromote`/`onDemote`, retour au salon.
+### Jeux intégrés au salon (9)
+- Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, La Table Des Menteurs, Qui de nous ?, Les Petites Vérités : `Net.enter`/`Net.join`, session `Sess`, `Party.report`, snapshot `R.snap`, `onPromote`/`onDemote`, retour au salon.
 - Mode sombre : chaque jeu expose un thème clair/sombre via `public/shared/theme.js` (bouton flottant) ou son panneau intégré.
 - Barrières d'âge : case 18+ et mémorisation `soiree:18ok` pour Les Petites Vérités ; confirmation pour la banque de gages 18+ dans `gages.js`. À conserver.
 
@@ -86,6 +87,15 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 ### Codenames
 - Règles complètes (deux équipes, 25 cartes, maître-espion, assassin, listes personnalisées, pause, journal).
 - Intégration Salon : codes 4 caractères, création avec nouvel essai en cas de collision, `Net.enter`, `Sess`, `Party.listen`, snapshot `{S,H}`, `R.onPromote`, `Party.report` (100/0) et `Party.endCard`.
+
+### La Table Des Menteurs
+- **Moteur autoritaire côté serveur** (`api/lib/menteurs.ts`, routes `api/routes/menteurs.ts`) : paquet complet de 52 cartes + 2 jokers, mains privées, cible **Valet / Dame / Roi / As uniquement**, validation des tours et des cartes, chronos synchronisés, contestation, révélation, barillet 1/6, élimination et classement.
+- **Salons 4 caractères** : 2–8 joueurs, hôte, transfert automatique, exclusion, reprise après rechargement, `Sess`/`soiree:sess:mt`, classement de soirée.
+- **Dévoilement de la cible** : 5 s au centre de la table pendant lesquelles toute annonce est refusée (`roundAt`), puis la carte 3D disparaît et un badge « CIBLE » reste en bas à droite au-dessus des noms.
+- **Cartes levées / baissées** : action `raise {v}` publique, indicateur 🃏↑/🃏↓ dans la liste des joueurs et animation de l'éventail tenu par chaque personnage.
+- **Scène 3D** (`public/menteurs/scene.js`) : saloon procédural éclairé, table centrale, vraies cartes dessinées au canvas, revolvers posés sur la table et pris seulement pour tirer, mélange animé, main à la première personne qui se lève/se baisse, personnages assis dont seul le buste s'anime.
+- **Interface** : contestation géante « ⚔️ Il ment ! », HUD mobile/tactile, journal, pause/passage/terminer pour l'hôte, sons WebAudio (`audio.js`) et crédits dans l'aide.
+- **Droits** : décor, cartes et personnages procéduraux originaux ; seul le revolver low-poly de **Quaternius (CC0, Poly Pizza)** est un modèle externe.
 
 ### Serveur et partagé
 - Relais en mémoire : salons, présence, hôte, événements ciblés ou diffusés, snapshot, reprise, salons publics (Undercover), classement.
@@ -158,6 +168,7 @@ Aucun bloquant connu à la lecture du code.
 - `api/lib/relay.ts` contient la classe `Relay` et l'état des salons en mémoire.
 - `api/routes/rooms.ts` expose les routes `join`, `stream` (SSE), `event`, `snap`, `leave`, `score`, `board`, `ice` et `public`.
 - **L'hôte d'une partie exécute la logique du jeu dans son navigateur** ; le serveur relaie, conserve un instantané et gère les scores cumulés. Ne pas déplacer les règles du jeu côté serveur sans demande explicite.
+- **Exception volontaire : La Table Des Menteurs** est entièrement autoritaire côté serveur (`api/lib/menteurs.ts` + `api/routes/menteurs.ts`). Les mains privées, cibles, chronos, contestations et résultats ne doivent jamais être calculés ni acceptés depuis le navigateur.
 - **Le relais est en mémoire du processus** : un redémarrage efface salons, snapshots et classements. Il est mono-instance.
 - Le code de soirée est dérivé du nom de salon (`uc-ABCD` → `ABCD`) et doit rester à 4 caractères tant que `Party`, `Sess`, `bootParams` et `/board` ne sont pas adaptés.
 - Les fichiers partagés sont des **globals** : vérifier l'ordre des scripts et tous leurs consommateurs avant modification. `library.js` doit être chargé avant les jeux qui utilisent `Lib`.
@@ -169,8 +180,17 @@ Aucun bloquant connu à la lecture du code.
 - **Bibliothèque** : `window.Lib.list(game)` / `put({id, game, kind, label, ref, data, by, partyId})` / `del(id)` / `clear(game)` / `trim(game, keep)`. Clés Photo Roulette : `pr:<code>:m<manche>:<key>`, purge des manches précédentes à chaque sauvegarde. Poker Face utilise `game: "pokerface"`.
 - Blind Test : jeu `"bt"`, salons `bt-XXXX`, préfixe DOM `bt-`, banque `window.BT` dans `public/blindtest/bank.js`. L'hôte est autoritaire et diffuse les extraits (`play`), les invités ne calculent que leurs réponses.
 - Codenames : jeu `"cn"`, salons `cn-XXXX`, identité `TK` avec `pid=ME`, snapshot `{S,H}`, score 100 pour l'équipe gagnante et 0 pour l'autre. La logique reste côté hôte ; le relais ne relaie que les événements.
+- **La Table Des Menteurs** : moteur `api/lib/menteurs.ts` (`MENTEURS_TARGETS = ["V", "D", "R", "A"]`, `roundAt`, `raised`), routes `api/routes/menteurs.ts` (`/create`, `/join`, `/state`, `/action`), client `public/menteurs/index.html` + `scene.js` + `menteurs.css` + `audio.js` + `vendor/GLTFLoader.js`, asset `assets/revolver-quaternius.glb` (Quaternius, CC0, Poly Pizza). Actions : `config`, `start`, `pause`, `resume`, `end`, `rematch`, `kick`, `nextTurn`, `claim`, `challenge`, `believe`, `raise`. `roundAt + 5000` = verrou de dévoilement ; côté client `DEAL_HOLD = 5000` et `dealRemain()`. Un rechargement en cours de manche ne fait plus réapparaître la carte cible au centre.
 
 ## Vérifications
+
+### Réalisées le 18 novembre 2026 (La Table Des Menteurs)
+- `npm run check` (depuis `app/`) : **réussi**.
+- `npm test -- --run` : **réussi**, **30 tests** (13 relais + 3 Make It Meme + 14 moteur Menteurs), dont le test « ne tire que des figures ou l'As comme carte cible » et le verrou des 5 s.
+- `npm run build` : **réussi** (Vite + bundle serveur).
+- Analyse syntaxique de `scene.js` et du bloc module inline de `index.html` via esbuild : **aucune erreur**.
+- Navigateur (serveur de développement, salons 6QYX/4BSE) : création, 4 joueurs (hôte + 3 bots), cible **Dame** uniquement, bandeau des 5 s, carte cible retirée du centre puis badge « CIBLE », main 3D levée/baissée, contestation « ⚔️ Il ment ! », révélation, revolver, fin de partie et classement — **zéro erreur console**.
+- Vérifié visuellement : personnages assis dans l'orbit (les 4 visibles, pas de glissement de chaise), éventails de cartes tenus, éclairage renforcé, main 3D recadrée au-dessus du panneau d'action, carte cible qui ne réapparaît pas après un rechargement en cours de manche.
 
 ### Réalisées le 15 novembre 2026 (fin de vague)
 - `npm run check` (depuis `app/`) : **réussi**.
@@ -198,6 +218,7 @@ Aucun bloquant connu à la lecture du code.
 - Captures vérifiées : accueil, lobby, éditeur Make It Meme, écran médias Photo Roulette.
 
 ### Reste à vérifier
+- **La Table Des Menteurs sur appareils réels** : partie à 2–8 sur plusieurs téléphones, reconnexion, transfert d'hôte, exclusion, synchronisation des chronos et lisibilité de la main 3D sur petits écrans.
 - **Photo Roulette sur appareils réels** : tirage de 16 médias par manche depuis une grosse réserve (100–150 photos), recyclage quand la réserve s'épuise, restauration `Lib` après refresh, envoi par QR depuis un iPhone (HEIC).
 - **Codenames dans le Salon** : partie complète à deux équipes sur deux appareils (snapshot, promotion d'hôte, retour au salon, classement).
 - **Blind Test sur un vrai réseau YouTube** : playlist collée, consentement, synchronisation des extraits, vidéo indisponible.
@@ -207,6 +228,7 @@ Aucun bloquant connu à la lecture du code.
 - `npm start` sous Windows : commande POSIX toujours en échec (voir bug 5).
 
 ## Modifications récentes
+- **2026-11-18 — La Table Des Menteurs** : jeu 3D temps réel à moteur serveur autoritaire. Cible limitée à **V/D/R/A**, verrou de dévoilement de 5 s, contestation géante, action publique `raise` + indicateur 🃏↑/🃏↓, éventails de cartes tenus par les personnages, correction des chaises (buste animé séparé), main 3D recadrée, éclairage et lisibilité du saloon renforcés, carte cible non rejouée après rechargement. Nettoyage des GLB non utilisés ; seul le revolver Quaternius (CC0) reste. 14 tests moteur.
 - **2026-11-15 (vague de refonte)** — **Photo Roulette** réécrite en manches : réserve (`L.pool`), tirage de 16 médias/joueur/manche (`pickReserve`, `L.used`), remplacement ✕ (`swap`), phases `lobby`/`round`/`reveal`/`mrecap`/`ready`/`end`, deck en tourniquet (`H.qdeck`, `S.qn`), récap de manche (`S.mrecap`), persistance IndexedDB et restauration des photos de la manche. Nouveau **`public/shared/library.js`** (IndexedDB `soiree-lib`) intégré à **Poker Face** (modale « 📚 Ma bibliothèque », auto-sauvegarde) et à Photo Roulette. **Codenames** intégré au Salon (codes 4, `Net.enter`, `Sess`, `Party`, snapshot, promotion, `Party.report`, `endCard`) et ajouté à `GAMES`. **Undercover** : vote corrigé. **Poker Face** : jointure en cours de partie, négociation WebRTC renforcée, jauge agrandie. **Blind Test** : gate sonore et reprise après geste. **Hub** : badges « Nouveau » retirés, `18+` conservé.
 - **2026-11-15** — Ajout du **Blind Test** (`public/blindtest/index.html`, `bank.js`, `themes/blindtest.css`) avec tuile hub et entrée Salon. Refonte précédente de **Photo Roulette** (16 photos validées, replay). **Poker Face** : flagrant délit des perdants.
 - **2026-11-14** — Vague de corrections jeux : mode sombre partagé, Make It Meme au Salon + attente de `go`, Codenames créable, Undercover, Qui de nous, Poker Face, Photo Roulette.
@@ -227,10 +249,10 @@ Aucun bloquant connu à la lecture du code.
 10. **Documentation à aligner** : `ARCHITECTURE.md` (commandes depuis `app/`, limites du relais, `library.js`), `app/README.md` (`npm start` sous Windows), `AGENTS.md` (préciser `cd app`).
 
 ## À compléter après chaque tâche importante
-- Date : 2026-11-15
-- Objectif : refondre Photo Roulette en manches avec réserve et tirage par manche ; ajouter une bibliothèque locale ; intégrer Codenames au Salon ; corriger les votes Undercover, la lecture Blind Test et la jointure Poker Face ; retirer les badges « Nouveau ».
-- Fichiers / zones modifiés : `app/public/photoroulette/index.html` ; `app/public/shared/library.js` (nouveau) ; `app/public/pokerface/index.html` ; `app/public/blindtest/index.html` ; `app/public/codenames/index.html` ; `app/public/soiree/index.html` ; `app/public/undercover/index.html` ; `app/src/pages/Home.tsx` ; `PROJECT_STATUS.md`. `app/public/shared/net.js` restauré à l'identique (patch de test retiré).
-- Décisions techniques à conserver : hôte navigateur autoritaire, relais inchangé ; Photo Roulette = réserve locale + tirage `maxN()` par manche/joueur + recyclage, `cfg.rounds`/`cfg.qper`, phases `lobby`/`round`/`reveal`/`mrecap`/`ready`/`end`, persistance `Lib` de la manche ; bibliothèque = IndexedDB `soiree-lib` (`window.Lib`) ; Codenames = codes 4, snapshot `{S,H}`, `Party.report` 100/0.
-- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (16) ; `npm run build` réussi ; syntaxe des scripts inline vérifiée ; parcours navigateur Photo Roulette à 3 joueurs (manches, récap, remplacement, fin de partie, zéro erreur console) ; verrouillage des votes avant `t0` vérifié.
-- Problèmes connus / limites : réserve Photo Roulette non persistée après refresh (seule la manche courante l'est) ; Codenames à valider sur appareils réels ; Blind Test à valider sur un vrai réseau YouTube ; barrière 18+ de Qui de nous inchangée ; test multi-onglets impossible sans patch `sessionStorage` (retiré).
-- Prochaine étape concrète : tester Photo Roulette sur deux téléphones avec une réserve de 100+ photos, puis une partie Codenames complète depuis le Salon.
+- Date : 2026-11-18
+- Objectif : finir **La Table Des Menteurs** — cible limitée aux figures/As, dévoilement 5 s, contestation, cartes levées/baissées visibles, main 3D recadrée, personnages assis sans glitch, décor et éclairage du saloon, carte cible non rejouée après rechargement.
+- Fichiers / zones modifiés : `app/api/lib/menteurs.ts` (`MENTEURS_TARGETS`, `roundAt`, `raised`, action `raise`), `app/api/lib/menteurs.test.ts` (14 tests), `app/api/routes/menteurs.ts` (déjà en place), `app/public/menteurs/index.html` (verrou 5 s, badges, contestation géante, aide/crédits), `app/public/menteurs/scene.js` (rig des personnages, éventails, mains, cible, éclairage), `app/public/menteurs/menteurs.css`, `app/public/menteurs/audio.js`, `app/public/menteurs/assets/revolver-quaternius.glb`, `PROJECT_STATUS.md`, `ARCHITECTURE.md`.
+- Décisions techniques à conserver : moteur **autoritaire côté serveur** (exception assumée à la règle « hôte navigateur ») ; cible exclusivement `V`, `D`, `R`, `A` ; `roundAt + 5000` = verrou de dévoilement ; `raised` public et action `raise` purement visuelle ; chaise/jambes fixes et seul le buste (`rig`) s'anime ; pas de déplacement des cartes de la main au survol (émissif seulement) ; la carte cible 3D ne s'affiche que si les 5 s ne sont pas écoulées.
+- Vérifications lancées et résultats : `npm run check` réussi ; `npm test -- --run` réussi (**30 tests**) ; `npm run build` réussi ; syntaxe esbuild vérifiée ; parcours navigateur Menteurs à 4 joueurs (cible Dame, verrou 5 s, badge, contestation, revolver, fin de partie, classement) et contrôle visuel de l'orbit ; zéro erreur console.
+- Problèmes connus / limites : validation multi-téléphones à faire ; room en mémoire (redémarrage = perte des salons) ; test multi-identités limité par le `localStorage` partagé entre onglets.
+- Prochaine étape concrète : partie réelle à 3–8 téléphones, puis vérifier la lisibilité de la main 3D et des noms sur petits écrans.

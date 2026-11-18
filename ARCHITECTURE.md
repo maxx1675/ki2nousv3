@@ -46,6 +46,7 @@ Chaque jeu est une page autonome sous `public/<jeu>/index.html` :
 - `public/blindtest/index.html` (banque musicale `public/blindtest/bank.js`)
 - `public/undercover/index.html`
 - `public/pokerface/index.html`
+- `public/menteurs/index.html` (+ `scene.js` Three.js, `audio.js`, `menteurs.css`, `vendor/three.module.js`, `vendor/GLTFLoader.js`, `assets/revolver-quaternius.glb`)
 
 Une partie du JavaScript et du CSS est intégrée directement aux pages. Il faut donc lire le fichier de la page avant de supposer qu'il existe un module JS séparé.
 
@@ -80,6 +81,12 @@ Contrat réseau décrit par `api/routes/rooms.ts` :
 - `GET /api/rooms/ice` : paramètres ICE/TURN.
 - `POST/GET /api/rooms/public` : présence temporaire des salons publics.
 
+**La Table Des Menteurs** est la seule exception : son moteur est autoritaire côté serveur, pas dans le navigateur de l'hôte.
+- `api/lib/menteurs.ts` : moteur en mémoire (`MenteursEngine`) — paquet 52 + 2 jokers, mains privées, cible limitée à `V`/`D`/`R`/`A`, tours, chronos (`roundAt`, `deadline`), contestation/révélation, barillet, éliminations, classement, `raised` public et action `raise`.
+- `api/routes/menteurs.ts` : `/api/menteurs/create`, `/join`, `/state`, `/action`, avec limites de débit séparées.
+- `api/lib/menteurs.test.ts` : 14 tests du moteur.
+- Le client `public/menteurs/index.html` ne fait qu'afficher l'état public et envoyer des actions ; il ne reçoit jamais les mains des autres joueurs.
+
 Le relais est gardé en mémoire du processus serveur : un redémarrage efface les salons en cours. Ne pas annoncer une persistance durable des salons sans l'avoir implémentée et testée.
 
 ## 6. Configuration et déploiement
@@ -89,7 +96,11 @@ Le relais est gardé en mémoire du processus serveur : un redémarrage efface l
 - `.env` et `.env.*` sont ignorés par Git. Ne jamais demander à l'utilisateur de transmettre les secrets ; utiliser les noms de variables sans exposer leurs valeurs.
 
 ## 7. Tests et prudence lors des changements
-- Les tests connus ciblent le relais (`api/lib/relay.test.ts`).
+- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`) et le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`) — 30 tests Vitest.
 - Une modification du protocole d'événement doit être vérifiée côté client et serveur, pas uniquement dans les tests du serveur.
 - Les jeux étant exécutés dans de vrais navigateurs de téléphone, les changements d'interface doivent aussi prendre en compte tactile, viewport mobile, permissions média/caméra et reconnexion lorsque cela s'applique.
 - Ne pas changer une API partagée sans rechercher ses consommateurs et adapter les pages concernées.
+
+## 8. Crédits des assets
+- `public/menteurs/assets/revolver-quaternius.glb` : revolver low-poly de **Quaternius**, licence **CC0**, via **Poly Pizza**.
+- Le reste du saloon, les cartes, la table et les personnages de La Table Des Menteurs sont des modèles procéduraux créés dans `public/menteurs/scene.js` (aucune autre ressource externe). Les autres GLB téléchargés pour évaluation ont été retirés du dépôt.
