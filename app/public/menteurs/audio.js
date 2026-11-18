@@ -10,7 +10,11 @@ function makeCtx() {
   if (ctx) return ctx;
   const C = window.AudioContext || window.webkitAudioContext;
   if (!C) return null;
-  ctx = new C();
+  try {
+    ctx = new C();
+  } catch (_) {
+    return null;
+  }
   master = ctx.createGain();
   master.gain.value = muted ? 0 : volume;
   master.connect(ctx.destination);
@@ -19,9 +23,42 @@ function makeCtx() {
 
 export function initAudio() {
   const c = makeCtx();
-  if (c && c.state === "suspended") c.resume().catch(() => {});
+  if (!c) return null;
+  if (c.state === "suspended") c.resume().catch(() => {});
   return c;
 }
+
+/**
+ * Déverrouille vraiment la WebAudio.
+ * À appeler DANS un geste utilisateur (clic, touche) : Chrome, Firefox et
+ * Safari créent un contexte « suspended » tant qu'aucun son n'a été lancé
+ * pendant une interaction. On ne considère l'audio prêt que lorsque le
+ * contexte est réellement passé à « running ».
+ * @returns {Promise<boolean>}
+ */
+export async function unlockAudio() {
+  const c = makeCtx();
+  if (!c) return false;
+  try {
+    // Safari iOS : jouer un buffer muet dans le geste débloque la sortie.
+    const b = c.createBuffer(1, 1, 22050);
+    const s = c.createBufferSource();
+    s.buffer = b;
+    s.connect(c.destination);
+    s.start(0);
+  } catch (_) {
+    /* pas bloquant */
+  }
+  if (c.state !== "running") {
+    try {
+      await c.resume();
+    } catch (_) {
+      /* le navigateur a refusé : on retentera au prochain geste */
+    }
+  }
+  return c.state === "running";
+}
+
 export function setMuted(m) {
   muted = !!m;
   if (master) master.gain.value = muted ? 0 : volume;
@@ -37,16 +74,6 @@ export function getVolume() {
   return volume;
 }
 
-function env(gain, dur, peak = 0.2, attack = 0.008) {
-  const c = makeCtx();
-  if (!c) return null;
-  const g = c.createGain();
-  g.gain.setValueAtTime(0.0001, c.currentTime);
-  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), c.currentTime + attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
-  g.connect(gain);
-  return g;
-}
 function tone(freq, dur, type = "sine", peak = 0.16, slide = 0, delay = 0) {
   const c = makeCtx();
   if (!c || muted) return;
@@ -119,13 +146,41 @@ export function sfx(name) {
       noise(0.08, 0.22, 1600);
       break;
     case "gunshot":
-      noise(0.35, 0.75, 1800);
-      tone(90, 0.32, "sawtooth", 0.3, -50);
-      tone(55, 0.4, "sine", 0.22, -20, 0.01);
+      // claquement sec + détonation grave + souffle
+      noise(0.07, 0.55, 6500);
+      noise(0.4, 0.8, 1500);
+      tone(110, 0.3, "sawtooth", 0.3, -60);
+      tone(52, 0.5, "sine", 0.26, -18, 0.01);
       break;
     case "empty":
       tone(1100, 0.05, "square", 0.14, -800);
       noise(0.04, 0.1, 900);
+      break;
+    case "cock":
+      // chien armé : deux petits crans métalliques
+      noise(0.035, 0.22, 5200);
+      tone(2200, 0.025, "square", 0.06, -1500);
+      noise(0.03, 0.16, 5200);
+      tone(1500, 0.03, "square", 0.05, -1000, 0.09);
+      break;
+    case "trigger":
+      noise(0.03, 0.12, 3800);
+      tone(1200, 0.02, "square", 0.05, -800);
+      break;
+    case "heartbeat":
+      tone(58, 0.18, "sine", 0.24, -14);
+      tone(52, 0.2, "sine", 0.18, -10, 0.2);
+      tone(46, 0.16, "sine", 0.1, -8, 0.4);
+      break;
+    case "breath":
+      noise(0.55, 0.075, 850);
+      tone(150, 0.5, "sine", 0.02, 45, 0.05);
+      break;
+    case "unlock":
+      tone(523, 0.16, "triangle", 0.09);
+      tone(784, 0.2, "triangle", 0.07, 0, 0.09);
+      tone(1046, 0.26, "sine", 0.05, 0, 0.18);
+      noise(0.05, 0.08, 2400);
       break;
     case "win":
       [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.22, "triangle", 0.1, 0, i * 0.14));
@@ -172,31 +227,70 @@ export function sfx(name) {
 }
 
 const PENTA = [196, 220, 247, 294, 330, 392, 440, 494, 587];
+let ambNote = 0;
+
+/**
+ * Démarre la musique d'ambiance. Ne fait rien tant que la WebAudio n'est
+ * pas réellement débloquée (contexte « running ») : c'est ce qui rendait
+ * le son silencieux sur le site déployé.
+ * @returns {boolean} vrai si l'ambiance tourne
+ */
 export function startAmbient() {
   const c = initAudio();
-  if (!c || ambientGain) return;
+  if (!c) return false;
+  if (ambientGain) return true;
+  if (c.state !== "running") return false;
+
   ambientGain = c.createGain();
-  ambientGain.gain.value = 0.12;
+  const t0 = c.currentTime;
+  ambientGain.gain.setValueAtTime(0.0001, t0);
+  ambientGain.gain.exponentialRampToValueAtTime(0.13, t0 + 1.8);
   ambientGain.connect(master);
-  // murmure de saloon : bruit filtré très bas
-  const b = noiseBuf(6);
+
+  // Murmure de saloon : bruit filtré + lent souffle pour éviter la boucle
+  // statique et donner l'impression d'une salle vivante.
+  const b = noiseBuf(8);
   if (b) {
     const s = c.createBufferSource();
     s.buffer = b;
     s.loop = true;
     const f = c.createBiquadFilter();
     f.type = "lowpass";
-    f.frequency.value = 420;
+    f.frequency.value = 520;
+    const hp = c.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 140;
     const g = c.createGain();
-    g.gain.value = 0.035;
-    s.connect(f);
+    g.gain.value = 0.05;
+    const lfo = c.createOscillator();
+    lfo.frequency.value = 0.09;
+    const lfoGain = c.createGain();
+    lfoGain.gain.value = 180;
+    lfo.connect(lfoGain);
+    lfoGain.connect(f.frequency);
+    s.connect(hp);
+    hp.connect(f);
     f.connect(g);
     g.connect(ambientGain);
     s.start();
+    lfo.start();
     ambientGain._murmur = s;
+    ambientGain._lfo = lfo;
   }
+
+  // Nappe grave discrète, comme un piano lointain.
+  const drone = c.createOscillator();
+  drone.type = "sine";
+  drone.frequency.value = 55;
+  const droneGain = c.createGain();
+  droneGain.gain.value = 0.018;
+  drone.connect(droneGain);
+  droneGain.connect(ambientGain);
+  drone.start();
+  ambientGain._drone = drone;
+
   const playNote = () => {
-    if (!ctx || muted) return;
+    if (!ctx || muted || ctx.state !== "running") return;
     const f = PENTA[Math.floor(Math.random() * PENTA.length)];
     const o = ctx.createOscillator();
     o.type = Math.random() < 0.5 ? "triangle" : "sine";
@@ -204,33 +298,50 @@ export function startAmbient() {
     const g = ctx.createGain();
     const t = ctx.currentTime;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.025, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+    g.gain.exponentialRampToValueAtTime(0.02, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
     o.connect(g);
     g.connect(ambientGain);
     o.start(t);
-    o.stop(t + 2.3);
+    o.stop(t + 2.5);
+  };
+  const playBarSound = () => {
+    if (!ctx || muted || ctx.state !== "running") return;
+    const r = Math.random();
+    if (r < 0.34) {
+      // verre posé sur le comptoir
+      tone(1700 + Math.random() * 500, 0.16, "sine", 0.018, -260);
+    } else if (r < 0.68) {
+      // craquement de plancher
+      tone(70 + Math.random() * 30, 0.32, "sawtooth", 0.012, -18);
+    } else {
+      // éclat de rire lointain
+      for (let i = 0; i < 3; i++) tone(240 + i * 14, 0.07, "triangle", 0.012, 24, i * 0.09);
+    }
   };
   playNote();
   ambTimer = window.setInterval(() => {
-    if (!document.hidden) {
-      playNote();
-      if (Math.random() < 0.35) setTimeout(() => tone(1200, 0.08, "sine", 0.02, -300), 300);
-    }
+    if (document.hidden) return;
+    ambNote += 1;
+    playNote();
+    if (ambNote % 4 === 0) playBarSound();
   }, 2600);
+  return true;
 }
 export function stopAmbient() {
   if (ambTimer) clearInterval(ambTimer);
   ambTimer = 0;
   if (ambientGain) {
-    try {
-      ambientGain._murmur && ambientGain._murmur.stop();
-    } catch {
-      /* déjà arrêté */
+    for (const key of ["_murmur", "_lfo", "_drone"]) {
+      try {
+        ambientGain[key] && ambientGain[key].stop();
+      } catch (_) {
+        /* déjà arrêté */
+      }
     }
     try {
       ambientGain.disconnect();
-    } catch {
+    } catch (_) {
       /* déjà déconnecté */
     }
     ambientGain = null;

@@ -77,6 +77,48 @@ body{
   outline:3px solid var(--amber);outline-offset:2px;
 }
 
+/* ---------------- invite d'activation du son ---------------- */
+.sound-prompt{
+  position:fixed;z-index:46;left:50%;top:calc(54px + env(safe-area-inset-top,0px));
+  transform:translateX(-50%);
+  display:flex;align-items:center;gap:9px;
+  width:min(620px,calc(100vw - 18px));
+  background:linear-gradient(180deg,rgba(60,32,14,.97),rgba(24,12,5,.98));
+  border:2px solid rgba(224,176,90,.7);border-radius:14px;
+  padding:7px 9px 7px 12px;
+  box-shadow:0 12px 34px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.08);
+  font:700 .82rem system-ui,sans-serif;color:var(--mt-parch);
+  animation:mt-prompt-in .25s ease-out;
+}
+@keyframes mt-prompt-in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.sound-prompt .sp-ico{font-size:1.35rem;line-height:1;filter:drop-shadow(0 2px 3px #000);animation:mt-wobble 2.4s ease-in-out infinite}
+.sound-prompt .sp-txt{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.2}
+.sound-prompt .sp-txt b{color:#ffd98a;font-size:.86rem}
+.sound-prompt .sp-txt small{color:var(--muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sound-prompt .btn{flex:none;white-space:nowrap}
+.sound-prompt .sp-x{
+  flex:none;width:28px;height:28px;border-radius:8px;cursor:pointer;
+  background:rgba(0,0,0,.3);border:1px solid rgba(224,176,90,.3);color:var(--muted);
+  font:900 .8rem system-ui,sans-serif;
+}
+.icon-btn.sound-off{border-color:rgba(255,197,49,.8);animation:mt-sound-pulse 2.2s ease-in-out infinite}
+@keyframes mt-sound-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,197,49,0)}50%{box-shadow:0 0 0 5px rgba(255,197,49,.18)}}
+/* L'invite ne doit jamais recouvrir le HUD ni le panneau d'accueil. */
+body.needs-audio .screen,
+body.needs-audio #screen-home{padding-top:calc(112px + env(safe-area-inset-top,0px))}
+body.needs-audio .hud{padding-top:calc(112px + env(safe-area-inset-top,0px))}
+@media (max-width:620px){
+  .sound-prompt{gap:7px;padding:7px 8px 7px 10px}
+  .sound-prompt .sp-txt small{display:none}
+  body.needs-audio .screen,
+  body.needs-audio #screen-home{padding-top:calc(108px + env(safe-area-inset-top,0px))}
+  body.needs-audio .hud{padding-top:calc(106px + env(safe-area-inset-top,0px))}
+}
+@media (max-height:640px) and (orientation:landscape){
+  .sound-prompt .sp-txt small{display:none}
+  body.needs-audio .hud{padding-top:calc(92px + env(safe-area-inset-top,0px))}
+}
+
 /* ---------------- écrans / panneaux ---------------- */
 .screen{
   position:absolute;inset:0;z-index:10;overflow-y:auto;overflow-x:hidden;

@@ -30,6 +30,15 @@
 
   <div id="bigmsg" class="bigmsg hidden" role="status" aria-live="polite"></div>
 
+  <!-- Invite sonore : les navigateurs bloquent la musique et les tirs tant
+       que le joueur n'a pas cliqué. Elle disparaît dès que l'audio démarre. -->
+  <div id="soundPrompt" class="sound-prompt hidden" role="region" aria-label="Activer le son">
+    <span class="sp-ico" aria-hidden="true">🔊</span>
+    <span class="sp-txt"><b>Le saloon est muet</b><small>Active la musique et les coups de revolver.</small></span>
+    <button id="btnSoundOn" class="btn small" type="button">Activer le son</button>
+    <button id="btnSoundLater" class="sp-x" type="button" title="Ignorer" aria-label="Ignorer l'invite sonore">✕</button>
+  </div>
+
   <!-- ======================= ACCUEIL ======================= -->
   <section id="screen-home" class="screen">
     <div class="panel">
@@ -146,6 +155,7 @@ Fin de partie
 • Le classement de la soirée est mis à jour automatiquement.
 
 Commandes
+• Son : clique une fois sur 🔊 (ou sur l'invite en haut de l'écran) pour autoriser la musique d'ambiance et les coups de revolver. Les navigateurs bloquent l'audio tant qu'aucun geste n'a eu lieu.
 • Vue à la première personne : tes cartes sont devant toi. Utilise « 🃏 Lever / Baisser » (ou clique une carte 3D) pour les voir ou dégager la table.
 • Sélectionne 1 à 3 cartes dans ta main, puis « Poser ».
 • Clique « Contester ! » si tu crois à un mensonge.
@@ -249,7 +259,7 @@ de Quaternius, CC0, téléchargé sur Poly Pizza.</div>
 <script type="module">
 "use strict";
 import { SaloonScene, AVATARS } from "./scene.js";
-import { initAudio, startAmbient, stopAmbient, setMuted, isMuted, setVolume, getVolume, sfx } from "./audio.js";
+import { startAmbient, stopAmbient, setMuted, setVolume, getVolume, sfx, unlockAudio } from "./audio.js";
 
 /* ------------------------------------------------------------------ */
 /* Constantes et petits utilitaires                                    */
@@ -335,7 +345,9 @@ let challengeSig = "";
 let targetMiniSig = "";
 let lastRaisedSent = null;
 let lastDealRemain = 0;
-let audioStarted = false;
+let audioUnlocked = false;
+let soundPromptDismissed = false;
+let lastAudioTry = 0;
 let muted = false;
 let sessionExpiring = false;
 
@@ -388,38 +400,99 @@ function sendRaise(v) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Audio                                                               */
+/* Audio — activation explicite (les navigateurs bloquent l'autoplay)  */
 /* ------------------------------------------------------------------ */
 try {
   muted = localStorage.getItem("mt:mute") === "1";
-  const v = Number(localStorage.getItem("mt:vol"));
+  // Attention : Number(null) vaut 0 ! Sans ce test, un nouveau joueur
+  // démarrait avec un volume à 0 et n'entendait jamais le revolver.
+  const raw = localStorage.getItem("mt:vol");
+  const v = raw === null ? NaN : Number(raw);
   if (Number.isFinite(v) && v >= 0 && v <= 1) setVolume(v);
 } catch (_) {
   /* stockage indisponible */
 }
 setMuted(muted);
 
-function ensureAudio() {
-  if (audioStarted) return;
-  try {
-    initAudio();
-    startAmbient();
-    audioStarted = true;
-  } catch (_) {
-    /* audio refusé par le navigateur */
-  }
+function showSoundPrompt(force) {
+  if (audioUnlocked || muted) return;
+  if (soundPromptDismissed && !force) return;
+  const p = $("#soundPrompt");
+  if (!p) return;
+  p.classList.remove("hidden");
+  document.body.classList.add("needs-audio");
 }
+function hideSoundPrompt() {
+  $("#soundPrompt")?.classList.add("hidden");
+  document.body.classList.remove("needs-audio");
+}
+
+/**
+ * Tente de débloquer la WebAudio. Doit être appelée depuis un geste
+ * utilisateur. On ne marque l'audio comme actif qu'une fois le contexte
+ * réellement « running », sinon le navigateur restait muet pour de bon.
+ */
+let audioUnlocking = false;
+async function ensureAudio(force) {
+  if (audioUnlocked) {
+    try {
+      startAmbient();
+    } catch (_) {
+      /* ambiance déjà lancée ou contexte fermé */
+    }
+    return true;
+  }
+  if (muted && !force) {
+    hideSoundPrompt();
+    return false;
+  }
+  if (audioUnlocking) return false;
+  audioUnlocking = true;
+  let ok = false;
+  try {
+    ok = await unlockAudio();
+  } catch (_) {
+    ok = false;
+  } finally {
+    audioUnlocking = false;
+  }
+  if (!ok) {
+    showSoundPrompt(!!force);
+    updateAudioButtons();
+    return false;
+  }
+  audioUnlocked = true;
+  hideSoundPrompt();
+  try {
+    startAmbient();
+  } catch (_) {
+    /* le jeu doit rester jouable sans musique */
+  }
+  sfx("unlock");
+  updateAudioButtons();
+  return true;
+}
+
 function updateAudioButtons() {
   const a = $("#btnAudio");
+  const running = audioUnlocked && !muted;
   if (a) {
-    a.textContent = muted ? "🔇" : "🔊";
-    a.title = muted ? "Activer le son" : "Couper le son";
+    a.textContent = muted ? "🔇" : audioUnlocked ? "🔊" : "🔈";
+    a.title = muted || !audioUnlocked ? "Activer le son" : "Couper le son";
     a.setAttribute("aria-label", a.title);
+    a.classList.toggle("sound-off", !running);
   }
   const b = $("#btnMute2");
-  if (b) b.textContent = muted ? "Activer le son" : "Couper le son";
+  if (b) b.textContent = muted ? "Activer le son" : audioUnlocked ? "Couper le son" : "🔊 Activer le son";
 }
+
 function toggleMute() {
+  // Premier clic sur le haut-parleur : on active le son au lieu de couper
+  // un audio qui n'a jamais démarré.
+  if (!muted && !audioUnlocked) {
+    ensureAudio(true);
+    return;
+  }
   muted = !muted;
   setMuted(muted);
   try {
@@ -428,8 +501,25 @@ function toggleMute() {
     /* stockage indisponible */
   }
   updateAudioButtons();
-  if (!muted) ensureAudio();
+  if (muted) hideSoundPrompt();
+  else ensureAudio(true);
 }
+
+// Le navigateur peut refuser le premier déverrouillage (iframe, Safari…) :
+// on retente à chaque geste, sans harceler le joueur avec l'invite.
+function retryAudioFromGesture() {
+  if (audioUnlocked || muted || audioUnlocking) return;
+  const now = performance.now();
+  if (now - lastAudioTry < 700) return;
+  lastAudioTry = now;
+  ensureAudio(false);
+}
+
+// L'invite apparaît après le chargement, même si le joueur ne touche à rien.
+setTimeout(() => {
+  if (!audioUnlocked && !muted) showSoundPrompt();
+}, 900);
+
 
 /* ------------------------------------------------------------------ */
 /* Profil et avatar                                                    */
@@ -637,12 +727,16 @@ function announceFromState(st, prevPhase) {
   if (st.reveal && st.reveal.ts && st.reveal.ts !== lastRevealAnnounced) {
     lastRevealAnnounced = st.reveal.ts;
     const rv = st.reveal;
-    big(rv.liar ? "🤥 Mensonge démasqué !" : "✅ C'était la vérité !", 1800);
+    big(rv.liar ? "🤥 Mensonge démasqué !" : "✅ C'était la vérité !", 1600);
     const ts = rv.ts;
     setTimeout(() => {
       if (!S || !S.reveal || S.reveal.ts !== ts) return;
+      big("😰 Il hésite…", 1500);
+    }, 1700);
+    setTimeout(() => {
+      if (!S || !S.reveal || S.reveal.ts !== ts) return;
       big(rv.bullet ? "💥 BANG !" : "*clic* Chambre vide", 2300);
-    }, 1250);
+    }, 3450);
   }
   if (prevPhase !== "end" && st.phase === "end") {
     if (st.winner) big(`🏆 ${nameOf(st.winner)} remporte la table !`, 3200);
@@ -1029,7 +1123,11 @@ function updateRevealResult() {
   const rv = S.reveal;
   const elapsed = Date.now() + serverOffset - rv.ts;
   if (elapsed < 1250) {
-    el.textContent = "🔫 Le barillet tourne…";
+    el.textContent = "🔫 Il sort lentement son revolver…";
+  } else if (elapsed < 2400) {
+    el.textContent = "🌀 Le barillet tourne…";
+  } else if (elapsed < 3450) {
+    el.textContent = "😰 Il hésite… le canon tremble.";
   } else if (rv.bullet) {
     el.textContent = `💥 BANG ! ${nameOf(rv.victim)} perd une vie.`;
   } else {
@@ -1661,7 +1759,6 @@ function leaveRoom(goHome = true) {
   }
   try {
     stopAmbient();
-    audioStarted = false;
   } catch (_) {
     /* ignore */
   }
@@ -1726,6 +1823,14 @@ function wireUi() {
 
   $("#btnAudio").addEventListener("click", toggleMute);
   $("#btnMute2").addEventListener("click", toggleMute);
+  $("#btnSoundOn").addEventListener("click", () => {
+    soundPromptDismissed = false;
+    ensureAudio(true);
+  });
+  $("#btnSoundLater").addEventListener("click", () => {
+    soundPromptDismissed = true;
+    hideSoundPrompt();
+  });
   $("#btnCards").addEventListener("click", () => {
     ensureAudio();
     if (!scene) return;
@@ -1790,8 +1895,11 @@ function wireUi() {
   addEventListener("online", () => {
     if (code) refreshState();
   });
-  addEventListener("pointerdown", ensureAudio, { once: true });
-  addEventListener("keydown", ensureAudio, { once: true });
+  // Le déverrouillage doit se produire PENDANT le geste, d'où la capture.
+  // On retente à chaque clic/touche tant que le contexte n'est pas « running ».
+  document.addEventListener("pointerdown", retryAudioFromGesture, { capture: true, passive: true });
+  document.addEventListener("keydown", retryAudioFromGesture, { capture: true });
+  document.addEventListener("touchstart", retryAudioFromGesture, { capture: true, passive: true });
   updateAudioButtons();
 }
 

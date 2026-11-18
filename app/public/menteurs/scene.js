@@ -12,6 +12,19 @@ import * as THREE from "./vendor/three.module.js";
 import { GLTFLoader } from "./vendor/GLTFLoader.js";
 import { sfx } from "./audio.js";
 
+/* Rythme de la contestation au revolver. Volontairement lent : on laisse
+   le tireur hésiter, armer le chien et trembler avant la détonation.
+   La phase « reveal » côté serveur dure 4,8 s : on garde une marge. */
+const REVEAL_TIMING = Object.freeze({
+  draw: 3600,
+  spin: 1250,
+  cock: 2150,
+  breath: 2450,
+  hesitate: 2700,
+  fire: 3450,
+  end: 4550,
+});
+
 /* ------------------------------------------------------------------ */
 /* Personnages                                                         */
 /* ------------------------------------------------------------------ */
@@ -1331,7 +1344,9 @@ export class SaloonScene {
     this.ownId = "";
     this.ownAngle = -Math.PI / 2;
     this.ownSeated = false;
-    this.tableY = 1.13;
+    // Table abaissée : les joueurs assis sont enfin visibles au-dessus du
+    // tapis (avant, seule leur tête dépassait).
+    this.tableY = 0.93;
 
     this.hand = [];
     this.handCards = [];
@@ -1391,7 +1406,9 @@ export class SaloonScene {
     const w = window.innerWidth;
     const h = window.innerHeight;
     this.camera.aspect = w / h;
-    this.camera.fov = w < 700 ? 66 : 58;
+    // Champ large : à la première personne, on voit les voisins de table
+    // au lieu d'avoir seulement leurs étiquettes.
+    this.camera.fov = w < 700 ? 80 : 68;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.low ? 1.25 : 2));
@@ -1815,6 +1832,18 @@ export class SaloonScene {
     deckBox.rotation.y = 0.4;
     table.add(deckBox);
 
+    // Tout ce qui est au-dessus du piètement descend de 20 cm : le tapis
+    // passe sous la poitrine des personnages assis au lieu de les cacher.
+    const topGroup = new THREE.Group();
+    for (const part of [...table.children]) {
+      if (part.position.y > 0.9) {
+        table.remove(part);
+        topGroup.add(part);
+      }
+    }
+    topGroup.position.y = -0.2;
+    table.add(topGroup);
+
     s.add(table);
     this.table = table;
   }
@@ -2061,6 +2090,7 @@ export class SaloonScene {
       ch.rotation.set(0, Math.atan2(-Math.cos(a), -Math.sin(a)), 0);
       ch.userData.index = i;
       ch.userData.isTurn = false;
+      ch.scale.setScalar(1.1);
       ch.userData.cardsUp = p.raised !== false;
       if (!this.guns.has(p.id)) this.addGun(p.id);
       const lab = this.labelsMap.get(p.id);
@@ -2444,8 +2474,18 @@ export class SaloonScene {
   /* ------------------------------------------------------------------ */
   playReveal(reveal) {
     const now = performance.now();
-    this.revealFx = { t0: now, shooter: reveal.shooter, victim: reveal.victim, bullet: !!reveal.bullet, fired: false, spun: false };
-    this.setAnim(reveal.shooter, "draw", 2200);
+    this.revealFx = {
+      t0: now,
+      shooter: reveal.shooter,
+      victim: reveal.victim,
+      bullet: !!reveal.bullet,
+      fired: false,
+      spun: false,
+      cocked: false,
+      breathed: false,
+      beat: 0,
+    };
+    this.setAnim(reveal.shooter, "draw", REVEAL_TIMING.draw);
     const victimCh = this.chars.get(reveal.victim);
     const target = new THREE.Vector3();
     if (victimCh) victimCh.getWorldPosition(target);
@@ -2460,7 +2500,14 @@ export class SaloonScene {
       aimPos.y += 0.3;
       aimPos.x += (target.x - aimPos.x) * 0.12;
       aimPos.z += (target.z - aimPos.z) * 0.12;
-      gun.userData.fx = { t0: now, aimQuat, aimPos, fireAt: 1050, endAt: 1900, fired: false };
+      gun.userData.fx = {
+        t0: now,
+        aimQuat,
+        aimPos,
+        fireAt: REVEAL_TIMING.fire,
+        endAt: REVEAL_TIMING.end,
+        fired: false,
+      };
     }
   }
 
@@ -2607,11 +2654,28 @@ export class SaloonScene {
     const fx = this.revealFx;
     if (!fx) return;
     const dt = now - fx.t0;
-    if (!fx.spun && dt > 330) {
+    if (!fx.spun && dt > REVEAL_TIMING.spin) {
       fx.spun = true;
       sfx("spin");
     }
-    if (!fx.fired && dt >= 1050) {
+    if (!fx.cocked && dt > REVEAL_TIMING.cock) {
+      fx.cocked = true;
+      sfx("cock");
+    }
+    if (!fx.breathed && dt > REVEAL_TIMING.breath) {
+      fx.breathed = true;
+      sfx("breath");
+    }
+    // Deux battements de cœur de plus en plus proches du tir.
+    if (fx.beat === 0 && dt > 1500) {
+      fx.beat = 1;
+      sfx("heartbeat");
+    }
+    if (fx.beat === 1 && dt > 2880) {
+      fx.beat = 2;
+      sfx("heartbeat");
+    }
+    if (!fx.fired && dt >= REVEAL_TIMING.fire) {
       fx.fired = true;
       const isVictimMe = fx.victim === this.ownId;
       this.camShake = (fx.bullet ? 0.2 : 0.07) + (isVictimMe ? 0.12 : 0);
@@ -2619,8 +2683,14 @@ export class SaloonScene {
       this.setAnim(fx.shooter, "shoot", 1500);
       this.setAnim(fx.victim, fx.bullet ? "hit" : "flinch", 2400);
       if (fx.bullet) setTimeout(() => sfx("gasp"), 260);
+    } else if (!fx.fired && dt > REVEAL_TIMING.fire - 700) {
+      // dernier petit clic de gâchette, juste avant le coup
+      if (!fx.triggered) {
+        fx.triggered = true;
+        sfx("trigger");
+      }
     }
-    if (dt > 3700) this.revealFx = null;
+    if (dt > REVEAL_TIMING.end) this.revealFx = null;
   }
 
   flashGun(gun, power) {
@@ -2643,11 +2713,44 @@ export class SaloonScene {
       const fx = u.fx;
       if (fx) {
         const dt = now - fx.t0;
-        const aimK = 1 - Math.pow(1 - Math.min(1, dt / 380), 3);
+        // Le bras monte lentement : 900 ms au lieu d'un mouvement sec.
+        const aimK = 1 - Math.pow(1 - Math.min(1, dt / 900), 3);
         gun.quaternion.slerpQuaternions(u.baseQuat, fx.aimQuat, aimK);
         gun.position.lerpVectors(u.basePos, fx.aimPos, aimK);
-        if (u.cyl) u.cyl.rotation.z += 0.6;
-        if (u.hammer) u.hammer.rotation.x = -0.35 - Math.sin(Math.min(1, dt / fx.fireAt) * Math.PI) * 0.55;
+
+        // Tremblement qui s'amplifie à mesure que la gâchette se rapproche.
+        if (dt < fx.fireAt + 180) {
+          const tension = Math.min(1, Math.max(0, (dt - 500) / (fx.fireAt - 500)));
+          const tremble = 0.0025 + tension * 0.011;
+          gun.position.x += Math.sin(dt * 0.028) * tremble;
+          gun.position.y += Math.cos(dt * 0.034) * tremble * 0.8;
+          // Hésitation au milieu du duel : le canon retombe puis se relève.
+          const h = Math.max(0, 1 - Math.abs(dt - REVEAL_TIMING.hesitate) / 430);
+          if (h > 0) {
+            gun.position.y -= 0.11 * h;
+            gun.rotateX(0.16 * h);
+          }
+        }
+
+        if (u.cyl) {
+          const spinK = Math.max(0, 1 - Math.abs(dt - REVEAL_TIMING.spin) / 320);
+          u.cyl.rotation.z += 0.02 + spinK * 0.95;
+        }
+        if (u.hammer) {
+          const cockK = Math.max(0, Math.min(1, (dt - (REVEAL_TIMING.cock - 350)) / 500));
+          const back = dt > fx.fireAt ? Math.max(0, 1 - (dt - fx.fireAt) / 90) : cockK;
+          u.hammer.rotation.x = -0.35 - back * 0.75;
+        } else {
+          // Le revolver GLB n'a pas de chien séparé : tout l'arme se relève
+          // pendant l'armement, puis retombe avec le recul au moment du tir.
+          const cockK = Math.max(0, Math.min(1, (dt - (REVEAL_TIMING.cock - 420)) / 420));
+          const settle = dt >= fx.fireAt ? Math.min(1, (dt - fx.fireAt) / 260) : 0;
+          if (cockK > 0) gun.rotateX(-0.2 * cockK * (1 - settle));
+          if (dt >= fx.fireAt) {
+            const recoil = Math.max(0, 1 - (dt - fx.fireAt) / 230);
+            gun.rotateX(-0.4 * recoil);
+          }
+        }
         if (dt >= fx.fireAt && !fx.fired) {
           fx.fired = true;
           this.flashGun(gun, 1);
@@ -2724,9 +2827,12 @@ export class SaloonScene {
         foreRX = -0.2;
         bob += 0.06 * env;
       } else if (anim.name === "draw") {
-        armRX = -1.45 * env;
-        foreRX = -0.3;
-        headY = 0.08;
+        // Il lève le revolver lentement puis tient la visée en tremblant.
+        const rise = Math.min(1, k / 0.32);
+        const hes = Math.max(0, 1 - Math.abs(k - 0.74) / 0.1);
+        armRX = -1.45 * rise + 0.16 * hes + Math.sin(t * 24) * 0.012 * rise;
+        foreRX = -0.3 + 0.1 * hes;
+        headY = 0.08 - 0.05 * hes + Math.sin(t * 31) * 0.008 * rise;
         bodyX = 0.04;
       } else if (anim.name === "shoot") {
         armRX = -1.78 * env;
@@ -2826,10 +2932,11 @@ export class SaloonScene {
 
     if ((mode === "game" || mode === "reveal") && this.ownSeated) {
       const a = this.ownAngle;
-      const r = 2.9;
+      // Recul derrière sa chaise : les voisins de table entrent dans le champ.
+      const r = 3.75;
       const bob = Math.sin(t * 1.3) * 0.006;
-      target.set(Math.cos(a) * r, 1.62 + bob, Math.sin(a) * r);
-      look.set(0, 1.05, 0);
+      target.set(Math.cos(a) * r, 1.72 + bob, Math.sin(a) * r);
+      look.set(0, 0.98, 0);
       // très léger recul pendant la révélation pour voir le canon
       if (this.revealFx && this.revealFx.shooter === this.ownId) {
         target.y += 0.03;
