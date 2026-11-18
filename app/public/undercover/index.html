@@ -136,7 +136,15 @@ function privOf(id){
 function sendPrivs(){S.pl.forEach(p=>{if(p.id===ME)L.priv=privOf(p.id);else R&&R.emit("priv",privOf(p.id),p.id)})}
 function startRound(){
  if(!local())sendPrivs();S.r++;S.clues=[];S.tally=null;S.rv=null;H.votes={};S.fal=null;H.fal=null;S.cand=null;S.revoted=false;
- const al=shuffle(aliveIds());S.order=al;S.turn=0;
+ // Nouvel ordre à chaque manche : on évite qu'un mélange retombe sur le même
+ // ordre (ou le même premier joueur), ce qui donnait l'impression qu'il ne changeait pas.
+ const prev=S.order.slice();let al=shuffle(aliveIds());
+ if(al.length>1){
+  const pa=prev.filter(id=>al.includes(id));
+  if(pa.length===al.length&&pa.every((id,i)=>id===al[i]))al=[...al.slice(1),al[0]];
+  if(prev[0]===al[0]){const j=1+Math.floor(Math.random()*(al.length-1));[al[0],al[j]]=[al[j],al[0]]}
+ }
+ S.order=al;S.turn=0;
  S.meme=S.cfg.meme&&al.length?pickR(al):null;
  S.ph="describe";S.end=S.cfg.tDesc?Net.now()+S.cfg.tDesc*1000:0;
  const fs=al.find(i=>H.role[i].sp.includes("falafel"));
@@ -153,7 +161,8 @@ function startVote(){
 function act(d){
  if(!isHost||!S)return;const p=d.p;const host=local()||p===S.host;
  const k=d.k;
- if(k==="join"){if(!pl(p)&&S.ph==="lobby"&&S.pl.length<BASE_MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),alive:true,sc:0,gh:false});}
+ if(k==="join"){if(!pl(p)&&S.ph==="lobby"&&S.pl.length<BASE_MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),alive:true,sc:0,gh:false});
+  else if(!pl(p)&&S.ph!=="lobby"&&R)R.emit("late",{},p);}
  else if(k==="add"&&host&&local()&&S.ph==="lobby"&&S.pl.length<BASE_MAX){const n=(d.n||"").trim().slice(0,14);if(n)S.pl.push({id:uid(),n,alive:true,sc:0,gh:false})}
  else if(k==="del"&&host&&S.ph==="lobby")S.pl=S.pl.filter(x=>x.id!==d.id);
  else if(k==="cfg"&&host&&S.ph==="lobby")deepSet(S.cfg,d.path,d.v);
@@ -367,7 +376,9 @@ function rResult(){
  ${card("Déroulé",S.log.slice(-8).map(l=>`<div>${esc(l)}</div>`).join("")||"—")}
  ${S.tally&&S.tally.length?card("Votes",S.tally.map(t=>`<div>${esc(nm(t.f))} → <b>${esc(nm(t.t))}</b></div>`).join("")):""}
  ${S.win?`<div class="ban">${S.win==="civil"?"Il ne reste que des Civils !":"Il ne reste qu’un seul Civil !"}</div>`:""}
+ <div id="ptmid"></div>
  ${isHost?`<button class="btn primary big" data-a="next">${S.win?"Voir les résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte continue…</p>`}`;
+ if(!local()&&R&&code&&!S.win)Party.endCard("#ptmid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("uc")});
 }
 function rEnd(){
  const w=S.win,txt=w==="civil"?"Les Civils gagnent ! 🎉":w==="inf"?"Les infiltrés gagnent ! 😈":"Mr. White a deviné le mot ! 🎯";
@@ -422,6 +433,7 @@ async function startOnline(mode,create,joinCode,o){
   if(S.ph!=="vote"||d.vn!==L.vn)L.voted=false;
   L.vn=d.vn;if(votersNow.includes(ME))L.voted=true;render()});
  R.on("priv",d=>{L.priv=d;render()});
+ R.on("late",()=>{if(L.lateT&&Date.now()-L.lateT<8000)return;L.lateT=Date.now();toast("La partie a déjà commencé : tu rejoindras le salon à la prochaine partie.")});
  R.on("act",d=>{if(isHost)act(d)});
  R.onPromote(onPromoted);
  R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l’hôte");render()});

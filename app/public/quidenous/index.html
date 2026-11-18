@@ -315,6 +315,25 @@ function showRejoin(){
   $("#rejoin").hidden=false;
   $("#rejoin-info").textContent=`Salon ${s.code} · ${s.name||"Joueur inconnu"}`;
 }
+/* Les photos sont compressées (<36 ko) : sessionStorage suffit à survivre à un
+   rechargement accidentel sans les conserver au-delà de l'onglet. */
+function mediaKey(){ return "qdn:media:"+code; }
+function loadLocalMedia(){
+  try{
+    const d=JSON.parse(sessionStorage.getItem(mediaKey())||"null");
+    if(!d) return;
+    if(Array.isArray(d.photos)) L.photos=d.photos.filter(u=>typeof u==="string"&&u.startsWith("data:image/")).slice(0,12);
+    if(Array.isArray(d.used)) L.used=d.used.filter(Number.isInteger);
+    if(typeof d.ok==="boolean") L.ok=d.ok;
+    if(d.out&&Array.isArray(d.out.parts)&&d.out.parts.length){
+      L.out={i:d.out.i,parts:d.out.parts.slice()};
+      PH={i:L.out.i,n:L.out.parts.length,parts:L.out.parts.slice(),img:"data:image/jpeg;base64,"+L.out.parts.join("")};
+    }
+  }catch(e){}
+}
+function saveLocalMedia(){
+  try{ if(code) sessionStorage.setItem(mediaKey(),JSON.stringify({photos:L.photos,used:L.used,ok:L.ok,out:L.out})); }catch(e){}
+}
 function rejoin(){
   const s=getSess(); if(!s) return;
   $("#rejoin").hidden=true;
@@ -335,6 +354,11 @@ function bind(){
   R.on("st", d => { if(isHost||!d||typeof d.h!=="string"||!Array.isArray(d.pl)) return; S=d; lastSt=Date.now(); render(); });
   R.on("act", d => { if(isHost) hostAct(d); });
   R.on("pic", onPic);
+  R.on("needpic", d=>{
+    if(!d||!S||S.ph!=="play"||!S.r||S.r.type!=="photo"||d.i!==S.i||!PH.img) return;
+    const b=String(PH.img).split(",")[1]||"", parts=b.match(/.{1,3000}/g)||[];
+    parts.forEach((p,c)=>setTimeout(()=>R&&R.emit("pic",{i:PH.i,c,n:parts.length,d:p}).catch(()=>{}),c*70));
+  });
   R.onPeers(() => { if(!S) return; if(isHost){ const b=S.st; auto(); if(S.st!==b) bc(); } render(); });
   R.onPromote(onPromoted);
   R.onDemote(() => { isHost=false; toast("Un autre joueur est devenu l’hôte"); L.rk=""; render(); });
@@ -351,7 +375,9 @@ function onPromoted(snap){
 }
 function tick(){
   if(!R) return; tk++;
-  if(isHost){ if(tk%2===0) bc(); }
+  if(isHost){ if(tk%2===0) bc();
+    if(S && S.ph==="play" && S.r && S.r.type==="photo" && !PH.img && tk%2===0 && R) R.emit("needpic",{i:S.i}).catch(()=>{});
+  }
   else{
     if(!S || !S.pl.some(p=>p.id===ME)) R.emit("act",{k:"join",p:ME,n:L.name},"host").catch(()=>{});
     // Re-send profile during the lobby: the first consent/photo update can race
@@ -601,6 +627,7 @@ async function addPhotos(files){
       L.photos.push(u);
     }catch(e){}
   }
+  saveLocalMedia();
 }
 function refreshPhotos(){
   $("#cons").checked=L.ok; $("#files").disabled=!L.ok||L.photos.length>=12;
@@ -625,6 +652,7 @@ function sendPhoto(){
   const d=u.split(",")[1], parts=d.match(/.{1,3000}/g);
   L.out={i:S.i,parts}; L.used.push(L.cand); L.cand=-1;
   PH={i:S.i,n:parts.length,parts:parts.slice(),img:"data:image/jpeg;base64,"+d};
+  saveLocalMedia();
   pushPhoto(); send({k:"phshow"});
 }
 function onPic(d){
@@ -654,6 +682,10 @@ function render(){
     if(ae&&(ae.tagName==="TEXTAREA"||ae.tagName==="INPUT")&&ae.closest("#game")&&L.rk===k){ const w=$("#wcount"); if(w) w.textContent=wcount(); return; }
     const sk=[S.i,S.st,S.sub,S.gi].join("|"), nw=L.sk!==sk; L.sk=sk;
     game(); L.rk=k;
+    if(S.st==="res"&&S.i<(S.N||1)-1){
+      const d=document.createElement("div");d.id="midLobby";$("#game").append(d);
+      Party.endCard(d,{R,code,isHost,compact:true,onLeave:()=>Sess.clear("qdn")});
+    }
     $("#game").classList.toggle("stepfx",nw);
     if(nw&&(S.st==="res"||S.sub==="r")) confetti();
   }
@@ -946,8 +978,8 @@ async function enter(host,o){
   msg("Connexion…");
   const x=await Net.enter({game:"qdn",room:c=>"qdn-"+c,create:host,code:o.code,joinCode:jc,resume:o.resume,wasHost:o.wasHost,retry:o.retry,onMsg:msg});
   if(!x){ if(o.resume) showRejoin(); return; }
-  R=x.R; code=x.code; isHost=R.host; S=null; bind(); msg("");
-  setInterval(()=>Sess.touch("qdn"),20000);
+  R=x.R; code=x.code; isHost=R.host; S=null; bind(); msg(""); loadLocalMedia();
+  if(!L.touch)L.touch=setInterval(()=>Sess.touch("qdn"),20000);
   if(isHost){
     const sn=R.initSnap;
     if(sn&&sn.S){ S=sn.S; DECK=Array.isArray(sn.DECK)?sn.DECK:[]; if(sn.cfg) L.cfg=sn.cfg; S.h=ME; }
@@ -960,6 +992,7 @@ async function enter(host,o){
 }
 function leave(){
   try{ if(R) R.leave(); }catch(e){}
+  try{ if(code) sessionStorage.removeItem(mediaKey()); }catch(e){}
   R=null; S=null; isHost=false; L.out=null; L.ok=false; L.photos=[]; PH={i:-1,n:0,parts:[],img:""};
   $("#warn").hidden=true; show("home");
 }
@@ -1142,7 +1175,7 @@ function act(a,b){
     case "other": L.used.push(L.cand); L.cand=-1; render(); break;
     case "show": sendPhoto(); break;
     case "phskip": send({k:"phskip"}); break;
-    case "rmph": L.photos.splice(+b.dataset.k,1); refreshPhotos(); syncProf(); break;
+    case "rmph": L.photos.splice(+b.dataset.k,1); saveLocalMedia(); refreshPhotos(); syncProf(); break;
   }
 }
 document.addEventListener("click", e => { const b=e.target.closest("[data-act]"); if(!b) return; if(b.hasAttribute("data-bd")&&e.target!==b) return; act(b.dataset.act,b); });
@@ -1160,7 +1193,7 @@ document.addEventListener("change", e => {
   else if(t.dataset.pack){ if(!isHost) return; L.cfg.packs=L.cfg.packs||{}; L.cfg.packs[t.dataset.pack]=t.checked; bc(); render(); }
   else if(t.id==="packonly"){ if(!isHost) return; L.cfg.packOnly=t.checked; bc(); render(); }
   else if(t.id==="usemine"){ L.cfg.useMine=t.checked; }
-  else if(t.id==="cons"){ L.ok=t.checked; if(!L.ok) L.photos=[]; refreshPhotos(); syncProf(); }
+  else if(t.id==="cons"){ L.ok=t.checked; if(!L.ok) L.photos=[]; saveLocalMedia(); refreshPhotos(); syncProf(); }
   else if(t.id==="files"){ addPhotos(t.files).then(()=>{ t.value=""; refreshPhotos(); syncProf(); }); }
 });
 $("#custom").addEventListener("input", e => { L.cfg.custom=e.target.value; });

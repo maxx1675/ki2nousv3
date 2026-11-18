@@ -44,10 +44,22 @@ const Party={
     return`<h2>🏆 Classement de la soirée <small class="hint" style="display:inline">· ${b.games} jeu${b.games>1?"x":""}</small></h2>`+b.rows.map((r,i)=>`<div class="prow ${r.cid===meCid?"me":""}"><span>${med[i]||(i+1)+"."} ${esc((r.e?r.e+" ":"")+r.n)}</span><small class="hint" style="margin:0">${r.wins?"🏅"+r.wins:""}</small><span class="pts">${r.total}</span></div>`).join("")+`<p class="hint">Points par jeu : 10 · 7 · 5 · 4 · 3 · 2, puis 1 pour la participation.</p>`;
   },
   _bc:{},
+  /** Bouton de retour au salon utilisable à la fin d'une manche comme à la fin de la partie.
+      L'hôte diffuse « back » pour que tous les invités le suivent sans ressaisir le code. */
+  leaveCard(el,o){
+    el=typeof el==="string"?document.querySelector(el):el;if(!el)return;
+    const title=o.title||"🎪 La soirée continue ?";
+    const text=o.text||(o.isHost?"Retourne au salon : tout le monde te suit, et tu choisis le prochain jeu ou tu arrêtes là.":"Retourne au salon de la soirée pour arrêter ou enchaîner sur un autre jeu.");
+    el.innerHTML=`<div class="card center"><h2>${title}</h2><p class="hint" style="margin-top:0">${text}</p><button type="button" class="btn primary big" data-pt="back">🎪 Retour au salon de la soirée</button></div>`;
+    el.onclick=e=>{if(!e.target.closest("[data-pt=back]"))return;
+      if(o.isHost&&o.R)o.R.emit("back",{code:o.code}).catch(()=>{});
+      setTimeout(()=>{(o.onLeave&&o.onLeave());location.href=Party.salon(o.code)},o.isHost?250:0)};
+  },
   /** Écran de fin de jeu : classement de la soirée + retour au salon (l'hôte peut enchaîner sur un autre jeu).
       Rappelable à chaque rendu : le classement est mis en cache pour éviter les clignotements. */
   endCard(el,o){
     el=typeof el==="string"?document.querySelector(el):el;if(!el)return;
+    if(o.compact){this.leaveCard(el,o);return}
     const code=o.code,c=this._bc[code]||(this._bc[code]={html:"",ts:0,busy:false});
     const paint=()=>{if(!el.isConnected)return;
       el.innerHTML=(c.html?`<div class="card sw-board">${c.html}</div>`:"")+

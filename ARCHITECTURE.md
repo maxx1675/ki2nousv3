@@ -15,7 +15,7 @@ Architecture en trois parties :
 - Hono `^4.8.3`, `@hono/node-server`.
 - Vitest `4.0.16`, Prettier `^3.7.4`, esbuild `^0.27.2`.
 
-Commandes depuis la racine du projet :
+Commandes depuis le dossier `app/` (celui qui contient `package.json`) :
 ```bash
 npm install       # installation initiale
 npm run dev       # serveur de développement, port 3000
@@ -39,21 +39,29 @@ Le hub référence les mini-jeux par leurs chemins publics. Lorsqu'on renomme ou
 
 ## 4. Jeux côté navigateur
 Chaque jeu est une page autonome sous `public/<jeu>/index.html` :
-- `public/soiree/index.html`
+- `public/soiree/index.html` (salon de la soirée)
 - `public/quidenous/index.html`
 - `public/verites/index.html`
 - `public/photoroulette/index.html`
 - `public/blindtest/index.html` (banque musicale `public/blindtest/bank.js`)
 - `public/undercover/index.html`
 - `public/pokerface/index.html`
+<<<<<<< HEAD
 - `public/menteurs/index.html` (+ `scene.js` Three.js, `audio.js`, `menteurs.css`, `vendor/three.module.js`, `vendor/GLTFLoader.js`, `assets/revolver-quaternius.glb`)
+=======
+- `public/codenames/index.html`
+- `public/makeitmeme/index.html` (données `templates.js`, helpers `room-state.js`)
+- `public/skyjo/index.html`
+- `public/uno/index.html`
+>>>>>>> 3f24f1ba8d9f5f73b39e553dd73abe471dd35420
 
 Une partie du JavaScript et du CSS est intégrée directement aux pages. Il faut donc lire le fichier de la page avant de supposer qu'il existe un module JS séparé.
 
 Code réutilisé :
 - `public/shared/net.js` : identité locale, code de salon, session, connexion, événements et reconnexion réseau.
 - `public/shared/profile.js` : profil, pseudo, avatar et couleur.
-- `public/shared/party.js` : partage, QR code, classement et retour au salon.
+- `public/shared/party.js` : partage, QR code, classement de soirée, `Party.report`, `Party.listen` et retour au salon (`Party.endCard`, `Party.leaveCard`, option `compact`).
+- `public/shared/library.js` : bibliothèque locale IndexedDB (`window.Lib`) utilisée par Poker Face et Photo Roulette.
 - `public/shared/gages.js` : fonctions et données de gages.
 - `public/shared/qr.js` : fonctions QR code.
 - `public/shared/base.css`, `components.css`, `widgets.css` : styles communs.
@@ -64,8 +72,10 @@ Ces fichiers partagés ont un impact transversal : avant de les modifier, recher
 ## 5. Backend / temps réel
 - `api/boot.ts` : création de l'application Hono, montage des routes et démarrage du serveur.
 - `api/routes/rooms.ts` : endpoints HTTP des salons et flux SSE.
+- `api/routes/youtube.ts` : lecture serveur des playlists YouTube.
 - `api/lib/relay.ts` : classe `Relay`, gestion des salons, connexions, hôte, événements, snapshots, nettoyage, salons publics et scores.
-- `api/lib/relay.test.ts` : tests du relais.
+- `api/lib/youtube.ts` : validation, parsing RSS/page et cache des playlists YouTube.
+- `api/lib/relay.test.ts`, `api/lib/makeitmeme-room.test.ts`, `api/lib/youtube.test.ts` : tests Vitest.
 - `api/lib/env.ts` : variables d'environnement et configuration.
 - `api/lib/ice.ts` : serveurs ICE/TURN ; nécessaires aux fonctions WebRTC concernées.
 - `api/lib/logger.ts` : journalisation.
@@ -80,6 +90,7 @@ Contrat réseau décrit par `api/routes/rooms.ts` :
 - `POST /api/rooms/score` et `GET /api/rooms/board` : scores et classement de soirée.
 - `GET /api/rooms/ice` : paramètres ICE/TURN.
 - `POST/GET /api/rooms/public` : présence temporaire des salons publics.
+- `GET /api/youtube/playlist?list=…` : identifiants des vidéos d'une playlist YouTube (`{ ok, ids }`), avec cache mémoire de 10 min.
 
 **La Table Des Menteurs** est la seule exception : son moteur est autoritaire côté serveur, pas dans le navigateur de l'hôte.
 - `api/lib/menteurs.ts` : moteur en mémoire (`MenteursEngine`) — paquet 52 + 2 jokers, mains privées, cible limitée à `V`/`D`/`R`/`A`, tours, chronos (`roundAt`, `deadline`), contestation/révélation, barillet, éliminations, classement, `raised` public et action `raise`.
@@ -96,7 +107,11 @@ Le relais est gardé en mémoire du processus serveur : un redémarrage efface l
 - `.env` et `.env.*` sont ignorés par Git. Ne jamais demander à l'utilisateur de transmettre les secrets ; utiliser les noms de variables sans exposer leurs valeurs.
 
 ## 7. Tests et prudence lors des changements
+<<<<<<< HEAD
 - Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`) et le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`) — 30 tests Vitest.
+=======
+- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`) et les playlists YouTube (`api/lib/youtube.test.ts`), soit 19 tests Vitest.
+>>>>>>> 3f24f1ba8d9f5f73b39e553dd73abe471dd35420
 - Une modification du protocole d'événement doit être vérifiée côté client et serveur, pas uniquement dans les tests du serveur.
 - Les jeux étant exécutés dans de vrais navigateurs de téléphone, les changements d'interface doivent aussi prendre en compte tactile, viewport mobile, permissions média/caméra et reconnexion lorsque cela s'applique.
 - Ne pas changer une API partagée sans rechercher ses consommateurs et adapter les pages concernées.

@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="fr" data-anim="light" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skyjo</title>
+<meta name="theme-color" content="#2d7ff9">
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
+<style>
+.sj-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.sj-actions .btn{flex:1;min-width:130px}
+.sj-turn{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;text-align:center}
+.sj-turn .dotlive{width:11px;height:11px;border-radius:50%;background:#2fcf7a;box-shadow:0 0 0 4px color-mix(in srgb,#2fcf7a 25%,transparent);animation:sjpulse 1.4s infinite}
+@keyframes sjpulse{50%{box-shadow:0 0 0 8px color-mix(in srgb,#2fcf7a 0%,transparent)}}
+.sj-grid{display:flex;gap:6px;width:100%}
+.sj-col{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.sj-card{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:3/4;border:2.5px solid var(--edge);border-radius:10px;font:800 clamp(1rem,6vw,1.7rem)/1 "Bricolage Grotesque",system-ui,sans-serif;box-shadow:2px 2px 0 var(--sh);padding:0;overflow:hidden;user-select:none;-webkit-tap-highlight-color:transparent}
+button.sj-card{font-family:inherit;cursor:pointer}
+.sj-card.act{outline:3px solid var(--pink);outline-offset:1px;animation:sjpick .8s infinite alternate}
+@keyframes sjpick{to{transform:translateY(-2px)}}
+.sj-card.back{background:repeating-linear-gradient(45deg,#243b63 0 7px,#1a2c4e 7px 14px);color:#cfe6ff;font-size:clamp(.9rem,4vw,1.3rem);text-shadow:0 1px 0 #000}
+.sj-card.back::after{content:"";position:absolute;inset:5px;border:1.5px dashed rgba(255,255,255,.28);border-radius:6px}
+.sj-card.empty{background:transparent;border-style:dashed;border-color:color-mix(in srgb,var(--edge) 35%,transparent);box-shadow:none;opacity:.36}
+.sj-card.vneg2{background:#7ed6f2;color:#082c3d}
+.sj-card.vneg1{background:#9ee36b;color:#12330a}
+.sj-card.v0{background:#ffdc57;color:#3a2b00}
+.sj-card.v1{background:#4f9cf9;color:#fff}
+.sj-card.v2{background:#a76bff;color:#fff}
+.sj-card.v3{background:#ff5c5c;color:#fff}
+.sj-player{background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;padding:9px;box-shadow:3px 3px 0 var(--sh);min-width:0}
+.sj-player.me{box-shadow:3px 3px 0 var(--violet)}
+.sj-player.turn{border-color:#2fcf7a;box-shadow:0 0 0 3px color-mix(in srgb,#2fcf7a 30%,transparent),3px 3px 0 var(--sh)}
+.sj-player .sj-phead{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-weight:800;margin-bottom:6px;font-size:.9rem}
+.sj-player .sj-phead small{color:var(--muted);font-size:.72rem;font-weight:600}
+.sj-player .sj-card{font-size:clamp(.7rem,3.2vw,1rem);border-width:2px;border-radius:7px;box-shadow:1px 1px 0 var(--sh)}
+.sj-player .sj-grid,.sj-player .sj-col{gap:3px}
+.sj-others{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));gap:10px}
+.sj-own .sj-card{font-size:clamp(1.25rem,7vw,2rem)}
+.sj-own .sj-grid,.sj-own .sj-col{gap:7px}
+.sj-piles{display:flex;gap:14px;justify-content:center;align-items:stretch;margin:6px 0}
+.sj-pile{flex:1;max-width:150px;text-align:center}
+.sj-pile .sj-card{font-size:clamp(1.5rem,9vw,2.2rem);cursor:default}
+.sj-pile .sj-card.drawable{cursor:pointer;outline:3px solid var(--pink);outline-offset:2px;animation:sjpick .8s infinite alternate}
+.sj-pile small{display:block;color:var(--muted);font-weight:700;margin-top:4px}
+.sj-log{margin-top:10px;border-top:2px dashed var(--edge);padding-top:8px;font-size:.86rem;color:var(--muted);display:grid;gap:3px}
+.sj-log b{color:var(--ink)}
+.sj-banner{background:var(--amber);color:#1b1340;border:2.5px solid var(--edge);border-radius:12px;padding:8px 12px;font-weight:800;margin:10px 0;box-shadow:3px 3px 0 var(--sh);text-align:center}
+.sj-banner.last{background:var(--pink);color:#fff}
+.sj-score-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border-top:2px dashed var(--edge);padding:8px 0;font-weight:700}
+.sj-score-row:first-child{border-top:0}
+.sj-score-row .big{font-weight:800;font-size:1.05rem}
+.sj-score-row .tot{font-weight:800;background:var(--amber);color:#1b1340;border:2px solid var(--edge);border-radius:99px;padding:1px 9px;min-width:3.2em;text-align:center}
+.sj-double{font-size:.7rem;background:var(--danger);color:#fff;border-radius:99px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+.sj-legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sj-chip{font-size:.74rem;font-weight:800;border:2px solid var(--edge);border-radius:99px;padding:2px 8px;background:var(--surface)}
+.sj-rules{font-size:.9rem;color:var(--muted)}
+.sj-rules li{margin:4px 0}
+detail.sj-help summary{cursor:pointer;font-weight:800;color:var(--ink)}
+@media(max-width:420px){.sj-others{grid-template-columns:repeat(2,minmax(0,1fr))}.sj-own .sj-card{font-size:clamp(1.1rem,6.5vw,1.7rem)}}
+</style>
+<link rel="stylesheet" href="/themes/skyjo.css">
+</head>
+<body>
+<main class="wrap">
+<div class="top"><a href="/">← Hub</a><span id="who" class="hint"></span></div>
+<div id="app"></div>
+</main>
+<script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/gages.js"></script>
+<script src="/shared/party.js"></script>
+<script>
+"use strict";
+/* ===================== SKYJO — hôte autoritaire =====================
+   Le serveur ne relaie que les événements. L'hôte garde le paquet, les
+   grilles complètes (privées) et calcule les scores. Les clients reçoivent
+   uniquement les cartes visibles ; la carte piochée est envoyée au joueur
+   concerné par un message ciblé. */
+const MIN=2,MAX=8,COLS=4,ROWS=3,CARDS=COLS*ROWS;
+let R=null,S=null,H=null,isHost=false,code="";
+const L={name:"",drawn:null,sig:"",hl:null,hello:null,touch:null};
+const app=$("#app");
+const pl=id=>S&&S.pl.find(p=>p.id===id);
+const nm=id=>(pl(id)||{n:"?"}).n;
+const uid=()=>"p"+Math.random().toString(36).slice(2,8);
+const fmt=n=>Number.isFinite(n)?(n<0?"−"+Math.abs(n):""+n):"—";
+const fmtGain=n=>n>0?"+"+n:""+n;
+const msg=t=>{const e=$("#hmsg");if(e)e.textContent=t||""};
+const send=d=>{d.p=ME;if(isHost)act(d);else R&&R.emit("act",d,"host")};
+const log=m=>{if(!S)return;S.log=(S.log||[]).slice(-11);S.log.push(m)};
+const sortAsc=()=>[...S.pl].sort((a,b)=>a.sc-b.sc||a.n.localeCompare(b.n,"fr"));
+
+/* ===================== HÔTE : paquet, grilles, scores ===================== */
+function newState(){
+ return{ph:"lobby",host:ME,pl:[],cfg:{target:100},r:0,sid:null,order:[],turn:0,
+  drawnFrom:"",drawnCard:null,pendingFlip:false,finishing:false,queue:[],trigger:null,
+  board:{},discardTop:null,deckN:0,discardN:0,roundResult:null,over:false,reported:false,
+  starter:null,log:[]};
+}
+function newHost(){
+ return{deck:[],discard:[],grids:{},removed:{},drawn:null};
+}
+function buildDeck(){
+ const d=[];
+ for(let i=0;i<5;i++)d.push(-2);
+ for(let i=0;i<10;i++)d.push(-1);
+ for(let i=0;i<15;i++)d.push(0);
+ for(let v=1;v<=12;v++)for(let i=0;i<10;i++)d.push(v);
+ return d; // 5 + 10 + 15 + 120 = 150 cartes
+}
+function sjShuffle(a){
+ a=[...a];
+ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+ return a;
+}
+function reshuffle(){
+ if(H.deck.length||H.discard.length<2)return;
+ const top=H.discard.pop();
+ H.deck=sjShuffle(H.discard);
+ H.discard=[top];
+}
+function emptyGrid(){return Array.from({length:CARDS},()=>({v:0,up:false,gone:false}))}
+function hiddenCount(id){
+ if(H&&H.grids&&H.grids[id])return H.grids[id].filter(c=>c&&!c.gone&&!c.up).length;
+ const b=S&&S.board&&S.board[id];
+ if(!b)return 0;
+ // Côté invité on ne connaît que les cartes visibles : une case nulle
+ // dans une colonne encore présente est une carte face cachée.
+ return b.cells.filter((v,i)=>v==null&&!(b.cols||[]).includes(Math.floor(i/ROWS))).length;
+}
+function gridSum(id){
+ return (H.grids[id]||[]).reduce((s,c)=>s+(c&&!c.gone?c.v:0),0);
+}
+function visibleSum(id){
+ return (H.grids[id]||[]).reduce((s,c)=>s+(c&&!c.gone&&c.up?c.v:0),0);
+}
+function pub(revealAll){
+ if(!S)return;
+ S.board={};
+ S.pl.forEach(p=>{
+  const g=H.grids[p.id]||[];
+  S.board[p.id]={
+   cells:g.map(c=>c&&!c.gone&&(revealAll||c.up)?c.v:null),
+   cols:(H.removed[p.id]||[]).slice()
+  };
+ });
+ S.discardTop=H.discard.length?H.discard[H.discard.length-1]:null;
+ S.deckN=H.deck.length;S.discardN=H.discard.length;
+ S.turnId=S.order[S.turn]||null;
+}
+function bc(){
+ if(!R||!isHost||!S)return;
+ pub(S.ph==="round"||S.ph==="end");
+ R.emit("st",S).catch(()=>{});
+ R.snap({S,H});
+}
+function dealRound(){
+ H=newHost();
+ H.deck=sjShuffle(buildDeck());
+ H.grids={};H.removed={};
+ S.pl.forEach(p=>{
+  const g=[];
+  for(let i=0;i<CARDS;i++)g.push({v:H.deck.pop(),up:false,gone:false});
+  H.grids[p.id]=g;H.removed[p.id]=[];
+  p.round=0;p.doubled=false;
+ });
+ H.discard.push(H.deck.pop());
+ S.r++;S.ph="reveal";S.order=[];S.turn=0;S.drawnFrom="";S.drawnCard=null;
+ S.pendingFlip=false;S.finishing=false;S.queue=[];S.trigger=null;S.starter=null;
+ S.roundResult=null;S.over=false;L.drawn=null;
+ S.log=[];
+ log("Manche "+S.r+" : chaque joueur retourne 2 cartes.");
+}
+function startPlay(){
+ let best=-Infinity,cands=[];
+ S.pl.forEach(p=>{const v=visibleSum(p.id);if(v>best){best=v;cands=[p.id]}else if(v===best)cands.push(p.id)});
+ const starter=cands[Math.floor(Math.random()*cands.length)];
+ const ids=S.pl.map(p=>p.id),i=ids.indexOf(starter);
+ S.order=[...ids.slice(i),...ids.slice(0,i)];
+ S.turn=0;S.ph="play";S.drawnFrom="";S.drawnCard=null;S.pendingFlip=false;
+ S.finishing=false;S.queue=[];S.trigger=null;S.starter=starter;
+ log("Manche "+S.r+" : "+nm(starter)+" commence (plus forte somme visible).");
+}
+function startGame(){
+ if(S.pl.length<MIN)return toast("Il faut au moins "+MIN+" joueurs");
+ S.sid=uid();S.reported=false;S.pl.forEach(p=>{p.sc=0;p.round=0;p.doubled=false});
+ dealRound();bc();render();
+}
+function checkColumns(id){
+ const g=H.grids[id];if(!g)return 0;
+ const rem=H.removed[id]||(H.removed[id]=[]);
+ let n=0;
+ for(let c=0;c<COLS;c++){
+  if(rem.includes(c))continue;
+  const a=g[c*ROWS],b=g[c*ROWS+1],d=g[c*ROWS+2];
+  if(a&&b&&d&&!a.gone&&!b.gone&&!d.gone&&a.up&&b.up&&d.up&&a.v===b.v&&b.v===d.v){
+   rem.push(c);n++;
+   [a,b,d].forEach(x=>{x.gone=true;x.up=false});
+   log("✨ Colonne de 3 × "+fmt(a.v)+" retirée chez "+nm(id)+" !");
+  }
+ }
+ return n;
+}
+function hasHidden(id){
+ return hiddenCount(id)>0;
+}
+function nextRound(){
+ if(S.over){finishGame();return}
+ dealRound();bc();render();
+}
+function endRound(){
+ if(!S)return;
+ const sums={};let min=Infinity;
+ S.pl.forEach(p=>{sums[p.id]=gridSum(p.id);min=Math.min(min,sums[p.id])});
+ const tr=S.trigger||S.order[S.turn];
+ const rows=[];
+ S.pl.forEach(p=>{
+  const base=sums[p.id];
+  // Le déclencheur double s'il n'a pas STRICTEMENT le plus petit total.
+  const doubled=!!tr&&p.id===tr&&base>=min;
+  const score=doubled?base*2:base;
+  p.round=score;p.doubled=doubled;p.sc+=score;
+  rows.push({id:p.id,base,score,doubled,total:p.sc});
+ });
+ S.roundResult={rows,trigger:tr,min};
+ S.ph="round";S.over=S.pl.some(p=>p.sc>=S.cfg.target);
+ S.drawnFrom="";S.drawnCard=null;S.pendingFlip=false;S.finishing=false;S.queue=[];L.drawn=null;
+ log("Manche "+S.r+" terminée : "+nm(tr)+" déclenche la fin de manche.");
+ bc();render();
+}
+function finishGame(){
+ if(!S||S.ph==="end")return;
+ S.ph="end";S.drawnFrom="";S.drawnCard=null;S.pendingFlip=false;L.drawn=null;
+ const rank=sortAsc();
+ log("🏆 "+nm(rank[0]&&rank[0].id)+" remporte la partie avec "+rank[0].sc+" points.");
+ if(!S.reported){
+  S.reported=true;
+  // Le classement de soirée donne plus de points au score le plus haut :
+  // on envoie donc l'opposé du score Skyjo (le plus petit total gagne).
+  Party.report(R,"sj",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:-p.sc})));
+ }
+ bc();render();
+}
+function endTurn(p){
+ S.drawnFrom="";S.drawnCard=null;S.pendingFlip=false;H.drawn=null;L.drawn=null;
+ if(!S.finishing&&!hasHidden(p)){
+  S.finishing=true;S.trigger=p;
+  const ids=S.order,at=ids.indexOf(p);
+  S.queue=[...ids.slice(at+1),...ids.slice(0,at)].filter(id=>id!==p);
+  log("🔔 "+nm(p)+" a retourné toutes ses cartes : dernier tour pour les autres !");
+  if(S.queue.length){
+   S.turn=S.order.indexOf(S.queue.shift());
+  }else endRound();
+  return;
+ }
+ if(S.finishing){
+  if(S.queue.length){
+   S.turn=S.order.indexOf(S.queue.shift());
+  }else{endRound();return}
+ }else{
+  S.turn=(S.turn+1)%Math.max(1,S.order.length);
+ }
+}
+function startOnline(create,joinCode,o){
+ o=o||{};
+ let name=o.name;
+ if(!name){
+  const ps=($("#pname")||{value:""}).value.trim().slice(0,20);
+  if(!ps)return msg("Entre ton prénom 🙂");
+  Profile.set({name:ps});name=Profile.tag(ps);
+ }
+ L.name=name;
+ code=create?(o.code||mkCode()):joinCode;
+ return (async()=>{
+  try{R=await Net.join("sj-"+code,{create,resume:!!o.resume,wasHost:!!o.wasHost})}
+  catch(e){
+   if(o.retry>0&&(e.code==="noroom"||!e.status)){msg("⏳ En attente de l’hôte…");await new Promise(r=>setTimeout(r,1500));return startOnline(create,joinCode,{...o,retry:o.retry-1})}
+   if(o.resume&&!e.status&&(o.net=(o.net||0)+1)<6){msg("📶 Reconnexion…");await new Promise(r=>setTimeout(r,1800));return startOnline(create,joinCode,o)}
+   if(o.resume)Sess.clear("sj");
+   return msg(o.resume?"La partie n’existe plus. Tu peux en créer une nouvelle.":e.message);
+  }
+  isHost=R.host;
+  if(create&&!isHost){
+   R.leave();R=null;
+   if(o.code){if(o.retry>0){await new Promise(r=>setTimeout(r,1200));return startOnline(true,null,{...o,retry:o.retry-1})}return msg("Ce code est déjà utilisé, réessaie.")}
+   return startOnline(true,null,o);
+  }
+  Sess.save("sj",{code,name,host:isHost});
+  if(!L.touch)L.touch=setInterval(()=>Sess.touch("sj"),20000);
+  Party.listen(R,code,()=>Sess.clear("sj"));
+  R.on("st",d=>{
+   if(isHost||!d)return;
+   S=d;
+   if(!(S.ph==="play"&&S.order[S.turn]===ME&&S.drawnFrom==="deck"))L.drawn=null;
+   render();
+  });
+  R.on("priv",d=>{if(d&&d.k==="draw"){L.drawn=d.v;render()}});
+  R.on("act",d=>{if(isHost)act(d)});
+  R.on("late",()=>{if(L.lateT&&Date.now()-L.lateT<8000)return;L.lateT=Date.now();toast("La partie a déjà commencé : tu pourras rejoindre la prochaine.")});
+  R.onPromote(onPromoted);
+  R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l’hôte");render()});
+  if(isHost){
+   const snap=R.initSnap;
+   if(snap&&snap.S&&snap.H){S=snap.S;H=snap.H}
+   else{S=newState();H=newHost()}
+   S.host=ME;
+   if(S.ph!=="lobby"&&(!H||!Object.keys(H.grids||{}).length))backToLobby();
+   hostLoops();
+   act({k:"join",p:ME,n:name});
+  }
+  startHello();render();
+ })();
+}
+function hostLoops(){
+ if(!L.hl)L.hl=setInterval(()=>{if(isHost&&S)bc()},2500);
+}
+function backToLobby(){
+ if(!S)return;
+ S.ph="lobby";S.sid=null;S.r=0;S.order=[];S.turn=0;S.drawnFrom="";S.drawnCard=null;
+ S.pendingFlip=false;S.finishing=false;S.queue=[];S.trigger=null;S.roundResult=null;S.over=false;S.reported=false;
+ S.board={};S.pl.forEach(p=>{p.sc=0;p.round=0;p.doubled=false});
+ H=newHost();L.drawn=null;
+ toast("Partie interrompue : retour au salon");
+}
+function onPromoted(snap){
+ isHost=true;
+ if(snap&&snap.S&&snap.H){S=snap.S;H=snap.H}
+ if(!S)S=newState();
+ if(!H)H=newHost();
+ S.host=ME;
+ if(!pl(ME))S.pl.push({id:ME,n:L.name||"Hôte",sc:0,round:0,doubled:false});
+ if(S.ph!=="lobby"&&(!H||!Object.keys(H.grids||{}).length))backToLobby();
+ Sess.save("sj",{code,name:L.name,host:true});
+ hostLoops();L.sig="";toast("👑 Tu es maintenant l’hôte");bc();render();
+}
+function startHello(){
+ if(L.hello)return;
+ const hello=()=>{if(!R||isHost)return;if(!S||!pl(ME))R.emit("act",{k:"join",p:ME,n:L.name},"host").catch(()=>{})};
+ hello();L.hello=setInterval(hello,2000);
+}
+
+/* ===================== ACTIONS HÔTE ===================== */
+function act(d){
+ if(!isHost||!S)return;
+ const p=d.p,k=d.k,host=p===S.host;
+ if(k==="join"){
+  if(!pl(p)&&S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:String(d.n||"Joueur").slice(0,20),sc:0,round:0,doubled:false});
+  else if(!pl(p)&&S.ph!=="lobby"&&R)R.emit("late",{},p);
+ }
+ else if(k==="del"&&host&&S.ph==="lobby")S.pl=S.pl.filter(x=>x.id!==d.id);
+ else if(k==="cfg"&&host&&S.ph==="lobby"&&d.target!=null)S.cfg.target=[50,100].includes(+d.target)?+d.target:100;
+ else if(k==="start"&&host&&S.ph==="lobby"){startGame();return}
+ else if(k==="reveal"&&S.ph==="reveal"){
+  const g=H.grids[p];if(!g)return;
+  const i=+d.i;
+  if(!Number.isInteger(i)||i<0||i>=CARDS)return;
+  const c=g[i];if(!c||c.up||c.gone)return;
+  if(g.filter(x=>x.up).length>=2)return;
+  c.up=true;
+  if(S.pl.every(x=>(H.grids[x.id]||[]).filter(y=>y.up).length>=2))startPlay();
+ }
+ else if(k==="autoReveal"&&host&&S.ph==="reveal"){
+  S.pl.forEach(x=>{
+   const g=H.grids[x.id]||[];
+   while(g.filter(c=>c.up).length<2){
+    const pool=g.map((c,i)=>({c,i})).filter(o=>!o.c.up&&!o.c.gone);
+    if(!pool.length)break;
+    pool[Math.floor(Math.random()*pool.length)].c.up=true;
+   }
+  });
+  startPlay();
+ }
+ else if(k==="draw"&&S.ph==="play"&&S.order[S.turn]===p&&!S.drawnFrom&&!S.pendingFlip){
+  if(d.src==="discard"){
+   if(!H.discard.length)return;
+   const v=H.discard.pop();
+   H.drawn=v;S.drawnFrom="discard";S.drawnCard=v;
+   log("🃏 "+nm(p)+" prend la défausse ("+fmt(v)+").");
+  }else{
+   reshuffle();
+   if(!H.deck.length)return toast("Plus de cartes à piocher");
+   const v=H.deck.pop();
+   H.drawn=v;S.drawnFrom="deck";S.drawnCard=null;
+   log("🃏 "+nm(p)+" pioche une carte.");
+  }
+  L.drawn=H.drawn;
+  if(p!==ME&&R)R.emit("priv",{k:"draw",v:H.drawn},p);
+ }
+ else if(k==="swap"&&S.ph==="play"&&S.order[S.turn]===p&&S.drawnFrom&&!S.pendingFlip){
+  const g=H.grids[p];if(!g)return;
+  const i=+d.i;if(!Number.isInteger(i)||i<0||i>=CARDS)return;
+  const col=Math.floor(i/ROWS);
+  if((H.removed[p]||[]).includes(col))return;
+  const c=g[i];if(!c||c.gone)return;
+  const old=c.v;
+  H.discard.push(old);
+  c.v=H.drawn;c.up=true;c.gone=false;
+  log("🔄 "+nm(p)+" échange "+fmt(H.drawn)+" contre "+fmt(old)+" (défausse).");
+  H.drawn=null;L.drawn=null;
+  checkColumns(p);
+  endTurn(p);
+ }
+ else if(k==="drop"&&S.ph==="play"&&S.order[S.turn]===p&&S.drawnFrom==="deck"&&!S.pendingFlip){
+  H.discard.push(H.drawn);
+  log("🗑️ "+nm(p)+" défausse "+fmt(H.drawn)+" et doit révéler une carte.");
+  H.drawn=null;L.drawn=null;S.drawnFrom="";S.drawnCard=null;S.pendingFlip=true;
+  if(!hasHidden(p))endTurn(p);
+ }
+ else if(k==="flip"&&S.ph==="play"&&S.order[S.turn]===p&&S.pendingFlip){
+  const g=H.grids[p];if(!g)return;
+  const i=+d.i;if(!Number.isInteger(i)||i<0||i>=CARDS)return;
+  const col=Math.floor(i/ROWS);
+  if((H.removed[p]||[]).includes(col))return;
+  const c=g[i];if(!c||c.up||c.gone)return;
+  c.up=true;
+  log("👁️ "+nm(p)+" révèle un "+fmt(c.v)+".");
+  checkColumns(p);
+  S.pendingFlip=false;
+  endTurn(p);
+ }
+ else if(k==="skipTurn"&&host&&S.ph==="play"){
+  const cur=S.order[S.turn];
+  if(H.drawn!=null){H.discard.push(H.drawn);H.drawn=null}
+  S.drawnFrom="";S.drawnCard=null;S.pendingFlip=false;L.drawn=null;
+  log("⏭ Le tour de "+nm(cur)+" est passé.");
+  endTurn(cur);
+ }
+ else if(k==="next"&&host&&S.ph==="round"){nextRound();return}
+ else if(k==="again"&&host&&S.ph==="end"){backToLobby();bc();render();return}
+ bc();render();
+}
+
+/* ===================== RENDU ===================== */
+function valClass(v){
+ if(v===-2)return "vneg2";
+ if(v===-1)return "vneg1";
+ if(v===0)return "v0";
+ if(v<=4)return "v1";
+ if(v<=8)return "v2";
+ return "v3";
+}
+function cardFace(v,extra){
+ return `<span class="sj-card ${valClass(v)} ${extra||""}">${fmt(v)}</span>`;
+}
+function gridHtml(pid,o){
+ o=o||{};
+ const b=(S.board&&S.board[pid])||{cells:[],cols:[]};
+ const cols=b.cols||[],action=o.action||null;
+ let h='<div class="sj-grid">';
+ for(let c=0;c<COLS;c++){
+  h+='<div class="sj-col">';
+  for(let r=0;r<ROWS;r++){
+   const i=c*ROWS+r,v=b.cells[i];
+   if(cols.includes(c)){h+='<span class="sj-card empty" aria-hidden="true"></span>';continue}
+   if(v==null){
+    if(action==="swap"||action==="flip"||action==="reveal"){
+     const a=action==="reveal"?"reveal":action;
+     h+=`<button type="button" class="sj-card back act" data-a="${a}" data-i="${i}" aria-label="Carte face cachée">❄</button>`;
+    }else h+='<span class="sj-card back" aria-hidden="true">❄</span>';
+   }else{
+    if(action==="swap")h+=`<button type="button" class="sj-card ${valClass(v)} act" data-a="swap" data-i="${i}" aria-label="Remplacer cette carte">${fmt(v)}</button>`;
+    else h+=cardFace(v);
+   }
+  }
+  h+='</div>';
+ }
+ return h+'</div>';
+}
+function playerMini(p){
+ const turn=S.turnId===p.id;
+ return `<div class="sj-player${p.id===ME?" me":""}${turn?" turn":""}">
+  <div class="sj-phead"><span>${turn?"▶ ":""}${esc(p.n)}</span><small>${p.sc} pts</small></div>
+  ${gridHtml(p.id)}
+  <div class="hint" style="margin-top:5px;font-size:.74rem">${hiddenCount(p.id)} cachée${hiddenCount(p.id)>1?"s":""}${S.ph==="round"||S.ph==="end"?" · "+p.round+" cette manche":""}</div>
+ </div>`;
+}
+function render(){
+ if(!S){
+  if(R)app.innerHTML='<div class="card center"><div class="big-emoji">🎴</div><h1>Connexion…</h1><p class="hint">En attente de la partie.</p></div>';
+  else renderHome();
+  return;
+ }
+ const sig=JSON.stringify([S,L.drawn]);
+ if(sig===L.sig)return;
+ L.sig=sig;
+ $("#who").textContent=code?"Salon "+code:"";
+ if(S.ph==="lobby")renderLobby();
+ else if(S.ph==="reveal")renderReveal();
+ else if(S.ph==="play")renderPlay();
+ else if(S.ph==="round")renderRound();
+ else if(S.ph==="end")renderEnd();
+}
+function renderHome(){
+ app.innerHTML=`<header class="hero"><div class="logo">🎴</div><h1>Skyjo</h1><p>Le jeu où il faut faire le plus petit score. 4 colonnes, 3 lignes, 12 cartes… et beaucoup de coups fourrés.</p></header>
+ <div class="card"><h2>Ton prénom</h2><input type="text" id="pname" maxlength="20" placeholder="Prénom" autocomplete="off" value="${esc(L.name)}"><p class="hint">Ton prénom et ton avatar te suivent depuis le salon de la soirée.</p></div>
+ <div class="card"><h2>Créer ou rejoindre</h2>
+  <button class="btn primary big" data-a="create">🎴 Créer une partie</button>
+  <div class="row" style="margin-top:12px"><input type="text" id="pcode" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Code du salon"><button class="btn" data-a="join">Rejoindre</button></div>
+  <p id="hmsg" class="hint" role="status"></p>
+ </div>
+ <div class="card sj-help"><details><summary>📖 Règles express</summary><ul class="sj-rules">
+  <li>Chaque joueur a 12 cartes en 4 colonnes de 3. Deux sont révélées au départ.</li>
+  <li>À ton tour : pioche ou prends la défausse, puis échange la carte avec une des tiennes. Si tu pioches, tu peux aussi défausser et révéler une carte cachée.</li>
+  <li>Trois cartes identiques dans une colonne : la colonne disparaît et compte 0.</li>
+  <li>Dès qu'un joueur a retourné toutes ses cartes, les autres jouent un dernier tour. Le plus petit total marque. Le déclencheur double son score s'il n'est pas strictement le plus bas.</li>
+  <li>Partie en 100 points : le plus petit score cumulé gagne.</li>
+ </ul></details></div>`;
+ const c=bootParams().code;if(c&&$("#pcode"))$("#pcode").value=c;
+ Profile.attach("#pname");
+}
+function renderLobby(){
+ const n=S.pl.length,host=isHost;
+ let h=`<div class="card center"><h2>Code du salon</h2><div class="code">${code||"…"}</div><div id="sw-share"></div></div>
+ <div class="card"><h2>Joueurs <span class="hint" style="display:inline">${n}/${MAX}</span></h2>
+  <div class="chips">${S.pl.map(p=>`<span class="chip ${p.id===S.host?"host":""}${p.id===ME?" me":""}">${esc(p.n)}${host&&p.id!==ME?` <button class="link mini" style="display:inline;margin:0" data-a="del" data-id="${p.id}">✕</button>`:""}</span>`).join("")||'<span class="hint">Personne pour l’instant.</span>'}</div>
+  <p class="hint">${n<MIN?"Il faut au moins "+MIN+" joueurs.":"Tout le monde est prêt ?"}</p>`;
+ if(host){
+  h+=`<div class="srow"><span>Objectif de la partie<small>Le premier à atteindre ce score déclenche la fin.</small></span><div class="pills">${[50,100].map(v=>`<button class="pill ${S.cfg.target===v?"on":""}" data-a="target" data-v="${v}">${v} pts</button>`).join("")}</div></div>
+  <button class="btn primary big" data-a="start" ${n<MIN?"disabled":""}>Lancer la partie 🚀</button>`;
+ }else h+=`<p class="hint center">L’hôte lance la partie quand tout le monde est là.</p>`;
+ h+=`<button class="link" data-a="leave">Quitter le salon</button></div>`;
+ app.innerHTML=h;
+ Share.mount("#sw-share",{code,title:"Skyjo",text:"Rejoins-moi sur Skyjo ! Code du salon : "+code});
+}
+function renderReveal(){
+ const me=S.board&&S.board[ME]?S.board[ME]:{cells:[],cols:[]};
+ const up=me.cells.filter(v=>v!=null).length;
+ const can=up<2;
+ const ready=S.pl.filter(p=>{
+  const b=S.board&&S.board[p.id];return b&&b.cells.filter(v=>v!=null).length>=2;
+ }).length;
+ const action=can?"reveal":null;
+ app.innerHTML=`<div class="center hint">Manche ${S.r}</div><h1>Distribution</h1>
+ <div class="sj-banner">${can?`Touche <b>2 cartes</b> de ta grille pour les retourner (${up}/2).`:`Ta grille est prête : en attente des autres joueurs.`}</div>
+ <div class="card sj-own"><h2>Ta grille <span class="hint" style="display:inline">${up}/2 révélées</span></h2>${gridHtml(ME,{action})}</div>
+ <div class="card"><h2>Les autres <span class="hint" style="display:inline">${ready}/${S.pl.length} prêts</span></h2><div class="sj-others">${S.pl.filter(p=>p.id!==ME).map(playerMini).join("")||'<p class="hint">Tu joues seul pour l’instant.</p>'}</div></div>
+ ${isHost?'<button class="link" data-a="autoReveal">🎲 Révéler au hasard pour les retardataires</button>':''}
+ <button class="link" data-a="leave">Quitter la partie</button>`;
+}
+function renderPlay(){
+ const me=S.board&&S.board[ME]?S.board[ME]:{cells:[],cols:[]};
+ const turnId=S.turnId,myTurn=turnId===ME,current=nm(turnId);
+ const drawn=S.drawnFrom==="discard"?S.drawnCard:(myTurn?L.drawn:null);
+ const canDraw=myTurn&&!S.drawnFrom&&!S.pendingFlip;
+ const canSwap=myTurn&&!!S.drawnFrom&&!S.pendingFlip;
+ const canFlip=myTurn&&S.pendingFlip;
+ const action=canSwap?"swap":canFlip?"flip":null;
+ const hidden=hiddenCount(ME);
+ let hint="";
+ if(canDraw)hint=`À toi de jouer : pioche une carte ou prends la défausse.`;
+ else if(canSwap)hint=drawn!=null?`Tu as pioché <b>${fmt(drawn)}</b>. Touche une de tes cartes pour l’échanger, ou défausse-la.`:`Choisis une de tes cartes à remplacer.`;
+ else if(canFlip)hint=`Touche une carte face cachée pour la révéler.`;
+ else if(myTurn)hint=`À toi de jouer.`;
+ else hint=`Au tour de <b>${esc(current)}</b>…`;
+ app.innerHTML=`<div class="center hint">Manche ${S.r} · ${S.pl.length} joueurs</div>
+ <div class="sj-banner ${S.finishing?"last":""}">${S.finishing?`🔔 Dernier tour ! ${esc(nm(S.trigger))} a retourné toutes ses cartes.`:`<span class="sj-turn"><span class="dotlive"></span>${myTurn?"C’est à toi !":"Au tour de "+esc(current)}</span>`}</div>
+ <div class="card">
+  <div class="sj-piles">
+   <div class="sj-pile"><button type="button" class="sj-card back ${canDraw?"drawable":""}" data-a="${canDraw?"draw":""}" ${canDraw?"":"disabled"} data-src="deck" aria-label="Piocher">❄</button><small>Pioche · ${S.deckN}</small></div>
+   <div class="sj-pile">${S.discardTop!=null?`<button type="button" class="sj-card ${valClass(S.discardTop)} ${canDraw?"drawable":""}" data-a="${canDraw?"draw":""}" ${canDraw?"":"disabled"} data-src="discard" aria-label="Prendre la défausse">${fmt(S.discardTop)}</button>`:'<span class="sj-card empty" aria-hidden="true"></span>'}<small>Défausse · ${S.discardN}</small></div>
+  </div>
+  <p class="center" style="margin:8px 0 0">${hint}</p>
+  ${canSwap&&S.drawnFrom==="deck"&&drawn!=null?`<div class="center" style="margin-top:8px"><span class="hint" style="display:block;margin:0 0 4px">Ta pioche</span><span style="display:inline-block;width:64px">${cardFace(drawn)}</span></div>`:""}
+  ${canSwap&&S.drawnFrom==="deck"?`<div class="sj-actions"><button class="btn" data-a="drop">🗑️ Défausser et révéler une carte</button></div>`:""}
+ </div>
+ <div class="card sj-own"><h2>Ta grille <span class="hint" style="display:inline">${hidden} cachée${hidden>1?"s":""} · ${me.cells.filter(v=>v!=null).reduce((a,b)=>a+b,0)} pts visibles</span></h2>${gridHtml(ME,{action})}</div>
+ <div class="card"><h2>Autour de la table</h2><div class="sj-others">${S.pl.filter(p=>p.id!==ME).map(playerMini).join("")||'<p class="hint">Pas d’autre joueur.</p>'}</div>
+  <div class="sj-log">${(S.log||[]).slice(-4).map(x=>`<div>${esc(x)}</div>`).join("")}</div>
+ </div>
+ ${isHost?`<button class="link" data-a="skipTurn">⏭ Passer le tour de ${esc(current)} (joueur absent)</button>`:""}
+ <button class="link" data-a="leave">Quitter la partie</button>`;
+}
+function renderRound(){
+ const rr=S.roundResult||{rows:[]};
+ const rows=[...S.pl].sort((a,b)=>a.sc-b.sc);
+ const byId=Object.fromEntries((rr.rows||[]).map(r=>[r.id,r]));
+ app.innerHTML=`<div class="center"><div class="big-emoji">📊</div><h1>Manche ${S.r} terminée</h1><p class="hint">${rr.trigger?`<b>${esc(nm(rr.trigger))}</b> a déclenché la fin de manche.`:"Fin de manche."}</p></div>
+ <div class="card"><h2>Scores de la manche</h2>
+  ${rows.map(p=>{const r=byId[p.id]||{};return`<div class="sj-score-row"><span><b>${esc(p.n)}</b>${p.doubled?' <span class="sj-double">×2</span>':""}<br><small class="hint" style="margin:0">${r.base!=null?"somme "+fmt(r.base):""}</small></span><span class="big">${fmtGain(r.score||0)}</span><span class="tot">${p.sc}</span></div>`}).join("")}
+  <p class="hint" style="margin-top:8px">Le déclencheur double son score s’il n’a pas strictement le plus petit total.</p>
+ </div>
+ <div class="card"><h2>Classement cumulé</h2>${rows.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}
+  ${S.over?`<div class="sj-banner last">🎯 Objectif de ${S.cfg.target} points atteint : la partie se termine.</div>`:`<p class="hint">Objectif : ${S.cfg.target} points. Le plus petit score cumulé gagne.</p>`}
+ </div>
+ <div id="ptmid"></div>
+ ${isHost?`<button class="btn primary big" data-a="next">${S.over?"Voir les résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte lance la suite.</p>`}
+ <button class="link" data-a="leave">Quitter la partie</button>`;
+ if(!S.over&&R&&code)Party.endCard("#ptmid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("sj")});
+}
+function renderEnd(){
+ const rank=sortAsc(),w=rank[0];
+ const med=["🥇","🥈","🥉"];
+ app.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Partie terminée</h1><p><b>${w?esc(w.n):"—"}</b> gagne avec <b>${w?w.sc:0} points</b> — le plus petit total !</p></div>
+ <div class="card"><h2>Classement final</h2>${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${med[i]||(i+1)+"."} ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}</div>
+ <div class="card"><h2>Détail des manches</h2><p class="hint">La partie s’arrête dès qu’un joueur atteint ${S.cfg.target} points. Les scores sont cumulés.</p></div>
+ <div id="gage"></div><div id="ptend"></div>
+ ${isHost?`<button class="btn primary big" data-a="again">Rejouer (mêmes joueurs)</button>`:`<p class="hint center">L’hôte peut relancer une partie.</p>`}
+ <button class="link" data-a="leave">Quitter la partie</button>`;
+ const lo=rank[rank.length-1];
+ Gages.mount("#gage",{R,who:lo?lo.n:"",fresh:true});
+ if(R&&code)Party.endCard("#ptend",{R,code,isHost,onLeave:()=>Sess.clear("sj")});
+}
+
+/* ===================== ÉVÉNEMENTS ===================== */
+document.addEventListener("click",e=>{
+ const b=e.target.closest("[data-a]");if(!b)return;
+ const a=b.dataset.a;
+ if(a==="create")startOnline(true,null);
+ else if(a==="join"){const c=($("#pcode")||{value:""}).value.trim().toUpperCase();if(!/^[A-Z0-9]{4}$/.test(c))return msg("Le code a 4 caractères.");startOnline(false,c)}
+ else if(a==="target")send({k:"cfg",target:+b.dataset.v});
+ else if(a==="start")send({k:"start"});
+ else if(a==="del")send({k:"del",id:b.dataset.id});
+ else if(a==="reveal"||a==="swap"||a==="flip")send({k:a,i:+b.dataset.i});
+ else if(a==="draw")send({k:"draw",src:b.dataset.src});
+ else if(a==="drop")send({k:"drop"});
+ else if(a==="autoReveal")send({k:"autoReveal"});
+ else if(a==="skipTurn"){if(isHost&&confirm("Passer le tour du joueur en cours ?"))send({k:"skipTurn"})}
+ else if(a==="next")send({k:"next"});
+ else if(a==="again")send({k:"again"});
+ else if(a==="leave"){Sess.clear("sj");if(R)R.leave();location.href=Party.salon(code)}
+});
+addEventListener("beforeunload",()=>R&&R.leave());
+render();
+(function boot(){
+ const BP=bootParams(),s=Sess.load("sj",12*3600e3),pr=Profile.get();
+ try{L.name=localStorage.getItem("soiree:name")||""}catch(e){}
+ if(BP.go&&BP.code&&pr.name){
+  const n0=Profile.tag(pr.name);msg("🎪 Lancement de la partie…");
+  if(BP.host)startOnline(true,null,{name:n0,code:BP.code,retry:5});
+  else startOnline(false,BP.code,{name:n0,retry:20});
+ }else if(s&&(!BP.code||BP.code===s.code)){
+  msg("🔁 Retour dans le salon "+s.code+"…");
+  startOnline(false,s.code,{name:s.name,resume:true,wasHost:s.host});
+ }else if(BP.code){
+  const n0=pr.name?Profile.tag(pr.name):"";if(n0)startOnline(false,BP.code,{name:n0,retry:3});
+ }
+})();
+</script>
+</body>
+</html>

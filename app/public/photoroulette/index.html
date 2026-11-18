@@ -270,7 +270,7 @@ async function swap(i){
   if(!(i>=0&&i<L.media.length))return;
   const gone=L.media.splice(i,1)[0];
   if(gone&&gone.fid&&gone.fid.indexOf("lib:")!==0)L.used.add(gone.fid);
-  invalidate();send({k:"drop",i});
+  invalidate();send({k:"drop",i,key:gone?gone.key:""});
   const inDraw=new Set(L.media.map(m=>m.fid));
   let f=L.pool.filter(x=>!inDraw.has(fid(x))&&!L.used.has(fid(x)));
   if(!f.length)f=L.pool.filter(x=>!inDraw.has(fid(x)));
@@ -453,7 +453,7 @@ function hostAct(d){
   if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0});}
   else if(d.k==="reset"&&S.pl.some(x=>x.id===p)){H.pool[p]=(H.pool[p]||[]).filter(m=>m.by);if(S.ph==="lobby")H.valid[p]=[];H.skip[p]=false}
   else if(d.k==="media"&&S.pl.some(x=>x.id===p)){const a=H.pool[p]=H.pool[p]||[];if(a.filter(m=>!m.by).length<maxN()&&(d.data||"").length<9e6){const k=String(d.key||"").slice(0,12);a.push({kind:d.kind,data:d.data,by:null,owner:p,key:k});fillStub(k,d.data);if(S.ph==="lobby")H.valid[p]=[]}}
-  else if(d.k==="drop"&&S.pl.some(x=>x.id===p)){const own=(H.pool[p]||[]).filter(m=>!m.by),t=own[d.i|0];if(t){H.pool[p]=H.pool[p].filter(m=>m!==t);if(S.ph==="lobby")H.valid[p]=[]}}
+  else if(d.k==="drop"&&S.pl.some(x=>x.id===p)){const own=(H.pool[p]||[]).filter(m=>!m.by),k=String(d.key||"").slice(0,12),t=(k&&own.find(m=>m.key===k))||own[d.i|0];if(t){H.pool[p]=H.pool[p].filter(m=>m!==t);if(S.ph==="lobby")H.valid[p]=[]}}
   else if(d.k==="plant"&&S.cfg.plant&&S.pl.some(x=>x.id===d.to)&&d.to!==p&&(d.data||"").length<9e6){{const k=String(d.key||"").slice(0,12);(H.pool[d.to]=H.pool[d.to]||[]).push({kind:d.kind,data:d.data,by:p,owner:d.to,key:k});fillStub(k,d.data)}}
   else if(d.k==="val"&&(S.ph==="lobby"||S.ph==="ready")&&S.pl.some(x=>x.id===p)){
     const keys=Array.isArray(d.keys)?d.keys.filter(k=>typeof k==="string"&&k.length>0&&k.length<=24).slice(0,maxN()):[];
@@ -504,7 +504,7 @@ function buildDeck(){
       const m=pool.find(x=>x.key===k&&!x.by);
       return m?{key:m.key,owner:p.id,by:null,kind:m.kind,data:m.data||null}:{key:k,owner:p.id,by:null,kind,data:null};
     });
-    const planted=pool.filter(m=>m.by).map(m=>({key:m.key,owner:p.id,by:m.by,kind:m.kind,data:m.data||null}));
+    const planted=S.cfg.plant?pool.filter(m=>m.by&&m.kind===kind).map(m=>({key:m.key,owner:p.id,by:m.by,kind:m.kind,data:m.data||null})):[];
     return shuffle(own.concat(planted));
   });
   const deck=[];let i=0,more=true;
@@ -746,10 +746,12 @@ function renderGame(fade){
     st.innerHTML=`<div class="rn">Fin de la manche ${S.mi+1}/${tot}</div>
      <div class="center"><div class="big-emoji">📊</div><h1>Récap de la manche</h1></div>
      <div class="card"><h2>Points de la manche</h2>${rows}</div>
+     <div id="ptmid"></div>
      ${isHost?`<button class="btn primary big" data-a="nextm">${S.lastM?"Résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte lance la suite.</p>`}`;
+    if(!S.lastM)Party.endCard("#ptmid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("pr")});
   }else if(S.ph==="end"){
     const s=S.stats||{},rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
-    st.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Résultats</h1><p><b>${esc(nm(rank[0].id))}</b> est le champion !</p></div>
+    st.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Résultats</h1><p>${rank[0]?`<b>${esc(nm(rank[0].id))}</b> est le champion !`:"Partie terminée."}</p></div>
      <div class="title">🥇 Meilleur score<small>${s.best?esc(nm(s.best.id))+" — "+s.best.v:"—"}</small></div>
      <div class="title">⚡ Réponse la plus rapide<small>${s.fast?esc(nm(s.fast.id))+" — "+s.fast.ms+" ms":"—"}</small></div>
      <div class="title">🔥 Plus longue série<small>${s.streak&&s.streak.v?esc(nm(s.streak.id))+" — "+s.streak.v:"—"}</small></div>

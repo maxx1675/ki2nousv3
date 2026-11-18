@@ -82,7 +82,7 @@
 const MIN=2,MAX=12;
 let R=null,S=null,isHost=false,code="";
 let H={song:null,res:{},pts:{},order:[],idx:-1,stat:{fast:null,titles:{}},fails:0};
-const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,needT:0,starting:false,lastSend:0};
+const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,unlocked:false,needT:0,starting:false,lastSend:0};
 let YT_READY=false,YT_PLAYER=null,YT_QUEUE=[],YT_LOADING=false;
 
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
@@ -108,7 +108,12 @@ function ensurePlayer(cb){
       onReady:()=>{YT_READY=true;YT_LOADING=false;YT_QUEUE.splice(0).forEach(f=>{try{f(YT_PLAYER)}catch(e){}})},
       onStateChange:e=>{
         // L'extrait tourne vraiment et n'est pas coupé : le son est autorisé.
-        if(e.data===1){try{L.sound=!YT_PLAYER.isMuted();syncSnd();updGame()}catch(x){}}
+        if(e.data===1){
+          try{
+            if(YT_PLAYER.isMuted()&&L.unlocked){YT_PLAYER.unMute();YT_PLAYER.setVolume(100)}
+            L.sound=!YT_PLAYER.isMuted();syncSnd();updGame()
+          }catch(x){}
+        }
       },
       onError:e=>{
         const code=e&&e.data;
@@ -130,7 +135,7 @@ function unlockAudio(){
   const go=()=>{
     try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo()}catch(e){}
     setTimeout(()=>{try{YT_PLAYER.pauseVideo()}catch(e){}},400);
-    L.sound=true;syncSnd();
+    L.unlocked=true;L.sound=true;syncSnd();
     if(S&&S.ph==="round"&&L.cur){
       const el=Math.max(0,(Net.now()-(S.t0||Net.now()))/1000);
       if(el<S.cfg.extract){L.playingR=-1;playExtract({...L.cur,start:Net.now()+250,offset:el,extract:Math.max(2,S.cfg.extract-el)})}
@@ -151,11 +156,19 @@ function playExtract(p){
       if(!S||S.ph!=="round"||S.r!==p.r){L.playingR=-1;return}
       try{YT_PLAYER.seekTo(p.offset||0,true);YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo()}catch(e){}
       // Vérifie que la lecture a vraiment démarré (autoplay bloqué, vidéo muette…).
+      // On ne coupe pas le son sur un simple état « buffering » : sinon le bouton
+      // « Activer le son » réapparaissait à chaque manche.
       setTimeout(()=>{
         if(!S||S.ph!=="round"||S.r!==p.r)return;
-        let playing=false,muted=false;try{playing=YT_PLAYER.getPlayerState()===1;muted=YT_PLAYER.isMuted()}catch(e){}
-        L.sound=playing&&!muted;syncSnd();updVinyl(playing);updGame();
-      },800);
+        let state=-1,muted=true;
+        try{state=YT_PLAYER.getPlayerState();muted=YT_PLAYER.isMuted()}catch(e){}
+        if(muted){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);muted=YT_PLAYER.isMuted()}catch(e){}}
+        if(state===0||state===5){try{YT_PLAYER.playVideo()}catch(e){}}
+        const ok=!muted&&(state===1||state===3);
+        if(ok){L.sound=true;L.unlocked=true}
+        else if(muted||state===5||state===0)L.sound=false;
+        syncSnd();updVinyl(state===1||state===3);updGame();
+      },1500);
       updVinyl(true);
       const dur=Math.max(1,p.extract||15);
       setTimeout(()=>{if(L.cur&&L.cur.r===p.r)stopYT()},dur*1000+1000);
@@ -189,8 +202,24 @@ function cueMeta(id,cb){
 function loadPlaylist(listId){
   ensurePlayer(()=>{
     try{YT_PLAYER.mute()}catch(e){}
-    let tries=0,forced=false;
+    let tries=0,forced=false,serverAsked=false;
     const start=()=>{try{YT_PLAYER.cuePlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}}
+    // Repli fiable : le serveur lit le flux RSS / la page publique de la playlist.
+    // L'API IFrame ne remplit pas toujours getPlaylist() sur mobile ou après un blocage.
+    const fromServer=async()=>{
+      if(serverAsked)return;serverAsked=true;
+      try{
+        const r=await fetch("/api/youtube/playlist?list="+encodeURIComponent(listId));
+        const j=await r.json().catch(()=>null);
+        if(j&&j.ok&&Array.isArray(j.ids)&&j.ids.length){
+          beginGame(j.ids.slice(0,60).map(id=>({id,title:"",artist:""})));
+          return;
+        }
+      }catch(e){}
+      L.starting=false;if(S)S.loading=false;
+      toast("Playlist illisible : colle plutôt des liens vidéo un par ligne");
+      bc();route();
+    };
     start();
     const chk=()=>{
       let ids=null;try{ids=YT_PLAYER.getPlaylist?YT_PLAYER.getPlaylist():null}catch(e){}
@@ -202,9 +231,7 @@ function loadPlaylist(listId){
         try{YT_PLAYER.loadPlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}
         setTimeout(chk,1000);return;
       }
-      L.starting=false;if(S)S.loading=false;
-      toast("Playlist illisible : colle plutôt des liens vidéo un par ligne");
-      bc();route();
+      fromServer();
     };
     setTimeout(chk,900);
   });
@@ -225,7 +252,7 @@ async function enter(create,o){
   Sess.save("bt",{code,name,host:isHost});setInterval(()=>Sess.touch("bt"),20000);
   Party.listen(R,code,()=>Sess.clear("bt"));
   R.on("st",d=>{if(isHost||!d)return;S=d;route()});
-  R.on("play",p=>{if(isHost||!p)return;L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playExtract(p);updGame()}else route()});
+  R.on("play",p=>{if(isHost||!p)return;if(!L.cur||L.cur.r!==p.r){L.ok={};L.fb=null}L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playExtract(p);updGame()}else route()});
   R.on("fb",d=>{if(d&&d.r===S.r&&d.res){L.fb={r:d.r,res:d.res,at:Date.now()};d.res.forEach(x=>{if(x.ok)L.ok[x.f]=true});updGame()}});
   R.on("act",d=>{if(isHost)hostAct(d)});
   R.on("rs",()=>{if(isHost)needResend()});
@@ -233,7 +260,12 @@ async function enter(create,o){
   R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l'hôte");route()});
   if(isHost){
     const sn=R.initSnap;
-    if(sn&&sn.S){S=sn.S;S.host=ME;restoreH(sn.H);needResend()}
+    if(sn&&sn.S){
+      S=sn.S;S.host=ME;restoreH(sn.H);
+      // Un rechargement tue toute lecture en cours : on reprend la manche au bon endroit.
+      S.loading=false;L.starting=false;
+      if(!resumeHostRound()){if(S.ph==="round")nextRound();else needResend()}
+    }
     else S=initS();
     hostLoops();hostAct({k:"join",p:ME,n:name});
   }
@@ -260,6 +292,28 @@ function needResend(){
     R.emit("play",p);
   }
 }
+/* Hôte rechargé ou promu en pleine manche : restaure l'extrait et relance la lecture. */
+function resumeHostRound(){
+  if(!S||S.ph!=="round")return false;
+  S.loading=false;L.starting=false;
+  if(!H.song||!H.song.id)return false;
+  if(S.cfg.source==="youtube"&&!H.song.title){
+    const r=S.r;S.loading=true;
+    cueMeta(H.song.id,meta=>{
+      if(!S||S.ph!=="round"||S.r!==r)return;
+      S.loading=false;L.starting=false;
+      if(!meta||!meta.title){toast("Impossible de relire cet extrait, on passe au suivant");nextRound();return}
+      H.song.title=meta.title;H.song.artist=meta.artist||"";
+      launchRound();
+    });
+    return true;
+  }
+  const now=Net.now(),extract=S.cfg.extract||15;
+  if(!S.t0||now-S.t0>=extract*1000){launchRound();return true}
+  const p={r:S.r,id:H.song.id,start:now+900,offset:(now-S.t0)/1000,extract:Math.max(2,extract-(now-S.t0)/1000)};
+  L.cur=p;L.playingR=S.r;R.emit("play",p);playExtract(p);
+  return true;
+}
 function onPromoted(snap){
   isHost=true;
   if(snap&&snap.S)S=snap.S;
@@ -267,14 +321,11 @@ function onPromoted(snap){
   S.host=ME;
   if(snap&&snap.H)restoreH(snap.H);
   if(!S.pl.some(p=>p.id===ME))S.pl.push({id:ME,n:L.name,sc:0});
+  S.loading=false;L.starting=false;
   hostLoops();
-  if(S.ph==="round"&&H.song){
-    S.t0=Net.now()+1500;S.ansUntil=S.t0+S.cfg.answer*1000;
-    const p={r:S.r,id:H.song.id,start:S.t0,offset:0,extract:S.cfg.extract};
-    L.cur=p;L.playingR=S.r;R.emit("play",p);playExtract(p);
-  }
+  if(S.ph==="round"&&!resumeHostRound())nextRound();
   Sess.save("bt",{code,name:L.name,host:true});
-  toast("👑 Tu es maintenant l'hôte");needResend();bc();route();
+  toast("👑 Tu es maintenant l’hôte");bc();route();
 }
 
 /* ---------- logique hôte ---------- */
@@ -354,7 +405,7 @@ function launchRound(){
   R.emit("play",p);playExtract(p);bc();route();
 }
 function answer(p,d){
-  if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song)return;
+  if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song||!S.pl.some(x=>x.id===p))return;
   if(!S.t0||Net.now()<S.t0-300)return;
   H.res[p]=H.res[p]||{};
   const results=[];
@@ -498,8 +549,10 @@ function renderGame(fade){
       </div></div>
       <div class="card"><h2>Classement</h2><div class="bt-score-row">${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}</div></div>
       <p class="hint center" id="btNext"></p>
+      <div id="btMid"></div>
       ${isHost?`<button class="btn primary big" data-a="next">${S.last?"Résultats 🏆":"Chanson suivante →"}</button>`:'<p class="hint center">L\'hôte lance la suite.</p>'}
       <button class="link" data-a="leave">Quitter</button>`;
+    if(R&&code&&!S.last)Party.endCard("#btMid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("bt")});
     updReveal();
   }else if(S.ph==="end"){
     const s=S.stats||{},rank=[...S.pl].sort((a,b)=>b.sc-a.sc),lo=rank[rank.length-1];

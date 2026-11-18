@@ -1100,6 +1100,25 @@ function renderResults() {
       <span class="pts">${Number(p.sc) || 0} pts</span>
     </div>`).join("");
 
+  const memes = [...S.pl]
+    .filter((p) => p.img || p.txt)
+    .sort((a, b) => (Number(b.gain) || 0) - (Number(a.gain) || 0));
+  const recap = memes.length ? `
+    <div class="mim-panel mim-recap">
+      <div class="row between" style="flex-wrap:wrap;gap:8px">
+        <div><span class="mim-kicker">Le mur des memes</span><h2 class="mim-title" style="font-size:1.05rem;margin:2px 0 0">Manche ${S.r} · enregistre tes préférés</h2></div>
+        <span class="hint" style="margin:0">📥 Touche 💾 pour télécharger</span>
+      </div>
+      <div class="mim-recap-grid">
+        ${memes.map((p) => `
+          <figure class="mim-recap-card">
+            <img src="${esc(p.img || placeholderDataUrl(getMemeById(p.sel)?.name || "Meme"))}" alt="Meme de ${esc(p.n)}" referrerpolicy="no-referrer">
+            <figcaption><b>${esc(p.n)}</b><small>${Number(p.gain) > 0 ? "+" : ""}${Number(p.gain) || 0} pts</small></figcaption>
+            <button type="button" class="btn" onclick="downloadMeme('${esc(p.id)}')" aria-label="Télécharger le meme de ${esc(p.n)}">💾 Enregistrer</button>
+          </figure>`).join("")}
+      </div>
+    </div>` : "";
+
   $id("screen-results").innerHTML = `
     <div class="mim-panel tilt-l center">
       <div style="font-size:2.7rem">${final ? "🏆" : "🎬"}</div>
@@ -1107,16 +1126,39 @@ function renderResults() {
       <p class="mim-sub">${final ? "Le memelord de la soirée est sacré." : "Les points s'additionnent à chaque tour."}</p>
     </div>
     <div id="scores-list" class="mim-scores">${rows}</div>
+    ${recap}
     <div class="mim-results-actions">
       ${isHost ? `<button id="restart-game-btn" class="btn primary big" onclick="hostRestartGame()">${final ? "🔁 Rejouer" : "Tour suivant →"}</button>` : ""}
       <button class="btn" onclick="confirmLeaveRoom()">Quitter</button>
     </div>
     <div id="party-end"></div>`;
 
-  if (final && R && code) {
-    Party.endCard("#party-end", { R, code, isHost, onLeave: () => Sess.clear("mim") });
+  if (R && code) {
+    Party.endCard("#party-end", { R, code, isHost, compact: !final, onLeave: () => Sess.clear("mim") });
   }
 }
+
+window.downloadMeme = async (id) => {
+  if (!S) return;
+  const p = S.pl.find((x) => x.id === id);
+  if (!p) return;
+  let data = p.img;
+  if (!data) {
+    const tpl = getMemeById(p.sel);
+    let boxes = [];
+    try { boxes = JSON.parse(p.txt || "[]"); } catch (e) { boxes = []; }
+    if (tpl) data = await renderMemeOffscreen(tpl, boxes);
+  }
+  if (!data) { toast("Image indisponible sur cet appareil : le template n'autorise pas l'export."); return; }
+  const a = document.createElement("a");
+  a.href = data;
+  a.download = "meme-" + String(p.n || "joueur").replace(/[^\w-]+/g, "-") + "-manche-" + (S.r || 1) + ".jpg";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  playSound("pop");
+  toast("Meme enregistré 📥");
+};
 
 /* ============================================================
    ACTIONS UTILISATEUR
@@ -1451,9 +1493,12 @@ function scheduleEditorRedraw() {
 }
 
 function setupCanvasDragInteractions() {
-  const canvas = $id("meme-canvas");
-  if (!canvas) return;
-  const coords = (clientX, clientY) => {
+  // Délégation sur document : le canvas est recréé à chaque rendu de l'éditeur.
+  // Les anciens listeners attachés au canvas devenaient morts après un re-rendu,
+  // ce qui bloquait le déplacement en bas à droite.
+  if (L.dragBound) return;
+  L.dragBound = true;
+  const coords = (canvas, clientX, clientY) => {
     const r = canvas.getBoundingClientRect();
     return {
       px: ((clientX - r.left) / r.width) * canvas.width,
@@ -1462,18 +1507,18 @@ function setupCanvasDragInteractions() {
       ny: (clientY - r.top) / r.height
     };
   };
-  const onStart = (clientX, clientY) => {
-    if (!canvas.width) return;
-    const { px, py, nx, ny } = coords(clientX, clientY);
+  const start = (canvas, clientX, clientY) => {
+    if (!canvas.width) return false;
+    const { px, py, nx, ny } = coords(canvas, clientX, clientY);
     const active = activeTextBoxes[selectedBoxIndex];
     if (active && active._bounds) {
       const b = active._bounds;
       const tol = Math.max(24, b.hs * 2.2);
       if (Math.hypot(px - (b.rx + b.rw), py - (b.ry + b.rh)) <= tol) {
-        draggingBoxIndex = selectedBoxIndex; dragMode = "resize-size"; return;
+        draggingBoxIndex = selectedBoxIndex; dragMode = "resize-size"; return true;
       }
       if (Math.hypot(px - b.rx, py - b.cy) <= tol || Math.hypot(px - (b.rx + b.rw), py - b.cy) <= tol) {
-        draggingBoxIndex = selectedBoxIndex; dragMode = "resize-width"; return;
+        draggingBoxIndex = selectedBoxIndex; dragMode = "resize-width"; return true;
       }
     }
     let best = -1, bestD = 0.22;
@@ -1484,13 +1529,15 @@ function setupCanvasDragInteractions() {
     if (best !== -1) {
       selectedBoxIndex = best; draggingBoxIndex = best; dragMode = "move";
       renderDynamicTextInputs(); syncStyleSliders(); redrawEditorCanvas();
+      return true;
     }
+    return false;
   };
-  const onMove = (clientX, clientY) => {
+  const move = (canvas, clientX, clientY) => {
     if (draggingBoxIndex === -1) return;
     const b = activeTextBoxes[draggingBoxIndex];
     if (!b) return;
-    const { nx, ny } = coords(clientX, clientY);
+    const { nx, ny } = coords(canvas, clientX, clientY);
     if (dragMode === "move") {
       b.x = Math.max(0.05, Math.min(0.95, nx));
       b.y = Math.max(0.05, Math.min(0.95, ny));
@@ -1503,23 +1550,34 @@ function setupCanvasDragInteractions() {
     }
     scheduleEditorRedraw();
   };
-  const onEnd = () => { draggingBoxIndex = -1; };
+  const end = () => {
+    draggingBoxIndex = -1;
+    const d = L.drag;
+    if (d) {
+      try { if (d.canvas.hasPointerCapture(d.id)) d.canvas.releasePointerCapture(d.id); } catch (e) {}
+      L.drag = null;
+    }
+  };
 
-  canvas.addEventListener("mousedown", (e) => onStart(e.clientX, e.clientY));
-  canvas.addEventListener("touchstart", (e) => { if (e.touches.length) onStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
-  if (!L.windowBound) {
-    L.windowBound = true;
-    window.addEventListener("mousemove", (e) => onMove(e.clientX, e.clientY));
-    window.addEventListener("mouseup", onEnd);
-    window.addEventListener("touchmove", (e) => {
-      if (draggingBoxIndex !== -1 && e.touches.length) {
-        e.preventDefault(); // évite que la page défile pendant le déplacement d'un texte
-        onMove(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: false });
-    window.addEventListener("touchend", onEnd);
-    window.addEventListener("touchcancel", onEnd);
-  }
+  document.addEventListener("pointerdown", (e) => {
+    const canvas = e.target.closest && e.target.closest("#meme-canvas");
+    if (!canvas || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (!start(canvas, e.clientX, e.clientY)) return;
+    e.preventDefault();
+    L.drag = { canvas, id: e.pointerId };
+    try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+  }, { passive: false });
+  document.addEventListener("pointermove", (e) => {
+    if (!L.drag || e.pointerId !== L.drag.id) return;
+    e.preventDefault();
+    move(L.drag.canvas, e.clientX, e.clientY);
+  }, { passive: false });
+  document.addEventListener("pointerup", (e) => {
+    if (L.drag && e.pointerId === L.drag.id) end();
+  });
+  document.addEventListener("pointercancel", (e) => {
+    if (L.drag && e.pointerId === L.drag.id) end();
+  });
 }
 
 document.addEventListener("input", (e) => {

@@ -1,0 +1,86 @@
+/* ==========================================================
+   UNO — table de jeu façon arcade / cabaret
+   Chargé après le <style> de la page.
+   ========================================================== */
+
+html[data-theme="light"],html:not([data-theme]){
+  color-scheme:light;
+  --bg:#f4ead8;--surface:#fffaf0;--ink:#20120b;--muted:#6f5647;
+  --edge:#20120b;--sh:#20120b;
+  --violet:#d7263d;--pink:#ff4f6d;--amber:#ffc531;--teal:#19b99a;--danger:#d7263d;
+}
+
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#170d12;--surface:#2a1920;--ink:#fff4e8;--muted:#d0b6a6;
+  --edge:#f4d9c4;--sh:#080306;
+  --violet:#ff5a6d;--pink:#ff7f95;--amber:#ffd35e;--teal:#3fe0c0;--danger:#ff5a6d;
+}
+
+body{
+  background-color:#f4ead8;
+  background-image:
+    radial-gradient(circle at 50% -10%,rgba(255,255,255,.85),transparent 55%),
+    radial-gradient(circle at 8% 20%,rgba(215,38,61,.12),transparent 42%),
+    radial-gradient(circle at 92% 12%,rgba(31,120,209,.12),transparent 42%),
+    radial-gradient(circle at 50% 115%,rgba(255,197,49,.25),transparent 55%),
+    repeating-linear-gradient(135deg,rgba(32,18,11,.025) 0 2px,transparent 2px 9px);
+  background-attachment:fixed;
+}
+
+html[data-theme="dark"] body{
+  background-color:#170d12;
+  background-image:
+    radial-gradient(circle at 50% -10%,rgba(255,90,109,.16),transparent 55%),
+    radial-gradient(circle at 10% 22%,rgba(255,197,49,.10),transparent 42%),
+    radial-gradient(circle at 92% 14%,rgba(63,224,192,.10),transparent 42%),
+    radial-gradient(circle at 50% 115%,rgba(215,38,61,.18),transparent 55%),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 2px,transparent 2px 9px);
+}
+
+.wrap,.top,.homelink,.themebtn{position:relative;z-index:1}
+
+/* une petite ambiance de table de jeu : halo derrière le titre */
+.hero{position:relative}
+.hero::before{
+  content:"";position:absolute;left:50%;top:-18px;width:150px;height:150px;transform:translateX(-50%);
+  background:radial-gradient(circle,rgba(255,197,49,.35),transparent 70%);z-index:-1;pointer-events:none;
+}
+.hero .logo{filter:drop-shadow(0 5px 0 rgba(32,18,11,.16))}
+h1{color:var(--ink);letter-spacing:-.01em}
+
+/* cartes : ombre plus franche et léger vernis */
+.uno-card{box-shadow:3px 3px 0 var(--sh);}
+.uno-card::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(125deg,rgba(255,255,255,.22),transparent 38%,rgba(0,0,0,.06));
+}
+.uno-card.back::before{background:linear-gradient(125deg,rgba(255,255,255,.08),transparent 40%,rgba(0,0,0,.25))}
+.uno-card.hand.playable{box-shadow:3px 3px 0 var(--sh),0 0 0 3px rgba(47,207,122,.28)}
+.uno-card.hand.playable:hover{box-shadow:6px 8px 0 var(--sh),0 0 0 3px rgba(47,207,122,.4)}
+.uno-card.hand.drawn{box-shadow:3px 3px 0 var(--sh),0 0 0 5px rgba(255,79,109,.35)}
+
+.uno-opp{background:color-mix(in srgb,var(--surface) 93%,transparent)}
+.uno-opp.turn{border-color:#2fcf7a}
+.uno-opp .ub{background:var(--amber);color:#20120b}
+.uno-cur{background:var(--surface)}
+
+.uno-banner{box-shadow:3px 3px 0 var(--sh)}
+.uno-log{color:var(--muted)}
+.uno-round-row .pts{background:var(--amber);color:#20120b}
+.uno-rules{line-height:1.55}
+.uno-help summary{color:var(--ink)}
+
+html[data-theme="dark"] .btn.primary{background:var(--violet);color:#1a0b10}
+html[data-theme="dark"] .pill.on{background:var(--violet);color:#1a0b10}
+html[data-theme="dark"] .uno-card{box-shadow:3px 3px 0 var(--sh)}
+html[data-theme="dark"] .uno-banner{color:#20120b}
+html[data-theme="dark"] .uno-banner.hot{color:#fff}
+html[data-theme="dark"] .uno-banner.cool{color:#052620}
+
+/* Le pouce doit pouvoir faire défiler la main sans sélectionner les cartes */
+.uno-hand{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+
+@media(prefers-reduced-motion:reduce){
+  .uno-card.drawable,.uno-status .dotlive{animation:none!important}
+}
