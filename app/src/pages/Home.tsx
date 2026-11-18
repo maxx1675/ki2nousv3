@@ -162,7 +162,6 @@ const GAMES: Game[] = [
     pattern: "grid",
   },
   {
-<<<<<<< HEAD
     id: "menteurs",
     title: "La Table Des Menteurs",
     tagline: "Bluff, poker et revolver au saloon",
@@ -173,7 +172,9 @@ const GAMES: Game[] = [
     desc: "Bluff, accusations et trahisons dans un saloon 3D du Far West : pose tes cartes, mens si tu l’oses… et tente ta chance face au revolver (1 balle sur 6).",
     color: "#8b4513",
     tilt: -1.2,
-=======
+    pattern: "stripes",
+  },
+  {
     id: "skyjo",
     title: "Skyjo",
     tagline: "Le plus petit score gagne",
@@ -197,7 +198,6 @@ const GAMES: Game[] = [
     desc: "Le classique des soirées : couleurs, +2, inversion et jokers. Annonce UNO, conteste les +4 douteux et sois le premier à poser ta dernière carte.",
     color: "#e53935",
     tilt: 1.3,
->>>>>>> 3f24f1ba8d9f5f73b39e553dd73abe471dd35420
     pattern: "stripes",
   },
 ];

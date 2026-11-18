@@ -46,14 +46,11 @@ Chaque jeu est une page autonome sous `public/<jeu>/index.html` :
 - `public/blindtest/index.html` (banque musicale `public/blindtest/bank.js`)
 - `public/undercover/index.html`
 - `public/pokerface/index.html`
-<<<<<<< HEAD
 - `public/menteurs/index.html` (+ `scene.js` Three.js, `audio.js`, `menteurs.css`, `vendor/three.module.js`, `vendor/GLTFLoader.js`, `assets/revolver-quaternius.glb`)
-=======
 - `public/codenames/index.html`
 - `public/makeitmeme/index.html` (données `templates.js`, helpers `room-state.js`)
 - `public/skyjo/index.html`
 - `public/uno/index.html`
->>>>>>> 3f24f1ba8d9f5f73b39e553dd73abe471dd35420
 
 Une partie du JavaScript et du CSS est intégrée directement aux pages. Il faut donc lire le fichier de la page avant de supposer qu'il existe un module JS séparé.
 
@@ -107,11 +104,7 @@ Le relais est gardé en mémoire du processus serveur : un redémarrage efface l
 - `.env` et `.env.*` sont ignorés par Git. Ne jamais demander à l'utilisateur de transmettre les secrets ; utiliser les noms de variables sans exposer leurs valeurs.
 
 ## 7. Tests et prudence lors des changements
-<<<<<<< HEAD
-- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`) et le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`) — 30 tests Vitest.
-=======
-- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`) et les playlists YouTube (`api/lib/youtube.test.ts`), soit 19 tests Vitest.
->>>>>>> 3f24f1ba8d9f5f73b39e553dd73abe471dd35420
+- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`), les playlists YouTube (`api/lib/youtube.test.ts`) et le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`) — 33 tests Vitest.
 - Une modification du protocole d'événement doit être vérifiée côté client et serveur, pas uniquement dans les tests du serveur.
 - Les jeux étant exécutés dans de vrais navigateurs de téléphone, les changements d'interface doivent aussi prendre en compte tactile, viewport mobile, permissions média/caméra et reconnexion lorsque cela s'applique.
 - Ne pas changer une API partagée sans rechercher ses consommateurs et adapter les pages concernées.

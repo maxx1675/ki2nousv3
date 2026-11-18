@@ -4,11 +4,8 @@ import { env } from "./lib/env";
 import { log } from "./lib/logger";
 import { relay } from "./lib/relay-singleton";
 import { roomsRoutes, startSweeper } from "./routes/rooms";
-<<<<<<< HEAD
 import { menteurs, menteursRoutes, startMenteursSweeper } from "./routes/menteurs";
-=======
 import { youtubeRoutes } from "./routes/youtube";
->>>>>>> 3f24f1ba8d9f5f73b39e553dd73abe471dd35420
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -52,11 +49,8 @@ menteurs.onEnd = (room) => {
 
 // Pas de journal des requêtes /api/rooms/* : un événement de jeu = une requête, ça ferait des milliers de lignes.
 app.route("/api/rooms", roomsRoutes);
-<<<<<<< HEAD
 app.route("/api/menteurs", menteursRoutes);
-=======
 app.route("/api/youtube", youtubeRoutes);
->>>>>>> 3f24f1ba8d9f5f73b39e553dd73abe471dd35420
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }));
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
