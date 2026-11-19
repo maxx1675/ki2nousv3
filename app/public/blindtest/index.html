@@ -51,7 +51,7 @@
  <div class="card"><h2>⚙️ Réglages de la partie</h2><div id="cfgsum" class="bt-cfg-summary"></div></div>
  <div id="hostcfg" hidden class="card"><h2>La partie</h2>
   <div class="srow"><span><b>Source</b><small>Banque intégrée ou ta playlist YouTube</small></span><div class="pills" id="srcp"></div></div>
-  <div class="srow" id="themerow"><span><b>Thème</b><small>Une sélection de tubes vérifiés</small></span><select id="theme" style="max-width:210px"></select></div>
+  <div class="srow" id="themerow"><span><b>Thème</b><small>Banque intégrée + sélections YouTube</small></span><select id="theme" style="max-width:210px"></select></div>
   <div class="srow"><span><b>Manches</b><small>Nombre de chansons</small></span><div class="stepper"><button data-a="r-">−</button><output id="rn">10</output><button data-a="r+">+</button></div></div>
   <div class="srow"><span><b>Durée de l'extrait</b><small>La musique s'arrête après</small></span><div class="pills" id="extractp"></div></div>
   <div class="srow"><span><b>Mode</b><small>Réponses cachées ou visibles</small></span><div class="pills" id="modep"></div></div>
@@ -284,6 +284,31 @@ function loadPlaylist(listId){
   };
 }
 
+/* Élargit la banque du thème avec les sélections YouTube Music officielles.
+   En cas de réseau lent, de blocage ou de page illisible, la banque intégrée
+   reste jouable : on ne bloque jamais le lancement plus de quelques secondes. */
+function loadThemeTracks(theme,done){
+  const bank=BT.pick(theme,999);
+  let settled=false,timer=0;
+  const finish=extra=>{
+    if(settled)return;settled=true;
+    clearTimeout(timer);
+    const seen=new Set(bank.map(s=>s.id));
+    const merged=bank.slice();
+    for(const item of (extra||[])){
+      if(!item||!item.id||seen.has(item.id))continue;
+      seen.add(item.id);merged.push(item);
+    }
+    done(merged);
+  };
+  const ctrl=typeof AbortController!=="undefined"?new AbortController():null;
+  timer=setTimeout(()=>{try{ctrl&&ctrl.abort()}catch(e){}finish([])},6000);
+  fetch("/api/youtube/theme?theme="+encodeURIComponent(theme),{cache:"no-store",signal:ctrl?ctrl.signal:undefined})
+    .then(r=>r.json())
+    .then(j=>finish(j&&j.ok&&Array.isArray(j.items)?j.items:[]))
+    .catch(()=>finish([]));
+}
+
 /* ---------- connexion ---------- */
 function initS(){return{ph:"lobby",host:ME,pl:[],cfg:{source:"theme",theme:"80s",rounds:10,extract:15,mode:"private",answer:60,linkText:""},loading:false}}
 async function enter(create,o){
@@ -411,8 +436,12 @@ function hostStart(){
     if(p.ids.length){beginGame(p.ids.map(id=>({id,title:"",artist:""})));return}
     return toast("Colle une playlist ou au moins un lien YouTube");
   }
-  const list=BT.pick(S.cfg.theme,Math.max(S.cfg.rounds,12));
-  beginGame(list);
+  const theme=S.cfg.theme;
+  L.starting=true;S.loading=true;bc();route();
+  loadThemeTracks(theme,list=>{
+    if(!isHost||!S||S.ph!=="lobby"||S.cfg.theme!==theme){L.starting=false;if(S)S.loading=false;bc();route();return}
+    beginGame(list);
+  });
 }
 function beginGame(list){
   if(!list||!list.length){L.starting=false;if(S)S.loading=false;toast("Pas assez de musiques pour lancer");bc();route();return}
