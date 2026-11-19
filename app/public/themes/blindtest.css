@@ -152,7 +152,10 @@ h2{letter-spacing:.01em}
 .bt-cfg-summary small{display:block;color:var(--muted);font-weight:500}
 
 /* ---------- lecteur YouTube invisible ---------- */
-#ytbox{position:fixed;left:-9999px;top:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none}
+/* Le lecteur reste dans la fenêtre : un iframe hors écran ou minuscule est
+   bloqué par plusieurs navigateurs mobiles. Il est simplement recouvert par
+   le fond de la page et ne capte aucun clic. */
+#ytbox{position:fixed;left:50%;top:50%;width:200px;height:200px;transform:translate(-50%,-50%);overflow:hidden;opacity:.01;pointer-events:none;z-index:-1;border-radius:16px}
 
 /* ---------- accessibilité / mouvement réduit ---------- */
 html[data-anim="off"] .vinyl,html[data-anim="off"] .eq b{animation:none!important}
