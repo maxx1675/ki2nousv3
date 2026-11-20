@@ -188,20 +188,94 @@
     return pool.slice(0, n);
   }
 
-  // Comparaison souple : accents, casse, articles, featuring et ponctuation sont ignorés.
+  // Comparaison souple : accents, casse, articles, featuring et ponctuation
+  // sont ignorés. Les fautes de frappe courantes sont tolérées, mais un mot
+  // isolé trop court (« e », « the ») ne peut plus valider un long titre.
   function norm(v) {
-    return String(v == null ? "" : v)
+    var out = String(v == null ? "" : v)
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
+      .replace(/['’`]/g, "")
       .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
-      .replace(/\b(feat|featuring|ft)\b\.?.*$/g, " ")
+      .replace(/\b(feat|featuring|ft)\b\.?/g, " ")
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, " ")
       .trim();
+    // « B.I.G. » devient « b i g » après ponctuation : on recolle les
+    // initiales pour que « Notorious BIG » retrouve « Notorious B.I.G. ».
+    out = out.replace(/\b([a-z])\s+(?=[a-z]\b)/g, "$1");
+    out = out.replace(/\b([a-z])\s+(?=[a-z]\b)/g, "$1");
+    return out.trim();
   }
   function strip(v) {
-    return v.replace(/^(the|les|le|la|los|las|a|an|un|une|des|de|du)\s+/, "");
+    var out = v;
+    for (var i = 0; i < 3; i++) {
+      var next = out.replace(/^(the|les|le|la|los|las|a|an|un|une|des|de|du)\s+/, "");
+      if (next === out) break;
+      out = next;
+    }
+    return out;
+  }
+  // Distance d'édition avec transpositions adjacentes (OSA), suffisante pour
+  // les noms de chansons et d'artistes.
+  function editDistance(a, b) {
+    var rows = [], i, j;
+    for (i = 0; i <= a.length; i++) rows[i] = [i];
+    for (j = 0; j <= b.length; j++) rows[0][j] = j;
+    for (i = 1; i <= a.length; i++) {
+      for (j = 1; j <= b.length; j++) {
+        var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+        var d = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost);
+        if (i > 1 && j > 1 && a.charAt(i - 1) === b.charAt(j - 2) && a.charAt(i - 2) === b.charAt(j - 1)) {
+          d = Math.min(d, rows[i - 2][j - 2] + 1);
+        }
+        rows[i][j] = d;
+      }
+    }
+    return rows[a.length][b.length];
+  }
+  function near(a, b) {
+    if (a === b) return true;
+    if (a.length < 4 || b.length < 4) return false;
+    // Une faute de frappe conserve presque toujours la première lettre ;
+    // l'exiger évite de confondre deux mots différents (« station »/« nation »).
+    if (a.charAt(0) !== b.charAt(0)) return false;
+    var max = Math.max(a.length, b.length);
+    var allowed = max >= 12 ? 2 : 1;
+    if (Math.abs(a.length - b.length) > allowed) return false;
+    return editDistance(a, b) <= allowed;
+  }
+  function wordMatch(a, b) {
+    if (a === b) return true;
+    if (a.length < 4 || b.length < 4) return false;
+    if (a.charAt(0) !== b.charAt(0)) return false;
+    var max = Math.max(a.length, b.length);
+    var allowed = max >= 8 ? 2 : 1;
+    if (Math.abs(a.length - b.length) > allowed) return false;
+    return editDistance(a, b) <= allowed;
+  }
+  function containsWords(haystack, needle) {
+    var h = haystack.split(" ").filter(Boolean);
+    var n = needle.split(" ").filter(Boolean);
+    if (!n.length || n.length > h.length || needle.length < 4) return false;
+    for (var i = 0; i <= h.length - n.length; i++) {
+      var ok = true;
+      for (var j = 0; j < n.length; j++) {
+        if (!wordMatch(n[j], h[i + j])) { ok = false; break; }
+      }
+      if (ok) return true;
+    }
+    return false;
+  }
+  var NOISE_WORDS = /^(and|the|of|a|an|to|in|on|at|by|for|or|de|la|le|les|un|une|des|du|et)$/;
+  function allWordsPresent(guess, answer) {
+    var aw = answer.split(" ").filter(function (w) { return w.length > 2 && !NOISE_WORDS.test(w); });
+    if (aw.length < 2) return false;
+    var gw = guess.split(" ").filter(Boolean);
+    return aw.every(function (w) {
+      return gw.some(function (g) { return wordMatch(g, w); });
+    });
   }
   function match(guess, answer) {
     var g = norm(guess), a = norm(answer);
@@ -209,25 +283,137 @@
     if (g === a) return true;
     var gs = strip(g), as = strip(a);
     if (gs === as) return true;
-    if (a.length >= 6 && (g.indexOf(a) !== -1 || a.indexOf(g) !== -1)) return true;
-    var words = as.split(" ").filter(function (w) { return w.length > 2; });
-    if (words.length >= 2 && words.every(function (w) { return gs.indexOf(w) !== -1; })) return true;
+    if (near(gs, as)) return true;
+    if (containsWords(as, gs)) return true;
+    if (containsWords(gs, as)) return true;
+    if (allWordsPresent(gs, as)) return true;
     return false;
   }
   function cleanTitle(v) {
     var t = String(v || "");
-    t = t.replace(/\s*[\(\[][^)\]]*(official|video|clip|audio|lyrics?|paroles|remaster|hd|4k|live|version)[^)\]]*[\)\]]/gi, " ");
-    t = t.replace(/\s*[-–—]\s*(official|video|clip|audio|lyrics?|paroles|remaster).*$/i, " ");
+    // Crochets et parenthèses : presque toujours des mentions de version.
+    t = t.replace(/\s*[\(\[]([^)\]]*)[\)\]]/g, function (all, inner) {
+      return /\b(official|officiel|officielle|video|vidéo|clip|audio|lyrics?|paroles|letra|legendado|tradu[cç][aã]o|sub|remaster|hd|hq|4k|8k|\d{3,4}p|live|version|visuali[sz]er|performance|m\/?v|explicit|clean|full\s+song|high\s+quality|edit|extended|instrumental|karaoke)\b/i.test(inner) ? " " : all;
+    });
+    // « feat. » / « ft. » : on retire l'invité du titre affiché.
+    t = t.replace(/\s*[\(\[]\s*(feat\.?|featuring|ft\.?)\s+[^)\]]*[\)\]]/gi, " ");
+    t = t.replace(/\s+(feat\.?|featuring|ft\.?)\s+.*$/i, " ");
+    // Suffixes de version après un tiret. On reste prudent : « - Video »,
+    // « - Audio », « - Live » ou « - Version » seuls peuvent être le titre.
+    t = t.replace(/\s*[-–—]\s*(official|officiel(?:le)?|clip|lyrics?|paroles|letra|legendado|tradu[cç][aã]o|sub|remaster(?:ed)?|visuali[sz]er|performance|m\/?v|hd|hq|4k|8k|\d{3,4}p|explicit|clean|radio\s+edit|album\s+version|single\s+version|extended|instrumental|karaoke|full\s+song|high\s+quality)\b.*$/i, " ");
+    t = t.replace(/\s*[-–—]\s*live\s+(?:at|from|in|@)\s+.*$/i, " ");
+    t = t.replace(/\s*[\(\[]\s*[\)\]]\s*/g, " ");
+    t = t.replace(/^[\s\-–—|:]+|[\s\-–—|:]+$/g, "");
     return t.replace(/\s+/g, " ").trim();
   }
   function cleanArtist(v) {
     var t = String(v || "");
     t = t.replace(/\s*-\s*topic$/i, "");
-    t = t.replace(/vevo$/i, "");
+    t = t.replace(/\s*vevo$/i, "");
+    t = t.replace(/\s*official(\s+channel)?$/i, "");
     return t.replace(/\s+/g, " ").trim();
+  }
+  var GENERIC_ARTIST = /^(various artists|various|va|unknown|unknown artist|artiste inconnu|official)$/;
+  function sameSegment(a, b) {
+    var x = strip(norm(a)), y = strip(norm(b));
+    if (!x || !y) return false;
+    return x === y || near(x, y);
+  }
+  function segmentHasArtist(segment, artist) {
+    var seg = cleanArtist(String(segment || ""));
+    var s = norm(seg), a = norm(artist);
+    if (!s || !a) return false;
+    if (s === a || s.replace(/ /g, "") === a.replace(/ /g, "")) return true;
+    // Un segment qui contient juste le nom de l'artiste au milieu d'un titre
+    // (« Dancing Queen » pour l'artiste Queen) ne doit pas être pris pour
+    // l'artiste. On n'accepte la contenance que pour les collaborations.
+    if (!hasCollab(seg)) return false;
+    var aw = a.split(" ").filter(function (w) { return w.length > 1; });
+    if (!aw.length) return false;
+    var sw = s.split(" ");
+    return aw.every(function (w) {
+      return sw.some(function (x) { return x === w || wordMatch(x, w); });
+    });
+  }
+  function hasCollab(v) {
+    return /(?:&|\band\b|\bx\b|,|\bfeat\b|\bft\b|\bvs\b)/i.test(String(v || ""));
+  }
+  function isLiveSegment(v) {
+    return /^(live|en concert|concert)$/i.test(String(v || "").trim());
+  }
+  /* Sépare un titre YouTube du type « Artiste - Titre - Artiste ».
+     L'artiste connu (chaîne YouTube) sert d'ancre ; sans artiste fiable,
+     on retombe sur la forme la plus courante « Artiste - Titre ». */
+  function songMeta(rawTitle, rawArtist) {
+    var rawT = String(rawTitle == null ? "" : rawTitle).trim();
+    var rawA = String(rawArtist == null ? "" : rawArtist).trim();
+    var title = cleanTitle(rawT) || rawT;
+    var artist = cleanArtist(rawA) || rawA;
+    var generic = !artist || GENERIC_ARTIST.test(norm(artist));
+    if (!title) return { title: "", artist: generic ? "" : artist };
+
+    var parts = title.split(/\s+[-–—]\s+|\s*\|\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (parts.length < 2) return { title: title, artist: generic ? "" : artist };
+
+    if (!generic) {
+      var known = artist, idx = -1;
+      for (var i = 0; i < parts.length; i++) {
+        if (segmentHasArtist(parts[i], known)) { idx = i; break; }
+      }
+      if (idx >= 0) {
+        var chosen = parts[idx];
+        if (hasCollab(chosen) && norm(chosen) !== norm(known)) artist = cleanArtist(chosen) || chosen;
+        var rest = parts.slice(0, idx).concat(parts.slice(idx + 1));
+        var filtered = rest.filter(function (p) {
+          return !segmentHasArtist(p, known) && !segmentHasArtist(p, artist);
+        });
+        if (!filtered.length) filtered = rest;
+        while (filtered.length >= 2 && sameSegment(filtered[0], filtered[filtered.length - 1])) {
+          filtered.pop();
+        }
+        // « Artiste - Titre - Live » : le dernier segment est une version, pas
+        // le titre. On ne le retire que s'il reste un vrai titre avant lui.
+        if (filtered.length >= 2 && isLiveSegment(filtered[filtered.length - 1])) filtered.pop();
+        if (filtered.length) title = filtered.join(" - ");
+        return { title: title, artist: artist };
+      }
+      return { title: title, artist: artist };
+    }
+
+    if (parts.length >= 3 && sameSegment(parts[0], parts[parts.length - 1])) {
+      return { title: parts.slice(1, -1).join(" - "), artist: parts[0] };
+    }
+    if (parts.length >= 3 && isLiveSegment(parts[parts.length - 1])) parts = parts.slice(0, -1);
+    return { title: parts.slice(1).join(" - "), artist: parts[0] };
+  }
+  /* Position de départ d'un extrait : on vise 40-52 % du morceau, sans
+     dépasser la fin. `elapsed` permet de reprendre une manche en cours. */
+  function extractBase(pos, duration, extract, elapsed) {
+    var d = Number(duration) || 0;
+    var e = Math.max(1, Number(extract) || 15);
+    var p = Math.max(0, Math.min(0.95, Number(pos) || 0));
+    var el = Math.max(0, Number(elapsed) || 0);
+    if (!d) return 0;
+    var max = Math.max(0, d - e - 0.75);
+    return Math.max(0, Math.min(max, d * p + el));
+  }
+  function pickPos() {
+    return 0.4 + Math.random() * 0.12;
   }
 
   window.BT_SONGS = SONGS;
   window.BT_THEMES = THEMES;
-  window.BT = { pick: pick, norm: norm, match: match, cleanTitle: cleanTitle, cleanArtist: cleanArtist };
+  window.BT = {
+    pick: pick,
+    norm: norm,
+    strip: strip,
+    match: match,
+    near: near,
+    editDistance: editDistance,
+    cleanTitle: cleanTitle,
+    cleanArtist: cleanArtist,
+    songMeta: songMeta,
+    extractBase: extractBase,
+    pickPos: pickPos
+  };
 })();
