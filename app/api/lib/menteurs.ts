@@ -78,6 +78,12 @@ export type MenteursReveal = {
   count: number;
   cards: MenteursCard[];
   auto: boolean;
+  /** Vies et survie AVANT le tir : permet aux clients de masquer la mort
+      jusqu'à la détonation locale. */
+  before: { id: string; alive: boolean; lives: number }[];
+  /** Nombre d'entrées de journal avant le résultat : le client n'affiche
+      pas les lignes de tir/élimination avant la balle. */
+  logCount: number;
 };
 
 export type MenteursPhase = "lobby" | "claim" | "challenge" | "reveal" | "end";
@@ -729,7 +735,11 @@ export class MenteursEngine {
     return room.deck.length;
   }
   private draw(room: MenteursRoom) {
-    return room.deck.pop() ?? { v: "9", s: "" };
+    // Filet de sécurité : même si la pioche est vide, on ne renvoie jamais
+    // une carte sans couleur (elle s'affichait comme une carte blanche).
+    const fallbackSuits = ["♠", "♥", "♦", "♣"];
+    const n = Math.abs(Math.floor(Number(this.roll()) || 1));
+    return room.deck.pop() ?? { v: "9", s: fallbackSuits[n % fallbackSuits.length] };
   }
   private handSize(room: MenteursRoom) {
     const n = room.players.filter((p) => !p.spectator).length;
@@ -761,11 +771,9 @@ export class MenteursEngine {
     this.setTarget(room);
   }
   private setTarget(room: MenteursRoom) {
-    // `roll()` renvoie 1..6 (le barillet). On réutilise ce tirage pour choisir
-    // la cible parmi les figures et l'As uniquement (V, D, R, A).
-    const n = Math.floor(Number(this.roll()) || 1);
-    const idx = ((n - 1) % MENTEURS_TARGETS.length + MENTEURS_TARGETS.length) % MENTEURS_TARGETS.length;
-    room.target = MENTEURS_TARGETS[idx];
+    // Tirage uniforme parmi V, D, R et A. L'ancien mapping `roll()` 1..6
+    // favorisait V et D (deux cases sur six) au détriment de R et A.
+    room.target = this.shuffle([...MENTEURS_TARGETS])[0] ?? "A";
     // La carte cible est dévoilée en début de manche : personne ne joue pendant 5 s.
     room.roundAt = this.now();
   }
@@ -786,6 +794,10 @@ export class MenteursEngine {
     const sp = this.player(room, shooter);
     const cp = this.player(room, claimant);
     const chp = this.player(room, challenger);
+    // Photo de la table AVANT le tir : les clients s'en servent pour garder
+    // le suspense jusqu'à la détonation (aucune mort visible avant la balle).
+    const before = room.players.map((p) => ({ id: p.id, alive: p.alive, lives: p.lives }));
+    const logCount = room.log.length;
     if (bullet && vp) {
       vp.lives = Math.max(0, vp.lives - 1);
       if (vp.lives <= 0) {
@@ -816,6 +828,8 @@ export class MenteursEngine {
       count: claim.count,
       cards: claim.cards.map((c) => ({ ...c })),
       auto: room.autoChallenge,
+      before,
+      logCount,
     };
     room.autoChallenge = false;
     room.phase = "reveal";

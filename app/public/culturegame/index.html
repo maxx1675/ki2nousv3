@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr" data-anim="light" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Culture Game : le quiz multijoueur. QCM, vrai ou faux, anagrammes, rébus, petit bac, people et films ou séries mystères, avec validation par l’hôte et thèmes au choix.">
+<meta name="theme-color" content="#6a47ff">
+<title>Culture Game — quiz multijoueur</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
+<link rel="stylesheet" href="/themes/culturegame.css">
+</head>
+<body class="cg-body">
+<main class="wrap cg-wrap">
+  <div class="top cg-top">
+    <a href="/" class="cg-hub">🏠 Hub</a>
+    <span id="who" class="hint"></span>
+  </div>
+  <div id="app" class="cg-app" aria-live="polite"></div>
+  <footer class="cg-foot">
+    <span>Culture Game · quiz multijoueur</span>
+  </footer>
+  <!-- Crédits des portraits (licences et sources) : /culturegame/people/CREDITS.md -->
+</main>
+<script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/party.js"></script>
+<script src="./game.js"></script>
+</body>
+</html>

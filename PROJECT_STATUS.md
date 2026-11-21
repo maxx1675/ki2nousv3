@@ -1,13 +1,13 @@
 # État du projet — ki2nousv3
 
-> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **18 novembre 2026**, après la fusion des deux vagues : **La Table Des Menteurs** (jeu 3D temps réel autoritaire côté serveur : carte cible limitée aux figures et à l'As, dévoilement de 5 s, contestation géante, levée/abaissement des cartes visible par tous, main 3D recadrée, personnages assis corrigés et éclairage du saloon renforcé) et **Skyjo + UNO** complets en multijoueur, intégrés au hub et au Salon, avec le retour compact au Salon dans les récaps intermédiaires et les corrections de jouabilité (Undercover, Make It Meme, Blind Test, Poker Face). Modifications non commitées à la date de rédaction.
+> Document de reprise pour les sessions OpenCode. Dernière mise à jour : **21 novembre 2026**, après l'ajout de **Culture Game** et **Garlic Phone** au hub et au Salon, la finition de **La Table Des Menteurs** et la reprise des portraits de Culture Game (personnalités récentes, flou réduit, crédits visibles retirés). Modifications non commitées à la date de rédaction.
 >
 > **Emplacement réel de l'application : `app/`.** C'est le dossier qui contient `package.json`, `src/`, `public/` et `api/`. La racine du dépôt ne contient que la documentation et `.opencode/`. Toutes les commandes npm doivent être lancées depuis `app/`.
 
 ## Résumé
 **Le Hub de Soirée** est une application web de jeux de groupe : un hub React/Vite, plusieurs jeux autonomes accessibles depuis un navigateur, et un serveur Hono qui relaie les salons temps réel, conserve un instantané de reprise et gère le classement cumulé de la soirée. La logique de chaque partie est exécutée dans le navigateur de l'hôte ; le serveur ne la calcule pas, **sauf pour La Table Des Menteurs**, dont le moteur est autoritaire côté serveur.
 
-## État actuel vérifié (18 novembre 2026)
+## État actuel vérifié (21 novembre 2026)
 - Frontend du hub : React 19, TypeScript 5.9 (strict), Vite 7, React Router 7.
 - Pages des jeux : HTML/CSS/JavaScript autonomes sous `public/`, avec scripts globaux et ordre de chargement à respecter.
 - Code commun des jeux : `public/shared/` (`net.js`, `profile.js`, `party.js`, `gages.js`, `qr.js`, `theme.js`, **`library.js`**) et thèmes dans `public/themes/`.
@@ -25,8 +25,8 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 
 | Espace | Chemin | Statut réel |
 |---|---|---|
-| Hub React | `src/` | Terminé dans le code : 12 tuiles (Salon + 11 jeux), carrousel, réglages, musique, PWA. Seul le badge « 18+ » subsiste. |
-| Salon de la soirée | `public/soiree/` | Terminé pour **11 jeux** : Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, La Table Des Menteurs, Qui de nous ?, Les Petites Vérités, **Skyjo**, **UNO**. |
+| Hub React | `src/` | Terminé dans le code : 14 tuiles (Salon + 13 jeux), carrousel, réglages, musique, PWA. Seul le badge « 18+ » subsiste. |
+| Salon de la soirée | `public/soiree/` | Terminé pour **13 jeux** : Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, La Table Des Menteurs, Qui de nous ?, Les Petites Vérités, **Skyjo**, **UNO**, **Culture Game**, **Garlic Phone**. |
 | Undercover | `public/undercover/` | Terminé dans le code : rôles, mots personnalisables, salon public, gages, scores, snapshot. Vote dérivé côté hôte/invités depuis cette vague. |
 | Poker Face | `public/pokerface/` | Terminé dans le code : caméra/MediaPipe, médias, téléphone-caméra WebRTC (**négociation symétrique**, renégociation à l'ajout de piste, reprise après reconnexion), jointure en cours de partie, bibliothèque locale, gages, scores, flagrant délit des perdants. |
 | Photo Roulette | `public/photoroulette/` | Terminé dans le code : **réserve conservée toute la partie**, **16 photos (10 vidéos) tirées par joueur et par manche**, validation, questions une par une, récap de manche, `Lib`, snapshot. |
@@ -38,6 +38,8 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 | La Table Des Menteurs | `public/menteurs/` + `api/lib/menteurs.ts` | **Jeu 3D temps réel autoritaire côté serveur** : saloon Three.js, 2–8 joueurs, cartes réelles, cible V/D/R/A, dévoilement 5 s, contestation au revolver, reprise, classement de soirée. |
 | Skyjo | `public/skyjo/` | Terminé dans le code : règles complètes (150 cartes, grille 4×3, colonnes de 3, dernier tour, doublement, objectif 50/100), hôte autoritaire, snapshot, promotion, classement de soirée, Salon. |
 | UNO | `public/uno/` | Terminé dans le code : paquet officiel de 108 cartes, mains privées, +2/+4, inversion/passe-tour, choix de couleur, contestation du +4, UNO et dénonciation, manche unique/200/500, Salon. |
+| Culture Game | `public/culturegame/` | Terminé dans le code : quiz 2–8 joueurs, **301 questions** sur 9 thèmes choisis par l'hôte, QCM/VF/anagrammes/rébus/petit bac/films/séries/portraits, phase de validation par l'hôte, révélation, classement de soirée, Salon. |
+| Garlic Phone | `public/garlicphone/` | Terminé dans le code : téléphone arabe du dessin 2–8 joueurs, phrases → dessins → descriptions, canvas tactile, album final téléchargeable, hôte autoritaire, Salon. |
 | Petit Bac Boom | — | **Supprimé** : la tuile du hub a été retirée ; plus aucune référence dans `src/`. |
 
 ## Fonctionnalités terminées (dans le code)
@@ -54,11 +56,11 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 - Présence en direct, couronne de l'hôte, passage de relais automatique, reprise après rechargement.
 - Choix du jeu par l'hôte diffusé à tous (`go`), classement de soirée cumulé, gages partagés.
 - Retour au salon depuis chaque jeu intégré (`Party.endCard`, `Party.listen`).
-- La liste `GAMES` expose les **11 jeux** du hub (Codenames, La Table Des Menteurs, Skyjo et UNO ajoutés).
+- La liste `GAMES` expose les **13 jeux** du hub (Codenames, La Table Des Menteurs, Skyjo, UNO, Culture Game et Garlic Phone ajoutés).
 - Retour au Salon sans perdre le code depuis les récaps intermédiaires : `Party.leaveCard` et `Party.endCard({ compact: true })`, utilisés par Blind Test, Photo Roulette, Les Petites Vérités, Qui de nous ?, Undercover, Make It Meme, Poker Face, Skyjo et UNO.
 
-### Jeux intégrés au salon (11)
-- Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, La Table Des Menteurs, Qui de nous ?, Les Petites Vérités, Skyjo, UNO : `Net.enter`/`Net.join`, session `Sess`, `Party.report`, snapshot `R.snap`, `onPromote`/`onDemote`, retour au salon.
+### Jeux intégrés au salon (13)
+- Undercover, Poker Face, Photo Roulette, Blind Test, Codenames, Make It Meme, La Table Des Menteurs, Qui de nous ?, Les Petites Vérités, Skyjo, UNO, Culture Game, Garlic Phone : `Net.enter`/`Net.join`, session `Sess`, `Party.report`, snapshot `R.snap`, `onPromote`/`onDemote`, retour au salon.
 - Mode sombre : chaque jeu expose un thème clair/sombre via `public/shared/theme.js` (bouton flottant) ou son panneau intégré.
 - Barrières d'âge : case 18+ et mémorisation `soiree:18ok` pour Les Petites Vérités ; confirmation pour la banque de gages 18+ dans `gages.js`. À conserver.
 
@@ -115,6 +117,22 @@ Dans ce document, **« terminé »** signifie : fonctionnalité présente dans l
 - **Contestation du +4** : fenêtre de 15 s, acceptation automatique à l'expiration, +6 si la contestation est perdue et +4 pour le joueur fautif si elle est gagnée.
 - **UNO** : annonce obligatoire à une carte, fenêtre de dénonciation de 8 s (1,2 s de grâce) et pénalité de 2 cartes. Manche gagnée en posant sa dernière carte ; score = somme des points restants (chiffres = valeur, actions = 20, jokers = 50).
 - Objectif **manche unique / 200 / 500 points**, `skipTurn`, snapshot, promotion d'hôte, `Party.report`, retour au Salon compact puis complet.
+
+### Culture Game
+- Page `public/culturegame/index.html`, moteur `public/culturegame/game.js`, thème `public/themes/culturegame.css`, portraits `public/culturegame/people/`.
+- **Quiz 2–8 joueurs** : salon à 4 caractères, hôte autoritaire (`S` diffusé par `st`/`act`/`R.snap`, réponses attendues gardées dans `H`), reprise après rechargement, classement de soirée et `Party.endCard`.
+- **Banque de 301 questions** : 158 QCM, 47 vrai/faux, 20 anagrammes, 16 films, 14 séries, 22 portraits, 12 rébus et 12 petit bac, réparties sur 9 thèmes (`culture`, `geo`, `histoire`, `sciences`, `ecran`, `musique`, `sport`, `people`, `langue`).
+- **Thèmes choisis par l'hôte** : chips multisélection dans le lobby (minimum 1), filtrage dans `pickQuestions`, complément automatique si le pool est trop petit, quota d'environ 45 % de réponses libres.
+- **Validation par l'hôte** : les types subjectifs (`rebus`, `who`, `film`, `serie`, `bac`) passent par une phase `judge` réservée à l'hôte ; suggestion automatique par normalisation, acceptation/refus joueur par joueur, « tout accepter/refuser », confirmation, puis révélation et application des points. Les réponses libres ne sont jamais transmises aux invités avant la révélation.
+- **Barème** : `10 + secondes restantes` ; révélation 6 s (9 s après une validation), enchaînement automatique et bouton « Question suivante ».
+- **Portraits « Qui est-ce ? »** : 22 photos de personnalités **contemporaines et en couleur** (footballeurs, rappeurs, chanteuses, acteurs), sous licence CC BY / CC BY-SA / OGL / CC0, flou léger **4 px sans noir et blanc** pendant la question, image nette à la révélation. Sources et licences dans `public/culturegame/people/CREDITS.md` (non affiché dans le jeu).
+
+### Garlic Phone
+- Page `public/garlicphone/index.html`, moteur `public/garlicphone/game.js`, thème `public/themes/garlicphone.css`.
+- **Téléphone arabe du dessin 2–8 joueurs** : chaque joueur écrit une phrase, un autre la dessine, un autre décrit le dessin, et ainsi de suite ; l'hôte lance, passe les étapes et termine, avec chronomètre par étape.
+- Canvas tactile (souris, stylet, doigt), couleurs, gomme, annulation, suggestions de phrases, verrouillage à l'expiration du temps.
+- **Album final** : chaîne complète phrase → dessin → phrase, navigation, téléchargement des créations, `Party.endCard` et classement de soirée.
+- Identité visuelle au **crayon ✏️** et consigne « phrase à dessin » dans une bulle blanche très contrastée et agrandie.
 
 ### Correctifs de jouabilité (17 novembre)
 - **Undercover** : l'ordre de passage est tiré à chaque manche et évite explicitement l'ordre précédent et le même premier joueur ; retour compact au Salon au récap de manche.
@@ -234,9 +252,21 @@ Aucun bloquant connu à la lecture du code.
 - **La Table Des Menteurs** : moteur `api/lib/menteurs.ts` (`MENTEURS_TARGETS = ["V", "D", "R", "A"]`, `roundAt`, `raised`), routes `api/routes/menteurs.ts` (`/create`, `/join`, `/state`, `/action`), client `public/menteurs/index.html` + `scene.js` + `menteurs.css` + `audio.js` + `vendor/GLTFLoader.js`, asset `assets/revolver-quaternius.glb` (Quaternius, CC0, Poly Pizza). Actions : `config`, `start`, `pause`, `resume`, `end`, `rematch`, `kick`, `nextTurn`, `claim`, `challenge`, `believe`, `raise`. `roundAt + 5000` = verrou de dévoilement ; côté client `DEAL_HOLD = 5000` et `dealRemain()`. Un rechargement en cours de manche ne fait plus réapparaître la carte cible au centre.
 - Skyjo : jeu `"sj"`, salons `sj-XXXX`, `Sess` `"sj"`, 12 cartes par grille. `H.deck`/`H.discard`/`H.grids`/`H.removed`/`H.drawn` sont privés à l'hôte ; `S.board`, `S.order`, `S.turn`, `S.trigger`, `S.finishing`, `S.queue` et `S.roundResult` sont publics. `hiddenCount` doit ignorer les cartes `gone` (colonnes retirées) ; `sjShuffle` évite le conflit avec le global `shuffle` de `net.js`. `Party.report` reçoit `s:-p.sc` car le plus petit score doit être classé premier.
 - UNO : jeu `"uno"`, salons `uno-XXXX`, `Sess` `"uno"`. `H.hands`/`H.deck`/`H.discard` et `H.pending4.legal` restent côté hôte ; les mains partent en `priv`. `S.color` suit la dernière couleur jouée (ou choisie), `S.pending`/`S.pendingDraw`/`S.uno` décrivent les fenêtres publiques. Les timeouts hôte (contestation 15 s, couleur 20 s, UNO 8 s) sont traités dans `tickHost` ; `unoShuffle` évite le conflit avec `shuffle`.
+- Culture Game : jeu `"cg"`, salons `cg-XXXX`, `Sess` `"cg"`, snapshot `{S,H}`. `H.qs`/`H.answers`/réponses attendues restent côté hôte ; `pubQ` ne diffuse jamais `a` ni les alias avant la révélation. Les types subjectifs déclenchent `judgeNow()` (phase `judge`), `applyJudge` fige les verdicts, puis `finishReveal` applique les points (`10 + secondes restantes`) et publie `S.reveal`. `REVEAL_MS = 6000`, `JUDGE_REVEAL_MS = 9000`.
+- Garlic Phone : jeu `"gp"`, salons `gp-XXXX`, `Sess` `"gp"`, snapshot `{S,H}`. L'hôte possède `H.stepEndAt` et `advanceStep()` ; chaque étape est minutée et les chaînes sont diffusées via `S.prompts`/`S.submitted`. L'album final est local et téléchargeable.
 - Retour au Salon : `Party.leaveCard` émet `back` (hôte) et `Party.listen` écoute cet événement chez tous les jeux pour revenir au même code. `Party.endCard({compact:true})` ne montre que ce bouton, sans classement de soirée.
 
 ## Vérifications
+
+### Réalisées le 21 novembre 2026 (Culture Game, Garlic Phone, crédits)
+- `npm run check` (depuis `app/`) : **réussi**.
+- `npm test` : **réussi**, **33 tests** (relais 13, Make It Meme 3, YouTube 3, moteur Menteurs 14).
+- `npm run build` : **réussi** (Vite + bundle serveur).
+- `node --check` sur `culturegame/game.js` et `garlicphone/game.js` : **aucune erreur**.
+- Validateur de banque Culture Game : **301 questions**, images `who` présentes, réponses QCM dans les options, champs obligatoires OK.
+- Navigateur — Culture Game à 2 joueurs (salon PYP2, hôte `HôteCG3`, invité `InvitéCG3`) : thème People seul, question `who` avec **Taylor Swift** (`p29`), flou `blur(4px) saturate(1.06)` appliqué, image nette à la révélation, réponses libres masquées côté invité, pied de page sans crédits ni mention d'inspiration.
+- Navigateur — Garlic Phone : page d'accueil et lobby chargés, pied de page réduit au nom du jeu, crayon ✏️ conservé.
+- Captures vérifiées : portrait flouté Culture Game, footer Garlic Phone.
 
 ### Réalisées le 18 novembre 2026 (La Table Des Menteurs)
 - `npm run check` (depuis `app/`) : **réussi**.
@@ -310,6 +340,8 @@ Aucun bloquant connu à la lecture du code.
 - Captures vérifiées : accueil, lobby, éditeur Make It Meme, écran médias Photo Roulette.
 
 ### Reste à vérifier
+- **Culture Game sur appareils réels** : partie 3–8 joueurs, thèmes multiples, validation hôte sur téléphone, lisibilité des portraits floutés, rébus et petit bac, révélation des images, connexion/déconnexion en cours de partie.
+- **Garlic Phone sur appareils réels** : dessin tactile sur iPhone/Android, lisibilité de la consigne, chronomètre, album final et téléchargements.
 - **La Table Des Menteurs sur appareils réels** : partie à 2–8 sur plusieurs téléphones, reconnexion, transfert d'hôte, exclusion, synchronisation des chronos et lisibilité de la main 3D sur petits écrans.
 - **Skyjo et UNO sur appareils réels** : 3–10 joueurs sur plusieurs téléphones, lisibilité des cartes, zones tactiles, snapshot après refresh, promotion d'hôte, retour au Salon avec le code, classement de soirée. La sandbox ne fournit pas d'émulation mobile réelle.
 - **Photo Roulette sur appareils réels** : tirage de 16 médias par manche depuis une grosse réserve (100–150 photos), recyclage quand la réserve s'épuise, restauration `Lib` après refresh, envoi par QR depuis un iPhone (HEIC).
@@ -321,6 +353,8 @@ Aucun bloquant connu à la lecture du code.
 - `npm start` sous Windows : commande POSIX toujours en échec (voir bug 5).
 
 ## Modifications récentes
+- **2026-11-21 — Culture Game et Garlic Phone finalisés, crédits retirés** : ajout des deux jeux au hub et au Salon (déjà présents dans `Home.tsx` et `GAMES`), banque Culture Game ramenée à **301 questions** avec **22 portraits de personnalités contemporaines en couleur** (Mbappé, Messi, Ronaldo, Zidane, Neymar, Haaland, Drake, Eminem, Kendrick Lamar, Aya Nakamura, Booba, Dwayne Johnson, Taylor Swift, Zendaya, Beyoncé, Rihanna, Tom Cruise, Lewis Hamilton, Serena Williams, The Weeknd, Dua Lipa, Orelsan) ; les anciens portraits en noir et blanc ont été retirés. Licences et sources dans `people/CREDITS.md`/`credits.json`, flou réduit de 16 px à **4 px** et suppression du noir et blanc, footers « crédits » et « inspiration » retirés des deux pages. Les mentions de licence restent uniquement en commentaire de code (`garlicphone/game.js`) et dans `CREDITS.md`.
+- **2026-11-20 — Culture Game et Garlic Phone** : deux nouveaux jeux autonomes complets (quiz à validation par l'hôte ; téléphone arabe du dessin), tuiles du hub, entrées du Salon, thèmes dédiés, retour de soirée.
 - **2026-11-18 — La Table Des Menteurs** : jeu 3D temps réel à moteur serveur autoritaire. Cible limitée à **V/D/R/A**, verrou de dévoilement de 5 s, contestation géante, action publique `raise` + indicateur 🃏↑/🃏↓, éventails de cartes tenus par les personnages, correction des chaises (buste animé séparé), main 3D recadrée, éclairage et lisibilité du saloon renforcés, carte cible non rejouée après rechargement. Nettoyage des GLB non utilisés ; seul le revolver Quaternius (CC0) reste. 14 tests moteur.
 - **2026-11-17 (vague Skyjo/UNO et jouabilité)** — Ajout de **`public/skyjo/index.html`** (+ `themes/skyjo.css`) et **`public/uno/index.html`** (+ `themes/uno.css`) : règles complètes, hôte autoritaire, snapshot, promotion, `Party.report`, retour au Salon. Entrées ajoutées dans `src/pages/Home.tsx` et `public/soiree/index.html`. **`public/shared/party.js`** : `Party.leaveCard` et option `compact` de `Party.endCard` pour les récaps intermédiaires. **Undercover** : ordre de passage différent à chaque manche. **Make It Meme** : drag Pointer Events délégué, chrono sombre, galerie téléchargeable au récap, retour compact (`index.html`, `themes/makeitmeme.css`). **Blind Test** : repli serveur de playlist, mémoire de l'autorisation audio (`index.html`), ajout de `api/lib/youtube.ts`, `api/routes/youtube.ts`, `api/lib/youtube.test.ts` et montage `/api/youtube` dans `api/boot.ts`. **Poker Face** : overlay 3 s, caméra éliminée persistante, calibration anti-mouvement de tête, retour compact. Retours compacts ajoutés à Photo Roulette, Qui de nous ?, Les Petites Vérités. Aucun commit ni push.
 - **2026-11-16 (passe de robustesse)** — 7 pages de jeux modifiées : `blindtest/index.html` (reset invité, reprise d'hôte), `photoroulette/index.html` (drop par clé, deck filtré, fin vide), `codenames/index.html` (`pick25` dédupliqué), `undercover/index.html` (retour `late`), `verites/index.html` (mélange relancé, exclusion/bannissement, final idempotent, copie locale horodatée prioritaire sur un snapshot en retard), `pokerface/index.html` (restauration du contenu courant, élagage en partie désactivé, calibration, bannissement/promotion), `quidenous/index.html` (persistance `sessionStorage` des photos/morceaux et `needpic`). Aucun changement de `net.js`, `party.js` ni du relais.
@@ -333,7 +367,9 @@ Aucun bloquant connu à la lecture du code.
 
 ## Prochaines étapes de développement
 
-1. **Valider Skyjo et UNO sur téléphones réels** : 3–10 joueurs, lisibilité et zones tactiles des cartes, snapshot après refresh, promotion d'hôte, retour au Salon avec le code et classement de soirée.
+1. **Valider Culture Game sur téléphones réels** : 3–8 joueurs, thèmes multiples, validation hôte, portraits, rébus, petit bac, révélation et classement de soirée.
+2. **Valider Garlic Phone sur téléphones réels** : dessin tactile, chronos, album final, téléchargement des créations.
+3. **Valider Skyjo et UNO sur téléphones réels** : 3–10 joueurs, lisibilité et zones tactiles des cartes, snapshot après refresh, promotion d'hôte, retour au Salon avec le code et classement de soirée.
 2. **Valider Poker Face sur deux vrais téléphones** : vidéo caméra à caméra (STUN/TURN, 4G), caméra branchée en cours de partie, changement de caméra, reconnexion simultanée, tuiles noires résiduelles. C'est la seule validation manquante du correctif WebRTC.
 3. **Valider Photo Roulette sur téléphones réels** : grosse réserve, 3–10 manches, recyclage, QR iPhone/HEIC, restauration après refresh.
 4. **Valider Codenames dans le Salon** sur deux appareils : équipes, maître-espion, snapshot, promotion d'hôte, retour au salon et classement.
@@ -350,6 +386,22 @@ Aucun bloquant connu à la lecture du code.
 15. **Ajouter des tests navigateur/E2E minimaux** : création + jointure + reprise d'hôte sur chaque jeu intégré, en complément des **33 tests Vitest** existants.
 
 ## À compléter après chaque tâche importante
+### 2026-11-21 — Culture Game et Garlic Phone : crédits, portraits récents
+- Objectif : finaliser les deux nouveaux jeux ; retirer les crédits visibles et les mentions d'inspiration ; rendre les portraits « Qui est-ce ? » moins flous, en couleur, avec des personnalités récentes.
+- Fichiers / zones modifiés : `app/public/culturegame/game.js` (14 nouveaux `who`), `app/public/culturegame/index.html` (footer), `app/public/culturegame/people/p17–p30.jpg`, `people/CREDITS.md`, `people/credits.json`, `app/public/themes/culturegame.css` (flou), `app/public/garlicphone/index.html` (footer), `PROJECT_STATUS.md`.
+- Décisions techniques à conserver : flou **4 px** sans `grayscale` (16 px auparavant), `transform: scale(1.03)` pour éviter les bords ; images récentes sous CC BY / CC BY-SA / CC0 avec attribution dans `CREDITS.md` (non affichée dans le jeu) ; la mention MIT de Garlic Phone reste en commentaire d'en-tête de `game.js` ; pas de crédits ni de « inspiré de » dans les footers.
+- Vérifications lancées et résultats : `npm run check` réussi ; `npm test` réussi (33) ; `npm run build` réussi ; `node --check` OK ; validateur de banque 308 questions OK ; test navigateur Culture Game (People, Taylor Swift) et Garlic Phone (footer).
+- Problèmes connus / limites : validation tactile multi-téléphones à faire ; images CC BY-SA nécessitant de conserver `CREDITS.md` dans le dépôt.
+- Prochaine étape concrète : partie complète Culture Game et Garlic Phone sur deux téléphones.
+
+### 2026-11-20 — Culture Game et Garlic Phone
+- Objectif : livrer deux nouveaux jeux intégraux, intégrés au hub et au Salon.
+- Fichiers / zones modifiés : `app/public/culturegame/` (page, moteur, banque, portraits), `app/public/garlicphone/` (page, moteur), `app/public/themes/culturegame.css`, `app/public/themes/garlicphone.css`, `app/src/pages/Home.tsx`, `app/public/soiree/index.html`.
+- Décisions techniques à conserver : hôte autoritaire avec snapshot `{S,H}` ; Culture Game garde les réponses dans `H` et filtre `pubQ` ; phase `judge` réservée à l'hôte ; Garlic Phone utilise des étapes minutées pilotées par `H.stepEndAt`.
+- Vérifications lancées et résultats : tests navigateur à 2 joueurs, `npm run check`, `npm test` (33), `npm run build`.
+- Problèmes connus / limites : validation multi-téléphones.
+- Prochaine étape concrète : vérification visuelle mobile et équilibrage des durées.
+
 ### 2026-11-18 — La Table Des Menteurs
 - Objectif : finir **La Table Des Menteurs** — cible limitée aux figures/As, dévoilement 5 s, contestation, cartes levées/baissées visibles, main 3D recadrée, personnages assis sans glitch, décor et éclairage du saloon, carte cible non rejouée après rechargement.
 - Fichiers / zones modifiés : `app/api/lib/menteurs.ts` (`MENTEURS_TARGETS`, `roundAt`, `raised`, action `raise`), `app/api/lib/menteurs.test.ts` (14 tests), `app/api/routes/menteurs.ts`, `app/public/menteurs/index.html` (verrou 5 s, badges, contestation géante, aide/crédits), `app/public/menteurs/scene.js` (rig des personnages, éventails, mains, cible, éclairage), `app/public/menteurs/menteurs.css`, `app/public/menteurs/audio.js`, `app/public/menteurs/assets/revolver-quaternius.glb`, `PROJECT_STATUS.md`, `ARCHITECTURE.md`.

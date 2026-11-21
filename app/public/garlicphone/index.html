@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr" data-anim="light" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Garlic Phone — le téléphone arabe du dessin</title>
+<meta name="theme-color" content="#7b4bb7">
+<meta name="description" content="Garlic Phone : écrivez une phrase, faites-la dessiner, puis décrivez le dessin. Voyez l'histoire dérailler au fil des joueurs.">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
+<link rel="stylesheet" href="/themes/garlicphone.css">
+</head>
+<body class="gp-body">
+<div class="gp-doodles" aria-hidden="true">
+  <span>✏️</span><span>✏️</span><span>✏️</span><span>💬</span><span>🖍️</span><span>✏️</span>
+</div>
+<main class="wrap gp-wrap">
+  <div class="top gp-top">
+    <a href="/" class="gp-hub">🏠 Hub</a>
+    <span id="who" class="hint"></span>
+  </div>
+  <div id="app" class="gp-app" aria-live="polite"></div>
+  <footer class="gp-foot">
+    <span>Garlic Phone · le téléphone arabe du dessin</span>
+  </footer>
+  <!-- Licence du projet d'origine : voir l'en-tête de ./game.js -->
+</main>
+<script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/party.js"></script>
+<script src="./game.js"></script>
+</body>
+</html>

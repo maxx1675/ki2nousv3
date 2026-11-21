@@ -330,6 +330,11 @@ let lastNetToast = 0;
 let lastClaimAnnounced = 0;
 let lastRevealAnnounced = 0;
 let believedTs = 0;
+/** Instant local (ms) où la balle part : la mort ne s'affiche qu'après. */
+const REVEAL_FIRE_MS = 3450;
+let RAW = null;
+let unmaskTimer = 0;
+let unmaskTs = 0;
 let lastEndKey = "";
 let lastLobbySig = "";
 let handSig = "";
@@ -686,12 +691,77 @@ function hideBig() {
 /* ------------------------------------------------------------------ */
 /* Application d'un état serveur                                       */
 /* ------------------------------------------------------------------ */
+/** Temps écoulé depuis le début de la révélation (ms). */
+function revealElapsed(rv) {
+  if (!rv || !rv.ts) return REVEAL_FIRE_MS;
+  return Math.max(0, Date.now() + serverOffset - rv.ts);
+}
+
+/**
+ * Vue « suspense » : tant que la balle n'est pas partie, on remet les vies,
+ * les éliminations et le journal dans l'état d'AVANT le tir. L'état serveur
+ * reste intact dans RAW, mais rien ne doit spoiler la détonation.
+ */
+function maskViewState(st) {
+  if (!st || st.phase !== "reveal" || !st.reveal) return st;
+  const rv = st.reveal;
+  if (revealElapsed(rv) >= REVEAL_FIRE_MS) return st;
+  const before = new Map((rv.before || []).map((p) => [p.id, p]));
+  const players = (st.players || []).map((p) => {
+    const b = before.get(p.id);
+    return b ? { ...p, alive: b.alive, lives: b.lives } : p;
+  });
+  let you = st.you;
+  if (you) {
+    const b = before.get(you.id);
+    if (b) you = { ...you, alive: b.alive, lives: b.lives };
+  }
+  const log = typeof rv.logCount === "number" ? (st.log || []).slice(0, rv.logCount) : st.log;
+  return { ...st, players, you, log };
+}
+
+/** À l'instant exact du tir, on lève le masque sans attendre le prochain poll. */
+/** Prépare l'état 3D : joueurs masqués + temps restant avant la balle. */
+function sceneState(raw, view) {
+  const st = { ...raw, players: view.players, you: view.you };
+  if (raw.reveal) {
+    st.reveal = {
+      ...raw.reveal,
+      fireIn: Math.max(0, REVEAL_FIRE_MS - revealElapsed(raw.reveal)),
+    };
+  }
+  return st;
+}
+
+function scheduleUnmask(st) {
+  if (!st || st.phase !== "reveal" || !st.reveal) return;
+  const rv = st.reveal;
+  if (!rv.before || !rv.ts) return;
+  const wait = REVEAL_FIRE_MS - revealElapsed(rv);
+  if (wait <= 0) return;
+  if (unmaskTs === rv.ts) return;
+  clearTimeout(unmaskTimer);
+  unmaskTs = rv.ts;
+  unmaskTimer = setTimeout(() => {
+    if (!RAW || RAW.reveal?.ts !== rv.ts) return;
+    S = maskViewState(RAW);
+    try {
+      scene?.sync(sceneState(RAW, S));
+    } catch (e) {
+      console.warn("[menteurs] scène après tir", e);
+    }
+    renderAll();
+    tick();
+  }, wait + 20);
+}
+
 function applyState(st) {
   if (!st || (st.code && code && st.code !== code)) return;
   const prevPhase = S ? S.phase : "";
   const prevHost = S ? S.hostId : "";
-  S = st;
+  RAW = st;
   serverOffset = (Number(st.serverNow) || Date.now()) - Date.now();
+  S = maskViewState(st);
   if (st.you) {
     if (st.you.name) meName = st.you.name;
     if (st.you.avatar) meAvatar = st.you.avatar;
@@ -705,7 +775,9 @@ function applyState(st) {
   }
 
   try {
-    scene?.sync(st);
+    // La scène reçoit les joueurs masqués (pas de mort avant la balle) mais
+    // la révélation brute, qui lui sert à minuter le coup de feu local.
+    scene?.sync(sceneState(RAW, S));
     if (scene && typeof scene.raised === "boolean") sendRaise(scene.raised);
   } catch (e) {
     /* le rendu 3D ne doit jamais bloquer le jeu */
@@ -714,6 +786,7 @@ function applyState(st) {
   renderAll();
   tick();
   announceFromState(st, prevPhase);
+  scheduleUnmask(st);
 
   if (st.phase === "lobby") publishPresence();
   else if (prevPhase === "lobby") publishPresence(true);
@@ -727,16 +800,32 @@ function announceFromState(st, prevPhase) {
   if (st.reveal && st.reveal.ts && st.reveal.ts !== lastRevealAnnounced) {
     lastRevealAnnounced = st.reveal.ts;
     const rv = st.reveal;
-    big(rv.liar ? "🤥 Mensonge démasqué !" : "✅ C'était la vérité !", 1600);
     const ts = rv.ts;
-    setTimeout(() => {
-      if (!S || !S.reveal || S.reveal.ts !== ts) return;
-      big("😰 Il hésite…", 1500);
-    }, 1700);
-    setTimeout(() => {
+    const elapsed = revealElapsed(rv);
+    const wait = (ms) => Math.max(0, ms - elapsed);
+    const fire = () => {
       if (!S || !S.reveal || S.reveal.ts !== ts) return;
       big(rv.bullet ? "💥 BANG !" : "*clic* Chambre vide", 2300);
-    }, 3450);
+    };
+    if (elapsed >= REVEAL_FIRE_MS) {
+      // On arrive après le coup (reconnexion) : le résultat est déjà connu.
+      fire();
+    } else {
+      big(
+        elapsed < 1250
+          ? "🔫 Il sort lentement son revolver…"
+          : elapsed < 2400
+            ? "🌀 Le barillet tourne…"
+            : "😰 Il hésite… le canon tremble.",
+        1400,
+      );
+      if (elapsed < 1700)
+        setTimeout(() => {
+          if (!S || !S.reveal || S.reveal.ts !== ts) return;
+          big("😰 Il hésite… le canon tremble.", 1400);
+        }, wait(1700));
+      setTimeout(fire, wait(REVEAL_FIRE_MS));
+    }
   }
   if (prevPhase !== "end" && st.phase === "end") {
     if (st.winner) big(`🏆 ${nameOf(st.winner)} remporte la table !`, 3200);
@@ -845,7 +934,14 @@ function renderHud() {
   let turn = "";
   if (S.phase === "claim") turn = S.turnId === ME ? "🎯 À toi de jouer" : "Au tour de " + (nameOf(S.turnId) || "—");
   else if (S.phase === "challenge") turn = "Annonce de " + (nameOf(S.claim?.by) || "—");
-  else if (S.phase === "reveal") turn = S.reveal ? (S.reveal.liar ? "🤥 Mensonge démasqué" : "✅ Annonce véridique") : "Révélation…";
+  else if (S.phase === "reveal")
+    turn = !S.reveal
+      ? "Révélation…"
+      : revealElapsed(S.reveal) < REVEAL_FIRE_MS
+        ? "🔫 Révélation…"
+        : S.reveal.liar
+          ? "🤥 Mensonge démasqué"
+          : "✅ Annonce véridique";
   $("#hudTurn").textContent = turn;
   $("#hudSub").textContent = [
     me.lives > 0 ? "❤️".repeat(Math.min(5, me.lives)) : "💀",
@@ -938,10 +1034,14 @@ function buildNotice() {
     html = `Annonce : <b>${S.claim?.count || 0} × ${esc(labelOf(S.claim?.target || S.target))}</b> par <b>${esc(nameOf(S.claim?.by))}</b>.`;
   } else if (S.phase === "reveal" && S.reveal) {
     const rv = S.reveal;
-    const cards = rv.cards.map(miniCard).join("");
-    html = `<div><b>${rv.liar ? "Mensonge !" : "Vérité !"}</b> ${esc(nameOf(rv.shooter))} → ${esc(nameOf(rv.victim))}</div><div class="reveal-line">${cards}</div>`;
+    if (revealElapsed(rv) < REVEAL_FIRE_MS) {
+      html = `🔫 <b>${esc(nameOf(rv.shooter))}</b> vise <b>${esc(nameOf(rv.victim))}</b>… la table retient son souffle.`;
+    } else {
+      const cards = rv.cards.map(miniCard).join("");
+      html = `<div><b>${rv.liar ? "Mensonge !" : "Vérité !"}</b> ${esc(nameOf(rv.shooter))} → ${esc(nameOf(rv.victim))}</div><div class="reveal-line">${cards}</div>`;
+    }
   }
-  return { html, signature: [S.phase, S.paused, S.you.alive, S.you.spectator, S.turnId, S.claim?.ts || 0, S.claim?.by || "", S.reveal?.ts || 0, S.claim?.count || 0, S.reveal?.liar].join("|") };
+  return { html, signature: [S.phase, S.paused, S.you.alive, S.you.spectator, S.turnId, S.claim?.ts || 0, S.claim?.by || "", S.reveal?.ts || 0, S.claim?.count || 0, S.reveal?.liar, S.reveal ? (revealElapsed(S.reveal) < REVEAL_FIRE_MS ? 0 : 1) : 0].join("|") };
 }
 
 function miniCard(c) {
@@ -1121,7 +1221,7 @@ function updateRevealResult() {
   const el = document.getElementById("revealResult");
   if (!el || !S || !S.reveal) return;
   const rv = S.reveal;
-  const elapsed = Date.now() + serverOffset - rv.ts;
+  const elapsed = revealElapsed(rv);
   if (elapsed < 1250) {
     el.textContent = "🔫 Il sort lentement son revolver…";
   } else if (elapsed < 2400) {
