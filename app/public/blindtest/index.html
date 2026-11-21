@@ -51,7 +51,7 @@
  <div class="card"><h2>⚙️ Réglages de la partie</h2><div id="cfgsum" class="bt-cfg-summary"></div></div>
  <div id="hostcfg" hidden class="card"><h2>La partie</h2>
   <div class="srow"><span><b>Source</b><small>Banque intégrée ou ta playlist YouTube</small></span><div class="pills" id="srcp"></div></div>
-  <div class="srow" id="themerow"><span><b>Thème</b><small>Une sélection de tubes vérifiés</small></span><select id="theme" style="max-width:210px"></select></div>
+  <div class="srow" id="themerow"><span><b>Thème</b><small>Banque intégrée + sélections YouTube</small></span><select id="theme" style="max-width:210px"></select></div>
   <div class="srow"><span><b>Manches</b><small>Nombre de chansons</small></span><div class="stepper"><button data-a="r-">−</button><output id="rn">10</output><button data-a="r+">+</button></div></div>
   <div class="srow"><span><b>Durée de l'extrait</b><small>La musique s'arrête après</small></span><div class="pills" id="extractp"></div></div>
   <div class="srow"><span><b>Mode</b><small>Réponses cachées ou visibles</small></span><div class="pills" id="modep"></div></div>
@@ -81,8 +81,8 @@
 "use strict";
 const MIN=2,MAX=12;
 let R=null,S=null,isHost=false,code="";
-let H={song:null,res:{},pts:{},order:[],idx:-1,stat:{fast:null,titles:{}},fails:0};
-const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,unlocked:false,needT:0,starting:false,lastSend:0};
+let H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0};
+const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,soundR:-1,unlocked:false,needT:0,starting:false,lastSend:0,token:0,stopT:0,loadSeq:0,expectedId:"",cueReady:false,probe:null,bad:{},playerResets:0,readySeen:false,playerGen:0,brokenKey:""};
 let YT_READY=false,YT_PLAYER=null,YT_QUEUE=[],YT_LOADING=false;
 
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
@@ -91,91 +91,325 @@ const msg=t=>$("#hmsg").textContent=t;
 const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!=id);
 const bc=()=>{if(isHost&&R){R.emit("st",S).catch(()=>{});R.snap({S,H:snapH()})}};
 const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
-const snapH=()=>({song:H.song,res:H.res,pts:H.pts,order:H.order,idx:H.idx,stat:H.stat});
+const snapH=()=>({song:H.song,res:H.res,pts:H.pts,order:H.order,spare:H.spare,idx:H.idx,stat:H.stat});
 try{$("#pname").value=localStorage.getItem("soiree:name")||""}catch(e){}
 
 /* ---------- lecteur YouTube ---------- */
+/* L'API IFrame expose parfois YT.Player avant d'avoir installé les méthodes
+   playVideo/cueVideoById. Créer le lecteur à ce moment-là produit un objet
+   incomplet qui ne joue jamais. On attend donc YT.loaded === 1, et on vérifie
+   aussi que les méthodes sont réellement présentes. */
+function ytApiReady(){
+  return !!(window.YT&&window.YT.Player&&window.YT.loaded===1);
+}
+function playerApiReady(){
+  return !!(YT_PLAYER&&
+    typeof YT_PLAYER.cueVideoById==="function"&&
+    typeof YT_PLAYER.loadVideoById==="function"&&
+    typeof YT_PLAYER.playVideo==="function"&&
+    typeof YT_PLAYER.pauseVideo==="function"&&
+    typeof YT_PLAYER.getPlayerState==="function"&&
+    typeof YT_PLAYER.isMuted==="function"&&
+    typeof YT_PLAYER.unMute==="function"&&
+    typeof YT_PLAYER.seekTo==="function"&&
+    typeof YT_PLAYER.getVideoData==="function");
+}
+function playerReady(){
+  return !!(YT_READY&&playerApiReady());
+}
+function soundOk(){
+  return !!(S&&S.ph==="round"&&L.sound&&L.soundR===S.r);
+}
+function gateShouldShow(){
+  if(!S||S.ph!=="round"||S.loading||soundOk())return false;
+  const now=Net.now(),t0=S.t0||0,extract=Math.max(1,S.extract||S.cfg.extract||15);
+  if(!t0||now<t0+1200)return false;
+  // Après la fin de l'extrait, il n'y a plus rien à écouter : l'invite
+  // « Activer le son » ne doit pas réapparaître pendant le temps de réponse.
+  if(now>=t0+extract*1000+250)return false;
+  if(S.ansUntil&&now>=S.ansUntil)return false;
+  return true;
+}
+function resetPlayer(){
+  try{YT_PLAYER&&YT_PLAYER.destroy&&YT_PLAYER.destroy()}catch(e){}
+  YT_PLAYER=null;YT_READY=false;YT_LOADING=false;L.readySeen=false;
+  L.playingR=-1;L.sound=false;L.soundR=-1;
+  const box=document.getElementById("ytbox");
+  if(box)box.innerHTML='<div id="ytframe"></div>';
+}
 function ensurePlayer(cb){
-  if(YT_PLAYER&&YT_READY){if(cb)cb(YT_PLAYER);return}
+  if(playerReady()){if(cb)cb(YT_PLAYER);return}
   if(cb)YT_QUEUE.push(cb);
   if(YT_LOADING)return;
   YT_LOADING=true;
+  const gen=++L.playerGen;
+  let bootTries=0,waitTries=0,initT=0;
   function boot(){
-    if(!YT_LOADING)return;
-    if(!window.YT||!YT.Player){setTimeout(boot,300);return}
+    if(gen!==L.playerGen||!YT_LOADING)return;
+    if(!ytApiReady()){
+      if(bootTries++<120){setTimeout(boot,250);return}
+      YT_LOADING=false;
+      toast("Impossible de charger le lecteur YouTube");
+      return;
+    }
+    if(YT_PLAYER&&!playerApiReady()){
+      // Un lecteur incomplet après onReady est remplacé. Tant que onReady
+      // n'a pas eu lieu, on le laisse s'initialiser (sinon on le détruit en boucle).
+      if(L.readySeen){resetPlayer();YT_LOADING=true;L.playerGen=gen}
+      else return;
+    }
+    if(playerReady()){
+      YT_LOADING=false;
+      clearTimeout(initT);
+      const q=YT_QUEUE.splice(0);
+      q.forEach(f=>{try{f(YT_PLAYER)}catch(e){}});
+      return;
+    }
     const el=document.getElementById("ytframe");if(!el){YT_LOADING=false;return}
-    YT_PLAYER=new YT.Player(el,{width:"2",height:"2",playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0,modestbranding:1,origin:location.origin},events:{
-      onReady:()=>{YT_READY=true;YT_LOADING=false;YT_QUEUE.splice(0).forEach(f=>{try{f(YT_PLAYER)}catch(e){}})},
+    const p=new YT.Player(el,{width:"200",height:"200",playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0,modestbranding:1,origin:location.origin},events:{
+      onReady:()=>{
+        if(gen!==L.playerGen||YT_PLAYER!==p)return;
+        L.readySeen=true;
+        // Certaines versions de l'API déclenchent onReady avant d'installer
+        // les méthodes. On attend qu'elles soient réellement disponibles.
+        let n=0;
+        const mark=()=>{
+          if(gen!==L.playerGen||YT_PLAYER!==p)return;
+          if(playerApiReady()){
+            YT_READY=true;YT_LOADING=false;L.playerResets=0;
+            clearTimeout(initT);
+            const q=YT_QUEUE.splice(0);
+            q.forEach(f=>{try{f(YT_PLAYER)}catch(e){}});
+            return;
+          }
+          if(n++<40){setTimeout(mark,100);return}
+          L.playerResets=(L.playerResets||0)+1;
+          if(L.playerResets<=2){resetPlayer();ensurePlayer()}
+          else{YT_LOADING=false;YT_READY=false;toast("Le lecteur YouTube n'a pas pu démarrer. Recharge la page.")}
+        };
+        mark();
+      },
       onStateChange:e=>{
-        // L'extrait tourne vraiment et n'est pas coupé : le son est autorisé.
+        if(gen!==L.playerGen||YT_PLAYER!==p||!playerApiReady())return;
+        if(L.probe)return;
+        let muted=true,vid="";
+        try{
+          const d=YT_PLAYER.getVideoData?YT_PLAYER.getVideoData():null;
+          vid=d&&d.video_id||"";muted=YT_PLAYER.isMuted();
+        }catch(x){}
+        if(L.expectedId&&vid&&vid!==L.expectedId)return;
+        if(e.data===5)L.cueReady=true;
         if(e.data===1){
-          try{
-            if(YT_PLAYER.isMuted()&&L.unlocked){YT_PLAYER.unMute();YT_PLAYER.setVolume(100)}
-            L.sound=!YT_PLAYER.isMuted();syncSnd();updGame()
-          }catch(x){}
+          if(muted&&L.unlocked){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);muted=YT_PLAYER.isMuted()}catch(x){}}
+          if(!muted&&S&&S.ph==="round"&&!S.loading){
+            L.sound=true;L.soundR=S.r;syncSnd();updVinyl(true);updGame();
+            if(isHost)H.skipFails=0;
+          }else if(muted&&S&&S.ph==="round"){
+            L.sound=false;L.soundR=-1;syncSnd();updGame();
+          }
         }
       },
       onError:e=>{
-        const code=e&&e.data;
-        toast(code===101||code===150?"⚠️ Cette vidéo n'autorise pas la lecture intégrée (on passe à la suivante).":"⚠️ YouTube n'arrive pas à lire cet extrait");
-        if(isHost&&S&&S.ph==="round"&&!S.loading){setTimeout(()=>{if(isHost&&S&&S.ph==="round"&&!S.loading)endRound("error")},600)}
+        if(gen!==L.playerGen||YT_PLAYER!==p)return;
+        handlePlayerError(e&&e.data);
       }
     }});
+    YT_PLAYER=p;
+    // Filet de sécurité si l'iframe ne déclenche jamais onReady.
+    initT=setTimeout(()=>{
+      if(gen!==L.playerGen||!YT_LOADING)return;
+      if(YT_PLAYER===p&&!playerApiReady()){resetPlayer();ensurePlayer()}
+    },8000);
   }
-  if(window.YT&&window.YT.Player){boot();return}
-  const s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";
-  s.onload=()=>{try{boot()}catch(e){YT_LOADING=false}};
-  s.onerror=()=>{YT_LOADING=false;toast("Impossible de charger le lecteur YouTube")};
-  document.head.append(s);
+  if(ytApiReady()){boot();return}
   window.onYouTubeIframeAPIReady=()=>{try{boot()}catch(e){YT_LOADING=false}};
+  if(!window.__btYtApi){
+    window.__btYtApi=true;
+    const s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";
+    s.onerror=()=>{window.__btYtApi=false;YT_LOADING=false;toast("Impossible de charger le lecteur YouTube")};
+    document.head.append(s);
+  }
+  // Filet de sécurité si onYouTubeIframeAPIReady a déjà été appelé (cache).
+  (function waitApi(){
+    if(gen!==L.playerGen||!YT_LOADING)return;
+    if(ytApiReady()){boot();return}
+    if(waitTries++<120)setTimeout(waitApi,250);
+    else{YT_LOADING=false;toast("Impossible de charger le lecteur YouTube")}
+  })();
+}
+function handlePlayerError(code){
+  const msg=(code===101||code===150)?"⚠️ Cette vidéo n'autorise pas la lecture intégrée : on passe à une autre.":code===100?"⚠️ Vidéo indisponible : on passe à une autre.":"⚠️ YouTube n'arrive pas à lire cet extrait : on passe à une autre.";
+  toast(msg);
+  if(L.probe&&L.probe.seq===L.loadSeq){const p=L.probe;L.probe=null;try{p.fail(code)}catch(e){};return}
+  if(!S||S.ph!=="round")return;
+  const id=L.expectedId||(S.song&&S.song.id)||"";
+  if(!isHost){
+    // L'hôte peut lire la même vidéo sans erreur : on le prévient pour qu'il
+    // remplace la chanson si nécessaire.
+    if(R&&id)R.emit("act",{k:"broken",p:ME,r:S.r,id,code},"host");
+    return;
+  }
+  if(S.loading)return;
+  const r=S.r;
+  setTimeout(()=>{
+    if(!isHost||!S||S.ph!=="round"||S.loading||S.r!==r)return;
+    if(id&&L.expectedId&&L.expectedId!==id)return;
+    handleBrokenSong(code);
+  },400);
 }
 function unlockAudio(){
-  // À appeler depuis un vrai clic : l'autorisation audio de YouTube ne dure pas
-  // toujours d'une manche à l'autre sur mobile, d'où ce bouton visible.
+  // À appeler depuis un vrai clic. On ne prétend jamais que le son est actif :
+  // seul l'état réel du lecteur (playing + non muet) fait passer L.sound à true.
   const go=()=>{
-    try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo()}catch(e){}
-    setTimeout(()=>{try{YT_PLAYER.pauseVideo()}catch(e){}},400);
-    L.unlocked=true;L.sound=true;syncSnd();
-    if(S&&S.ph==="round"&&L.cur){
-      const el=Math.max(0,(Net.now()-(S.t0||Net.now()))/1000);
-      if(el<S.cfg.extract){L.playingR=-1;playExtract({...L.cur,start:Net.now()+250,offset:el,extract:Math.max(2,S.cfg.extract-el)})}
+    if(!S||S.ph!=="round"||S.loading||!L.cur||!L.cur.id||L.cur.r!==S.r){
+      toast(S&&S.ph==="round"?"Préparation de l'extrait…":"Le son s'activera au début de la première manche");
+      return;
     }
-    if(S&&S.ph==="round")updGame();
-    toast("🔊 Son activé");
+    const cur=L.cur;
+    const extract=Math.max(2,cur.extract||S.cfg.extract||15);
+    const start=cur.start||S.t0||Net.now();
+    const end=cur.end||(start+extract*1000);
+    const now=Net.now();
+    if(now>=end){toast("L'extrait est déjà terminé");return}
+    // Pendant les secondes de préparation, on se contente d'autoriser le son :
+    // playTrack démarrera l'extrait à l'heure prévue, sans avance.
+    if(now<start-80){
+      L.unlocked=true;
+      try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100)}catch(e){}
+      L.sound=false;L.soundR=-1;syncSnd();
+      toast("🔊 Son autorisé : l'extrait démarre à l'heure prévue");
+      return;
+    }
+    L.unlocked=true;L.sound=false;L.soundR=-1;L.probe=null;syncSnd();
+    const token=++L.token;
+    const play=duration=>{
+      if(token!==L.token||!S||S.ph!=="round"||S.r!==cur.r||L.cur!==cur)return;
+      const base=playBase(cur,duration);
+      const at=Net.now();
+      const seek=Math.min(base+Math.max(0,(at-start)/1000),base+Math.max(0,(end-start)/1000)-0.5);
+      try{
+        YT_PLAYER.unMute();YT_PLAYER.setVolume(100);
+        // loadVideoById recharge la vidéo au bon endroit même si le lecteur
+        // vient d'être recréé (rechargement de page) ou n'a jamais chargé l'extrait.
+        YT_PLAYER.loadVideoById({videoId:cur.id,startSeconds:Math.max(base,seek)});
+      }catch(e){}
+      L.playingR=S.r;L.expectedId=cur.id;L.cueReady=false;
+      verifySound(S.r,12,cur.id,token,base,start,end);
+      clearTimeout(L.stopT);
+      L.stopT=setTimeout(()=>{if(token===L.token)stopYT()},Math.max(0,end-at)+250);
+      toast("🔊 Activation du son…");
+    };
+    let duration=0;try{duration=YT_PLAYER&&YT_PLAYER.getDuration?YT_PLAYER.getDuration():0}catch(e){}
+    if(typeof cur.pos==="number"&&!(duration>0))waitDuration(play);else play(duration);
   };
-  if(YT_PLAYER&&YT_READY)go();else ensurePlayer(go);
+  if(playerReady())go();
+  else{ensurePlayer();toast("Lecteur en préparation : tape encore une fois dans un instant")}
 }
-function syncSnd(){const b=$("#sndbtn");if(b)b.textContent=L.sound?"🔊 Son OK":"🔇 Activer le son";const g=$("#sndgate");if(g)g.hidden=!!L.sound}
-function playExtract(p){
+function syncSnd(){
+  const b=$("#sndbtn");if(b)b.textContent=soundOk()?"🔊 Son OK":"🔇 Activer le son";
+  const g=$("#sndgate");if(g)g.hidden=!gateShouldShow();
+}
+/* Vérifie que l'extrait tourne vraiment avec le son. Si le navigateur bloque
+   l'autoplay, L.sound reste faux et l'invite « Activer le son » reste visible :
+   au moins l'utilisateur ne croit plus que le son fonctionne quand ce n'est pas le cas. */
+function verifySound(r,tries,id,token,base,start,end){
+  let last=-1,n=0,badVid=0;
+  const chk=()=>{
+    if(token!==L.token||!S||S.ph!=="round"||S.r!==r)return;
+    let state=-1,muted=true,time=-1,vid="";
+    try{
+      state=YT_PLAYER.getPlayerState();muted=YT_PLAYER.isMuted();time=YT_PLAYER.getCurrentTime();
+      const d=YT_PLAYER.getVideoData?YT_PLAYER.getVideoData():null;vid=d&&d.video_id||"";
+    }catch(e){}
+    if(vid&&id&&vid!==id){
+      if(badVid++<tries){setTimeout(chk,700);return}
+      L.sound=false;L.soundR=-1;syncSnd();updGame();
+      if(isHost)handleBrokenSong("stale");
+      else if(R&&id)R.emit("act",{k:"broken",p:ME,r,id,code:"stale"},"host");
+      return;
+    }
+    if(muted){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);muted=YT_PLAYER.isMuted()}catch(e){}}
+    const seek=Math.min(base+Math.max(0,(Net.now()-start)/1000),base+Math.max(0,(end-start)/1000)-0.5);
+    if(state===5){L.cueReady=true;try{YT_PLAYER.seekTo(Math.max(base,seek),true);YT_PLAYER.playVideo()}catch(e){}}
+    else if(state===0||state===-1||state===2){try{YT_PLAYER.playVideo()}catch(e){}}
+    if(!muted&&(state===1||(state===3&&last>=0&&time>last+0.05))){
+      L.sound=true;L.soundR=r;L.unlocked=true;syncSnd();updVinyl(true);updGame();return;
+    }
+    last=time;
+    if(n++<tries){setTimeout(chk,700);return}
+    L.sound=false;L.soundR=-1;syncSnd();updGame();
+  };
+  setTimeout(chk,500);
+}
+function checkSound(){
+  if(!soundOk()||!playerApiReady())return;
+  let state=-1,muted=true;
+  try{state=YT_PLAYER.getPlayerState();muted=YT_PLAYER.isMuted()}catch(e){return}
+  if(muted||state===0||state===2||state===5||state===-1){
+    L.sound=false;L.soundR=-1;syncSnd();
+  }
+}
+function waitDuration(cb){
+  let n=0;
+  const chk=()=>{
+    let d=0;try{d=YT_PLAYER&&YT_PLAYER.getDuration?YT_PLAYER.getDuration():0}catch(e){}
+    if(d>0){cb(d);return}
+    if(n++<25)setTimeout(chk,100);else cb(0);
+  };
+  chk();
+}
+/* Position de départ de l'extrait. Les nouveaux payloads transmettent une
+   fraction (`pos`) : chaque écran la convertit avec la durée réelle de la
+   vidéo. Les anciens payloads gardent leur `offset` absolu. */
+function playBase(p,duration){
+  if(p&&typeof p.pos==="number")return BT.extractBase(p.pos,duration,p.extract,p.elapsed);
+  return Math.max(0,p&&p.offset||0);
+}
+function playTrack(p){
   if(!p||!p.id)return;
-  L.playingR=p.r;
+  const token=++L.token;
+  clearTimeout(L.stopT);L.stopT=0;
+  L.cur=p;L.playingR=p.r;L.expectedId=p.id;L.cueReady=false;L.probe=null;
+  L.sound=false;L.soundR=-1;L.brokenKey="";
+  syncSnd();
   ensurePlayer(()=>{
-    try{YT_PLAYER.cueVideoById({videoId:p.id,startSeconds:p.offset||0})}catch(e){}
-    const delay=Math.max(0,(p.start||0)-Net.now());
-    setTimeout(()=>{
-      if(!S||S.ph!=="round"||S.r!==p.r){L.playingR=-1;return}
-      try{YT_PLAYER.seekTo(p.offset||0,true);YT_PLAYER.unMute();YT_PLAYER.setVolume(100);YT_PLAYER.playVideo()}catch(e){}
-      // Vérifie que la lecture a vraiment démarré (autoplay bloqué, vidéo muette…).
-      // On ne coupe pas le son sur un simple état « buffering » : sinon le bouton
-      // « Activer le son » réapparaissait à chaque manche.
-      setTimeout(()=>{
-        if(!S||S.ph!=="round"||S.r!==p.r)return;
-        let state=-1,muted=true;
-        try{state=YT_PLAYER.getPlayerState();muted=YT_PLAYER.isMuted()}catch(e){}
-        if(muted){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);muted=YT_PLAYER.isMuted()}catch(e){}}
-        if(state===0||state===5){try{YT_PLAYER.playVideo()}catch(e){}}
-        const ok=!muted&&(state===1||state===3);
-        if(ok){L.sound=true;L.unlocked=true}
-        else if(muted||state===5||state===0)L.sound=false;
-        syncSnd();updVinyl(state===1||state===3);updGame();
-      },1500);
-      updVinyl(true);
-      const dur=Math.max(1,p.extract||15);
-      setTimeout(()=>{if(L.cur&&L.cur.r===p.r)stopYT()},dur*1000+1000);
-    },delay);
+    if(token!==L.token)return;
+    const extract=Math.max(1,p.extract||15);
+    const start=p.start||(S&&S.t0)||Net.now();
+    const end=p.end||(start+extract*1000);
+    const now=Net.now();
+    if(now>=end)return;
+    const lead=Math.max(0,start-now);
+    ++L.loadSeq;
+    try{YT_PLAYER.cueVideoById({videoId:p.id,startSeconds:typeof p.pos==="number"?0:Math.max(0,p.offset||0)})}catch(e){}
+    const begin=()=>{
+      if(token!==L.token||!S||S.ph!=="round"||S.r!==p.r)return;
+      if(Net.now()>=end)return;
+      const play=duration=>{
+        if(token!==L.token||!S||S.ph!=="round"||S.r!==p.r)return;
+        if(Net.now()>=end)return;
+        const base=playBase(p,duration);
+        const seek=Math.min(base+Math.max(0,(Net.now()-start)/1000),base+Math.max(0,(end-start)/1000)-0.5);
+        try{
+          YT_PLAYER.unMute();YT_PLAYER.setVolume(100);
+          if(L.cueReady){YT_PLAYER.seekTo(Math.max(base,seek),true);YT_PLAYER.playVideo()}
+          else{YT_PLAYER.loadVideoById({videoId:p.id,startSeconds:Math.max(base,seek)})}
+        }catch(e){}
+        verifySound(p.r,12,p.id,token,base,start,end);
+        L.stopT=setTimeout(()=>{if(token===L.token)stopYT()},Math.max(0,end-Net.now())+250);
+      };
+      let duration=0;try{duration=YT_PLAYER&&YT_PLAYER.getDuration?YT_PLAYER.getDuration():0}catch(e){}
+      if(typeof p.pos==="number"&&!(duration>0))waitDuration(play);else play(duration);
+    };
+    if(lead>20)setTimeout(begin,lead);else begin();
   });
 }
-function stopYT(){try{if(YT_PLAYER&&YT_PLAYER.pauseVideo)YT_PLAYER.pauseVideo()}catch(e){}updVinyl(false)}
+function stopYT(){
+  L.token++;
+  clearTimeout(L.stopT);L.stopT=0;
+  try{YT_PLAYER&&YT_PLAYER.pauseVideo&&YT_PLAYER.pauseVideo()}catch(e){}
+  updVinyl(false);
+}
 function updVinyl(on){
   const v=$("#vinyl");if(v){v.classList.toggle("spin",!!on);v.classList.toggle("pulse",!!on&&!L.sound)}
   const eq=$("#eq");if(eq)eq.classList.toggle("on",!!on);
@@ -184,57 +418,210 @@ function parseYT(text){
   const t=String(text||""),ids=[];
   const re=/(?:youtu\.be\/|youtube\.com\/(?:watch\?[^#\s]*?v=|embed\/|shorts\/|live\/)|[?&]v=)([\w-]{11})/g;
   let m;while((m=re.exec(t)))if(ids.indexOf(m[1])<0)ids.push(m[1]);
-  const lm=t.match(/[?&]list=([\w-]+)/);
-  return{ids:ids.slice(0,60),listId:lm?lm[1]:""};
+  let lm=t.match(/[?&]list=([A-Za-z0-9_-]{16,80})/);
+  if(!lm&&/^(PL|UU|OL|RD|FL|LL)[A-Za-z0-9_-]{10,80}$/.test(t.trim()))lm=[t.trim(),t.trim()];
+  return{ids,listId:lm?lm[1]:""};
 }
-function cueMeta(id,cb){
+/* Les titres du flux YouTube sont parfois « Artiste - Titre (Official Video) »
+   ou « Artiste - Titre - Artiste ». On les nettoie pour que la réponse
+   attendue reste juste et naturelle, même si l'utilisateur ne tape que le
+   titre. */
+function normalizeSong(it){
+  if(!it||!it.id)return null;
+  const meta=BT.songMeta(it.title,it.artist);
+  return{id:it.id,title:meta.title,artist:meta.artist,year:it.year,tags:it.tags};
+}
+/* Mémorise localement les vidéos qui refusent la lecture intégrée, pour ne
+   pas les retirer à chaque nouvelle partie. Purge automatique après 7 jours. */
+function loadBad(){
+  try{
+    const raw=JSON.parse(localStorage.getItem("bt:bad")||"{}");
+    const now=Date.now(),out={};
+    if(raw&&typeof raw==="object")for(const id of Object.keys(raw)){
+      const ts=+raw[id]||0;
+      if(now-ts<7*864e5)out[id]=ts;
+    }
+    return out;
+  }catch(e){return{}}
+}
+function markBad(id){
+  if(!id)return;
+  L.bad=L.bad||{};L.bad[id]=Date.now();
+  try{
+    const entries=Object.entries(L.bad).sort((a,b)=>b[1]-a[1]).slice(0,300);
+    localStorage.setItem("bt:bad",JSON.stringify(Object.fromEntries(entries)));
+  }catch(e){}
+}
+/* Lit les métadonnées et vérifie que la vidéo peut être lue. On compare
+   l'identifiant renvoyé par getVideoData() pour ne jamais accepter le titre
+   d'une vidéo précédente quand la nouvelle est indisponible. */
+function probeMeta(id,cb){
   ensurePlayer(()=>{
-    try{YT_PLAYER.cueVideoById({videoId:id,startSeconds:0})}catch(e){cb(null);return}
+    if(!playerReady()){cb(null,"player");return}
+    const seq=++L.loadSeq;
+    let done=false;
+    const finish=(meta,err)=>{if(done)return;done=true;if(L.probe&&L.probe.seq===seq)L.probe=null;cb(meta,err)};
+    L.expectedId=id;L.cueReady=false;
+    L.probe={seq,id,fail:err=>finish(null,err)};
+    try{YT_PLAYER.cueVideoById({videoId:id,startSeconds:0})}catch(e){finish(null,"cue");return}
     let n=0;
     const chk=()=>{
-      let d=null;try{d=YT_PLAYER.getVideoData?YT_PLAYER.getVideoData():null}catch(e){}
-      if(d&&d.title){cb({title:BT.cleanTitle(d.title)||d.title,artist:BT.cleanArtist(d.author)||d.author||""});return}
-      if(n++<24)setTimeout(chk,250);else cb(null);
+      if(seq!==L.loadSeq){finish(null,"stale");return}
+      let state=-1,data=null,dur=0;
+      try{
+        state=YT_PLAYER.getPlayerState();
+        data=YT_PLAYER.getVideoData?YT_PLAYER.getVideoData():null;
+        dur=YT_PLAYER.getDuration?YT_PLAYER.getDuration():0;
+      }catch(e){}
+      const vid=data&&data.video_id||"";
+      if(vid&&vid!==id){if(n++<30){setTimeout(chk,200);return}finish(null,"stale");return}
+      if(data&&data.title&&(state===5||state===1||state===2||state===3)){
+        const meta=BT.songMeta(data.title,data.author);
+        finish({title:meta.title||data.title,artist:meta.artist||"",duration:dur||0});
+        return;
+      }
+      if(n++<30){setTimeout(chk,200);return}
+      finish(null,"timeout");
     };
-    setTimeout(chk,500);
+    setTimeout(chk,300);
   });
 }
+function nextSpare(){
+  if(!Array.isArray(H.spare))H.spare=[];
+  while(H.spare.length){
+    const s=H.spare.shift();
+    if(s&&s.id&&!(L.bad&&L.bad[s.id]))return s;
+  }
+  return null;
+}
+function roundPrepFailed(err){
+  L.starting=false;
+  if(S)S.loading=false;
+  if(err==="stale")return;
+  if(err==="player"){
+    toast("Lecteur YouTube indisponible : retour au salon");
+    if(S){S.ph="lobby";S.loading=false}
+    bc();route();return;
+  }
+  handleBrokenSong(err);
+}
+/* Une vidéo qui refuse la lecture est remplacée par une chanson encore non
+   jouée de la même source, pour ne pas raccourcir la partie. Si le joueur a
+   déjà répondu, on révèle la manche au lieu d'invalider ses points. */
+function handleBrokenSong(reason){
+  if(!isHost||!S||S.ph!=="round"||S.loading)return;
+  const song=H.song||{};
+  const key=S.r+":"+(song.id||"");
+  if(L.brokenKey===key)return;
+  L.brokenKey=key;
+  if(song.id&&typeof reason==="number")markBad(song.id);
+  const answered=Object.keys(H.pts||{}).length>0||Object.values(H.res||{}).some(r=>r&&(r.title||r.artist));
+  const spare=!answered?nextSpare():null;
+  H.skipFails=(H.skipFails||0)+1;
+  if(H.skipFails>8){
+    toast("Trop de vidéos indisponibles : retour au salon");
+    S.ph="lobby";S.loading=false;L.starting=false;bc();route();return;
+  }
+  if(spare){
+    H.order[H.idx]=spare;
+    H.song={...spare};S.song={id:spare.id};
+    H.res={};H.pts={};L.ok={};L.fb=null;S.feed=[];S.done=[];
+    const t=$("#bt-title"),a=$("#bt-artist");if(t)t.value="";if(a)a.value="";
+    toast("Vidéo indisponible : on essaie une autre chanson");
+    retryRound();
+    return;
+  }
+  if(answered)endRound("error");
+  else nextRound();
+}
+function retryRound(){
+  if(!isHost||!S||S.ph!=="round")return;
+  S.loading=false;L.starting=false;
+  const song=H.song;
+  if(!song||!song.id){handleBrokenSong("empty");return}
+  if(!song.title){
+    L.starting=true;S.loading=true;bc();route();
+    const r=S.r;
+    probeMeta(song.id,(meta,err)=>{
+      if(!isHost||!S||S.ph!=="round"||S.r!==r)return;
+      if(!meta||!meta.title){roundPrepFailed(err);return}
+      L.starting=false;S.loading=false;
+      H.song.title=meta.title;H.song.artist=meta.artist||"";
+      launchRound();
+    });
+    return;
+  }
+  launchRound();
+}
 function loadPlaylist(listId){
-  ensurePlayer(()=>{
-    try{YT_PLAYER.mute()}catch(e){}
-    let tries=0,forced=false,serverAsked=false;
-    const start=()=>{try{YT_PLAYER.cuePlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}}
-    // Repli fiable : le serveur lit le flux RSS / la page publique de la playlist.
-    // L'API IFrame ne remplit pas toujours getPlaylist() sur mobile ou après un blocage.
-    const fromServer=async()=>{
-      if(serverAsked)return;serverAsked=true;
-      try{
-        const r=await fetch("/api/youtube/playlist?list="+encodeURIComponent(listId));
-        const j=await r.json().catch(()=>null);
-        if(j&&j.ok&&Array.isArray(j.ids)&&j.ids.length){
-          beginGame(j.ids.slice(0,60).map(id=>({id,title:"",artist:""})));
-          return;
-        }
-      }catch(e){}
-      L.starting=false;if(S)S.loading=false;
+  if(!listId)return;
+  L.starting=true;if(S)S.loading=true;bc();route();
+  let settled=false,serverItems=[],fromIframe=null;
+  const finish=items=>{
+    if(settled)return;settled=true;
+    L.starting=false;if(S)S.loading=false;
+    if(items&&items.length)beginGame(items);
+    else{
       toast("Playlist illisible : colle plutôt des liens vidéo un par ligne");
       bc();route();
-    };
-    start();
-    const chk=()=>{
-      let ids=null;try{ids=YT_PLAYER.getPlaylist?YT_PLAYER.getPlaylist():null}catch(e){}
-      if(ids&&ids.length){beginGame(ids.slice(0,60).map(id=>({id,title:"",artist:""})));return}
-      if(tries++<30){setTimeout(chk,400);return}
-      if(!forced){
-        // Certains navigateurs ne remplissent getPlaylist() qu'après un vrai chargement.
-        forced=true;tries=0;
-        try{YT_PLAYER.loadPlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}
-        setTimeout(chk,1000);return;
-      }
-      fromServer();
-    };
-    setTimeout(chk,900);
-  });
+    }
+  };
+  const ctrl=typeof AbortController!=="undefined"?new AbortController():null;
+  const timer=setTimeout(()=>{try{ctrl&&ctrl.abort()}catch(e){}},12000);
+  fetch("/api/youtube/playlist?list="+encodeURIComponent(listId),{cache:"no-store",signal:ctrl?ctrl.signal:undefined})
+    .then(r=>r.json())
+    .then(j=>{
+      if(j&&j.ok&&Array.isArray(j.items)&&j.items.length)serverItems=j.items;
+      else if(j&&j.ok&&Array.isArray(j.ids))serverItems=j.ids.map(id=>({id,title:"",artist:""}));
+    })
+    .catch(()=>{})
+    .finally(()=>{
+      clearTimeout(timer);
+      if(serverItems.length)finish(serverItems);
+      else fromIframe();
+    });
+  // Repli : l'API IFrame remplit parfois getPlaylist(). On la laisse chauffer
+  // sans jamais la préférer au flux serveur (qui respecte l'ordre de la playlist).
+  fromIframe=()=>{
+    ensurePlayer(()=>{
+      try{YT_PLAYER.mute()}catch(e){}
+      try{YT_PLAYER.cuePlaylist({list:listId,listType:"playlist",index:0,startSeconds:0})}catch(e){}
+      let tries=0;
+      const chk=()=>{
+        if(settled)return;
+        let ids=null;try{ids=YT_PLAYER.getPlaylist?YT_PLAYER.getPlaylist():null}catch(e){}
+        if(ids&&ids.length){finish(ids.map(id=>({id,title:"",artist:""})));return}
+        if(tries++<10){setTimeout(chk,400);return}
+        finish([]);
+      };
+      setTimeout(chk,600);
+    });
+  };
+}
+
+/* Élargit la banque du thème avec les sélections YouTube Music officielles.
+   En cas de réseau lent, de blocage ou de page illisible, la banque intégrée
+   reste jouable : on ne bloque jamais le lancement plus de quelques secondes. */
+function loadThemeTracks(theme,done){
+  const bank=BT.pick(theme,999);
+  let settled=false,timer=0;
+  const finish=extra=>{
+    if(settled)return;settled=true;
+    clearTimeout(timer);
+    const seen=new Set(bank.map(s=>s.id));
+    const merged=bank.slice();
+    for(const item of (extra||[])){
+      if(!item||!item.id||seen.has(item.id))continue;
+      seen.add(item.id);merged.push(item);
+    }
+    done(merged);
+  };
+  const ctrl=typeof AbortController!=="undefined"?new AbortController():null;
+  timer=setTimeout(()=>{try{ctrl&&ctrl.abort()}catch(e){}finish([])},6000);
+  fetch("/api/youtube/theme?theme="+encodeURIComponent(theme),{cache:"no-store",signal:ctrl?ctrl.signal:undefined})
+    .then(r=>r.json())
+    .then(j=>finish(j&&j.ok&&Array.isArray(j.items)?j.items:[]))
+    .catch(()=>finish([]));
 }
 
 /* ---------- connexion ---------- */
@@ -252,7 +639,7 @@ async function enter(create,o){
   Sess.save("bt",{code,name,host:isHost});setInterval(()=>Sess.touch("bt"),20000);
   Party.listen(R,code,()=>Sess.clear("bt"));
   R.on("st",d=>{if(isHost||!d)return;S=d;route()});
-  R.on("play",p=>{if(isHost||!p)return;if(!L.cur||L.cur.r!==p.r){L.ok={};L.fb=null}L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playExtract(p);updGame()}else route()});
+  R.on("play",p=>{if(isHost||!p)return;if(!L.cur||L.cur.r!==p.r){L.ok={};L.fb=null}L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playTrack(p);updGame()}else route()});
   R.on("fb",d=>{if(d&&d.r===S.r&&d.res){L.fb={r:d.r,res:d.res,at:Date.now()};d.res.forEach(x=>{if(x.ok)L.ok[x.f]=true});updGame()}});
   R.on("act",d=>{if(isHost)hostAct(d)});
   R.on("rs",()=>{if(isHost)needResend()});
@@ -282,36 +669,56 @@ function startHello(){
 }
 function restoreH(h){
   h=h||{};
-  H={song:h.song||null,res:h.res||{},pts:h.pts||{},order:h.order||[],idx:h.idx!=null?h.idx:-1,stat:h.stat||{fast:null,titles:{}},fails:0};
+  H={song:h.song||null,res:h.res||{},pts:h.pts||{},order:h.order||[],spare:h.spare||[],idx:h.idx!=null?h.idx:-1,stat:h.stat||{fast:null,titles:{}},fails:0,skipFails:0};
+}
+/* Construit un payload de reprise : `start` est l'instant où la lecture doit
+   commencer, `pos` la fraction du morceau et `elapsed` la position déjà
+   écoulée à cet instant. `offset` reste fourni pour les anciens clients. */
+function playPayload(id,lead){
+  const extract=Math.max(1,S.extract||S.cfg.extract||15);
+  const t0=S.t0||Net.now();
+  const now=Net.now();
+  const start=Math.max(now+Math.max(0,lead||0),t0);
+  const elapsed=Math.max(0,(start-t0)/1000);
+  const pos=H.song&&typeof H.song.pos==="number"?H.song.pos:null;
+  return {r:S.r,id,start,offset:pos!=null?0:Math.min(elapsed,Math.max(0,extract-0.5)),pos,elapsed,extract,end:t0+extract*1000};
 }
 function needResend(){
   if(!R)return;
   if(S&&S.ph==="round"&&S.song&&S.song.id&&H.song){
-    const el=Math.max(0,(Net.now()-(S.t0||Net.now()))/1000);
-    const p={r:S.r,id:S.song.id,start:Net.now()+900,offset:Math.min(el,S.cfg.extract),extract:S.cfg.extract};
-    R.emit("play",p);
+    R.emit("play",playPayload(S.song.id,900));
   }
 }
 /* Hôte rechargé ou promu en pleine manche : restaure l'extrait et relance la lecture. */
+function resumePlayback(){
+  const now=Net.now(),extract=Math.max(1,S.extract||S.cfg.extract||15);
+  if(!S.t0){launchRound();return}
+  if(now>=S.t0+extract*1000){
+    // L'extrait est déjà fini : on ne le rejoue pas et on ne remet pas le
+    // chronomètre à zéro. La manche continue jusqu'à la fin du temps de réponse.
+    stopYT();
+    L.cur=playPayload(H.song.id,0);L.playingR=S.r;
+    return;
+  }
+  const p=playPayload(H.song.id,900);
+  L.cur=p;L.playingR=S.r;R.emit("play",p);playTrack(p);
+}
 function resumeHostRound(){
   if(!S||S.ph!=="round")return false;
   S.loading=false;L.starting=false;
   if(!H.song||!H.song.id)return false;
   if(S.cfg.source==="youtube"&&!H.song.title){
     const r=S.r;S.loading=true;
-    cueMeta(H.song.id,meta=>{
-      if(!S||S.ph!=="round"||S.r!==r)return;
-      S.loading=false;L.starting=false;
-      if(!meta||!meta.title){toast("Impossible de relire cet extrait, on passe au suivant");nextRound();return}
+    probeMeta(H.song.id,(meta,err)=>{
+      if(!isHost||!S||S.ph!=="round"||S.r!==r)return;
+      if(!meta||!meta.title){roundPrepFailed(err);return}
+      L.starting=false;S.loading=false;
       H.song.title=meta.title;H.song.artist=meta.artist||"";
-      launchRound();
+      resumePlayback();
     });
     return true;
   }
-  const now=Net.now(),extract=S.cfg.extract||15;
-  if(!S.t0||now-S.t0>=extract*1000){launchRound();return true}
-  const p={r:S.r,id:H.song.id,start:now+900,offset:(now-S.t0)/1000,extract:Math.max(2,extract-(now-S.t0)/1000)};
-  L.cur=p;L.playingR=S.r;R.emit("play",p);playExtract(p);
+  resumePlayback();
   return true;
 }
 function onPromoted(snap){
@@ -338,8 +745,9 @@ function hostAct(d){
   else if(d.k==="ans")answer(p,d);
   else if(d.k==="skip"&&p===ME&&S.ph==="round")endRound("skip");
   else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
-  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;H={song:null,res:{},pts:{},order:[],idx:-1,stat:{fast:null,titles:{}},fails:0}}
-  else if(d.k==="need"&&S.ph==="round"&&S.song&&S.song.id){const now=Net.now(),el=Math.max(0,(now-(S.t0||now))/1000);R.emit("play",{r:S.r,id:S.song.id,start:now+700,offset:Math.min(el,S.cfg.extract),extract:S.cfg.extract},p);return}
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;S.song=null;S.loading=false;S.t0=0;S.ansUntil=0;S.extract=0;L.starting=false;H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0}}
+  else if(d.k==="need"&&S.ph==="round"&&S.song&&S.song.id){R.emit("play",playPayload(S.song.id,700),p);return}
+  else if(d.k==="broken"&&S.ph==="round"&&d.r===S.r&&H.song&&H.song.id===d.id&&S.pl.some(x=>x.id===p))handleBrokenSong(d.code);
   S.on=[...R.peers(),ME];bc();route();
 }
 function applyCfg(cfg){
@@ -364,14 +772,30 @@ function hostStart(){
     if(p.ids.length){beginGame(p.ids.map(id=>({id,title:"",artist:""})));return}
     return toast("Colle une playlist ou au moins un lien YouTube");
   }
-  const list=BT.pick(S.cfg.theme,Math.max(S.cfg.rounds,12));
-  beginGame(list);
+  const theme=S.cfg.theme;
+  L.starting=true;S.loading=true;bc();route();
+  loadThemeTracks(theme,list=>{
+    if(!isHost||!S||S.ph!=="lobby"||S.cfg.theme!==theme){L.starting=false;if(S)S.loading=false;bc();route();return}
+    beginGame(list);
+  });
 }
 function beginGame(list){
   if(!list||!list.length){L.starting=false;if(S)S.loading=false;toast("Pas assez de musiques pour lancer");bc();route();return}
   L.starting=false;S.loading=false;
-  H={song:null,res:{},pts:{},order:shuffle(list).slice(0,Math.min(S.cfg.rounds,list.length)),idx:-1,stat:{fast:null,titles:{}},fails:0};
-  S.total=H.order.length;S.r=-1;S.sid=null;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;
+  list=list.map(normalizeSong).filter(x=>x&&x.id);
+  if(!list.length){toast("Aucune musique disponible");S.ph="lobby";bc();route();return}
+  // On écarte les vidéos déjà signalées comme illisibles. Si toute la source
+  // est marquée, on la garde quand même : les erreurs seront traitées en jeu.
+  const clean=list.filter(x=>!(L.bad&&L.bad[x.id]));
+  const usable=clean.length?clean:list;
+  const rounds=Math.max(1,Math.min(S.cfg.rounds||10,usable.length));
+  // Mélange toute la source avant de choisir les manches : une playlist n'est
+  // jamais jouée dans l'ordre d'origine.
+  const pool=shuffle(usable);
+  const order=pool.slice(0,rounds);
+  const spare=pool.slice(rounds,rounds+30);
+  H={song:null,res:{},pts:{},order,spare,idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0};
+  S.total=order.length;S.r=-1;S.sid=null;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;S.song=null;
   S.pl.forEach(p=>p.sc=0);
   if(!S.total){toast("Aucune musique disponible");S.ph="lobby";bc();route();return}
   nextRound();
@@ -381,28 +805,34 @@ function nextRound(){
   if(H.idx+1>=S.total){finish();return}
   H.idx++;S.r=H.idx;S.ph="round";S.feed=[];S.done=[];S.rev=null;S.nextAt=0;S.last=S.r+1>=S.total;
   H.res={};H.pts={};
-  const song=H.order[H.idx];H.song={...song};S.song={id:song.id};
-  L.ok={};L.fb=null;
+  const song=H.order[H.idx]||{};
+  H.song={...song};S.song=song.id?{id:song.id}:null;
+  L.ok={};L.fb=null;L.brokenKey="";
+  if(!song.id){handleBrokenSong("empty");return}
+  if(L.bad&&L.bad[song.id]){handleBrokenSong("bad");return}
   if(S.cfg.source==="youtube"&&!H.song.title){
     L.starting=true;S.loading=true;bc();route();
-    cueMeta(song.id,meta=>{
-      if(!meta||!meta.title){
-        H.fails=(H.fails||0)+1;L.starting=false;S.loading=false;
-        toast("Impossible d'identifier ce lien, on passe au suivant");
-        if(H.fails>3){S.ph="lobby";S.loading=false;bc();route();return}
-        nextRound();return;
-      }
+    const r=S.r;
+    probeMeta(song.id,(meta,err)=>{
+      if(!isHost||!S||S.ph!=="round"||S.r!==r)return;
+      if(!meta||!meta.title){roundPrepFailed(err);return}
+      L.starting=false;S.loading=false;
       H.fails=0;H.song.title=meta.title;H.song.artist=meta.artist||"";
-      L.starting=false;S.loading=false;launchRound();
+      launchRound();
     });
   } else launchRound();
 }
 function launchRound(){
+  if(!isHost||!S||S.ph!=="round"||!H.song||!H.song.id)return;
   const start=Net.now()+2800;
-  S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=S.cfg.extract;
-  const p={r:S.r,id:H.song.id,start,offset:0,extract:S.cfg.extract};
-  L.cur=p;L.playingR=S.r;
-  R.emit("play",p);playExtract(p);bc();route();
+  const extract=Math.max(1,S.cfg.extract||15);
+  H.fails=0;L.starting=false;S.loading=false;
+  S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=extract;
+  // On démarre l'extrait vers 40-52 % du morceau : ni l'intro, ni la fin.
+  if(typeof H.song.pos!=="number")H.song.pos=BT.pickPos();
+  const p={r:S.r,id:H.song.id,start,offset:0,pos:H.song.pos,elapsed:0,extract,end:start+extract*1000};
+  L.cur=p;L.playingR=S.r;L.brokenKey="";
+  R.emit("play",p);playTrack(p);bc();route();
 }
 function answer(p,d){
   if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song||!S.pl.some(x=>x.id===p))return;
@@ -482,7 +912,7 @@ function route(){
   const key=S.ph+":"+(S.ph==="end"?0:S.r);
   if(key!==L.key){L.key=key;renderGame(true)}
   else{ if(S.ph==="round")updGame(); else if(S.ph==="reveal")updReveal() }
-  if(S.ph==="round")ensurePlayback(); else stopYT();
+  if(S.ph==="round")ensurePlayback(); else {stopYT();syncSnd()}
 }
 function renderLobby(){
   const on=new Set(S.on||[]);
@@ -586,7 +1016,7 @@ function updGame(){
     status.className="bt-status"+(S.cfg.mode==="live"&&left>0?" live":"");
   }
   const gate=$("#sndgate");
-  if(gate)gate.hidden=!!L.sound||S.loading||now<S.t0-300||left<=0;
+  if(gate)gate.hidden=!gateShouldShow();
   const t=$("#bt-title"),a=$("#bt-artist");
   if(t){t.disabled=!!L.ok.title||S.loading;t.classList.toggle("ok",!!L.ok.title)}
   if(a){a.disabled=!!L.ok.artist||S.loading;a.classList.toggle("ok",!!L.ok.artist)}
@@ -612,6 +1042,7 @@ function updGame(){
     else feed.innerHTML=S.feed.slice().reverse().map(x=>`<div class="line ${x.ok?"ok":"ko"}">${esc(x.n)} · ${x.f==="title"?"titre":"artiste"} : ${esc(x.t)}</div>`).join("");
   }
   updVinyl(!S.loading&&now>=S.t0-300&&left>0);
+  syncSnd();
 }
 function updReveal(){
   if(!S||S.ph!=="reveal")return;
@@ -622,11 +1053,11 @@ function updReveal(){
 function ensurePlayback(){
   if(!S||S.ph!=="round"||S.loading)return;
   if(!L.cur||L.cur.r!==S.r){if(Date.now()-L.needT>1500){L.needT=Date.now();if(R)R.emit("act",{k:"need",r:S.r},"host")}return}
-  if(L.playingR!==S.r){L.playingR=S.r;playExtract(L.cur)}
+  if(L.playingR!==S.r){L.playingR=S.r;playTrack(L.cur)}
 }
 setInterval(()=>{
   if(!S)return;
-  if(S.ph==="round")updGame();
+  if(S.ph==="round"){updGame();checkSound();ensurePlayback()}
   else if(S.ph==="reveal")updReveal();
 },300);
 
@@ -666,6 +1097,11 @@ document.addEventListener("keydown",e=>{
 $("#theme").addEventListener("change",e=>{if(isHost)send({k:"cfg",cfg:{theme:e.target.value}})});
 $("#linktext").addEventListener("change",e=>{if(isHost)send({k:"cfg",cfg:{linkText:e.target.value}})});
 Profile.attach("#pname");
+// Prépare le lecteur avant la première manche : au moment où l'utilisateur
+// touche « Activer le son », le lecteur est déjà prêt et le clic reste un vrai
+// geste utilisateur (indispensable sur mobile).
+L.bad=loadBad();
+ensurePlayer();
 {const BP=bootParams(),sv=Sess.load("bt"),pr=Profile.get();
  if(BP.code)$("#pcode").value=BP.code;
  if(BP.go&&BP.code&&pr.name){const n0=Profile.tag(pr.name);msg("🎪 Lancement de la partie…");

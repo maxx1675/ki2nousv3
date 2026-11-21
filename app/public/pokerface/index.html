@@ -245,6 +245,7 @@ function frame(v,r){
 }
 const sc=m=>({
  smile:(m.mouthSmileLeft+m.mouthSmileRight)/2*1.3,
+ cheek:(m.cheekSquintLeft+m.cheekSquintRight)/2,
  laugh:m.jawOpen,
  surprise:Math.max(m.browInnerUp,(m.eyeWideLeft+m.eyeWideRight)/2),
  grimace:Math.max((m.mouthFrownLeft+m.mouthFrownRight)/2,(m.noseSneerLeft+m.noseSneerRight)/2,(m.mouthStretchLeft+m.mouthStretchRight)/2),
@@ -287,9 +288,16 @@ function analyse(){
  if(!S.t0)return;
  const gf=$("#gfill"),gt=$("#gtxt");
  /* parole : la mâchoire oscille vite → on ignore « rire » et « lèvres » pour éviter les faux positifs */
- const jh=L.jh;jh.push(m.jawOpen||0);if(jh.length>14)jh.shift();
- let rev=0;for(let i=2;i<jh.length;i++){const a=jh[i-1]-jh[i-2],b=jh[i]-jh[i-1];if(a*b<0&&Math.abs(a)+Math.abs(b)>.05)rev++}
- const talk=rev>=3;
+ const jh=L.jh;jh.push(m.jawOpen||0);if(jh.length>16)jh.shift();
+  /* Fenêtre d'environ 1 s : la parole produit de petites oscillations rapides,
+     un rire ouvre franchement la bouche. */
+  let rev=0,lo=1,hi=0;
+  for(let i=0;i<jh.length;i++){lo=Math.min(lo,jh[i]);hi=Math.max(hi,jh[i])}
+  for(let i=2;i<jh.length;i++){const a=jh[i-1]-jh[i-2],b=jh[i]-jh[i-1];if(a*b<0&&Math.abs(a)+Math.abs(b)>.05)rev++}
+  const jawRange=hi-lo;
+  const smileNow=(m.mouthSmileLeft+m.mouthSmileRight)/2;
+  const cheekNow=(m.cheekSquintLeft+m.cheekSquintRight)/2;
+  const talk=rev>=3&&jawRange<.22&&smileNow<.22;
  if(now<S.t0){L.cal.push(s);if(pose)L.calPose.push(pose);if(gf){gf.style.width="100%";gf.style.background="#27e08a"}if(gt)gt.textContent="calibration…";return}
  if(!L.base){
   // Après un rechargement en pleine manche, la calibration d'avant-course est perdue :
@@ -308,19 +316,33 @@ function analyse(){
   if(gt)gt.textContent=L.out?"💀":"🙅 mouvement de tête ignoré";
   return;
  }
- const thr=.55-.004*L.sens;let sig=0,mx=0;
+ const thr=.55-.004*L.sens;let sig=0,mx=0;const dv={};
  for(const k in s){
   L.sm[k]=L.sm[k]==null?s[k]:L.sm[k]*.55+s[k]*.45;
-  let d=L.sm[k]-L.base[k];
-  if(talk&&(k==="laugh"||k==="lips"))d=Math.min(d,0);
+  const d=dv[k]=L.sm[k]-L.base[k];
+  if(d<thr*.35)L.base[k]=L.base[k]*.995+L.sm[k]*.005; // dérive lente du visage neutre
+  // Sourire, plissement des yeux et mâchoire ne sont pas des expressions
+  // « génériques » : ils ne peuvent craquer que via un vrai rire ci-dessous.
+  if(k==="smile"||k==="cheek"||k==="laugh")continue;
+  if(talk&&k==="lips")continue;
   if(d>thr){sig++;mx=Math.max(mx,d/thr)}
-  else if(d<thr*.35)L.base[k]=L.base[k]*.995+L.sm[k]*.005; // dérive lente du visage neutre
  }
- /* Il faut deux expressions concordantes, ou un seul signal très marqué. */
- const hit=sig>=2||mx>=1.8;
+ /* Rire authentique : bouche nettement ouverte + sourire ou plissement des
+    yeux + mouvement de mâchoire. Un sourire seul, une bouche entrouverte pour
+    parler ou une expression figée ne suffisent donc plus à faire craquer. */
+ const jaw=jh[jh.length-1]||0;
+ const openMouth=jaw>=.2&&(dv.laugh||0)>=Math.max(.12,thr*.5);
+ const happy=Math.max(dv.smile||0,dv.cheek||0)>=Math.max(.09,thr*.25)&&(smileNow>=.12||cheekNow>=.1);
+ const rhythm=(jawRange>=.15&&rev>=2)||(jaw>=.46&&(dv.cheek||0)>=.1);
+ const laughHit=!talk&&openMouth&&happy&&rhythm;
+ if(laughHit)sig++;
+ const nearLaugh=openMouth&&happy?Math.min(1,.45+Math.max(0,jaw-.2)*1.6):0;
+ mx=Math.max(mx,nearLaugh*1.8);
+ /* Deux expressions concordantes, ou un rire authentique. */
+ const hit=laughHit||sig>=2;
  L.gv=L.gv*.65+Math.max(0,Math.min(1,mx))*.35;
  if(gf){gf.style.width=((1-L.gv)*100)+"%";gf.style.background=L.gv<.5?"#27e08a":L.gv<.8?"#ffc531":"#ff1a40";const gw=gf.closest(".gauge");if(gw)gw.setAttribute("aria-valuenow",String(Math.round((1-L.gv)*100)))}
- if(gt)gt.textContent=L.out?"💀":talk?"🗣 parole ignorée":L.gv>.75?"⚠ tiens bon…":"";
+ if(gt)gt.textContent=L.out?"💀":talk?"🗣 parole ignorée":laughHit?"😂 rire détecté":L.gv>.75?"⚠ tiens bon…":"";
  if(L.out)return;
  L.streak=hit?L.streak+1:0;
  if(L.streak>=6)crack();
@@ -839,12 +861,14 @@ function end(){
 
 /* ---------- contenu de la manche ---------- */
 function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m&&m[1]}
-/* Liens sociaux → URL d'intégration (TikTok, Vimeo, Dailymotion, Instagram). */
+/* Liens sociaux → URL d'intégration (TikTok, Vimeo, Dailymotion, Instagram).
+   Les paramètres d'autoplay évitent d'afficher un bouton « lancer » au milieu
+   de la manche : le lecteur démarre seul dès que le rideau s'ouvre. */
 function embedUrl(u){
  const t=String(u);let m;
- m=t.match(/tiktok\.com\/(?:@[^/]+\/)?(?:video|photo)\/(\d+)/i);if(m)return"https://www.tiktok.com/embed/v2/"+m[1];
- m=t.match(/vimeo\.com\/(?:video\/)?(\d+)/i);if(m)return"https://player.vimeo.com/video/"+m[1];
- m=t.match(/dailymotion\.com\/video\/([a-z0-9]+)/i);if(m)return"https://www.dailymotion.com/embed/video/"+m[1];
+ m=t.match(/tiktok\.com\/(?:@[^/]+\/)?(?:video|photo)\/(\d+)/i);if(m)return"https://www.tiktok.com/embed/v2/"+m[1]+"?autoplay=1";
+ m=t.match(/vimeo\.com\/(?:video\/)?(\d+)/i);if(m)return"https://player.vimeo.com/video/"+m[1]+"?autoplay=1";
+ m=t.match(/dailymotion\.com\/video\/([a-z0-9]+)/i);if(m)return"https://www.dailymotion.com/embed/video/"+m[1]+"?autoplay=1";
  m=t.match(/instagram\.com\/(reel|p|tv)\/([\w-]+)/i);if(m)return"https://www.instagram.com/"+m[1]+"/"+m[2]+"/embed";
  return"";
 }
@@ -862,9 +886,24 @@ function prepare(){
  if(c.kind==="yt"){
   const h=document.createElement("div");m.append(h);
   loadYT().then(()=>{if(L.prep!==pr)return;if(!window.YT||!YT.Player)return fail();
-   pr.yt=new YT.Player(h,{videoId:c.ref,playerVars:{controls:0,rel:0,playsinline:1,modestbranding:1,disablekb:1,fs:0,iv_load_policy:3,origin:location.origin},
-    events:{onReady:e=>{e.target.mute();e.target.playVideo()},
-     onStateChange:e=>{if(e.data===1&&!pr.warm){pr.warm=true;if(!L.started){e.target.pauseVideo();e.target.seekTo(0,true)}done()}if(e.data===0&&isHost)H.ended=true},
+   pr.yt=new YT.Player(h,{videoId:c.ref,playerVars:{controls:0,rel:0,playsinline:1,modestbranding:1,disablekb:1,fs:0,iv_load_policy:3,origin:location.origin,autoplay:0},
+    events:{onReady:e=>{
+      // Le lecteur est préchauffé pendant le décompte. Muet, il peut démarrer
+      // sans autorisation ; si la manche a déjà commencé (réseau lent), on
+      // tente tout de suite la lecture avec le son.
+      pr.readyOK=true;
+      if(L.started){try{e.target.setVolume(100);e.target.unMute();e.target.playVideo()}catch(x){}}
+      else{try{e.target.mute();e.target.playVideo()}catch(x){}}
+    },
+     onStateChange:e=>{
+      if(e.data===1){
+        pr.warm=true;
+        if(L.started){try{e.target.setVolume(100);e.target.unMute()}catch(x){}}
+        else{try{e.target.pauseVideo();e.target.seekTo(0,true)}catch(x){}}
+        done();
+      }
+      if(e.data===0&&isHost)H.ended=true;
+     },
      onError:()=>fail()}})});
  }else if(c.kind==="emb"){
   const f=document.createElement("iframe");f.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";f.referrerPolicy="no-referrer";f.src=c.ref;
@@ -878,12 +917,38 @@ function startContent(){
  const c=L.cur,pr=L.prep;if(!c||!pr||!S||!S.cur||c.id!==S.cur.id||pr.id!==c.id)return;
  L.started=true;const m=$("#media");m.style.visibility="visible";const key=L.key;
  if(pr.err)return;
+ pr.playAt=Date.now();pr.nudge=0;pr.nudgeAt=0;
  if(c.kind==="emb"){/* l'iframe est déjà chargée et joue toute seule */}
- else if(c.kind==="yt"){if(pr.yt&&pr.yt.playVideo){try{pr.yt.unMute();pr.yt.playVideo()}catch(e){}}else if(!pr.yt){const f=document.createElement("iframe");f.allow="autoplay; encrypted-media";f.src="https://www.youtube.com/embed/"+c.ref+"?autoplay=1&controls=0&rel=0&playsinline=1&modestbranding=1";m.innerHTML="";m.append(f)}}
- else if(c.kind==="vid"||c.kind==="vurl"){const el=pr.el;if(el)el.play().catch(()=>{el.muted=true;el.play().catch(()=>{})})}
+ else if(c.kind==="yt"){if(pr.yt&&pr.yt.playVideo){try{pr.yt.setVolume(100);pr.yt.unMute();pr.yt.playVideo()}catch(e){}}
+  else if(!pr.yt){const f=document.createElement("iframe");f.allow="autoplay; encrypted-media";f.src="https://www.youtube.com/embed/"+c.ref+"?autoplay=1&controls=0&rel=0&playsinline=1&modestbranding=1";m.innerHTML="";m.append(f)}}
+ else if(c.kind==="vid"||c.kind==="vurl"){const el=pr.el;if(el){const go=()=>el.play().catch(()=>{el.muted=true;el.play().catch(()=>{})});go()}}
  else if(c.kind==="txt"){const lines=String(c.ref).split("|"),gap=Math.max(2.5,Math.min(5,(S.dur-4)/Math.max(1,lines.length)));m.innerHTML='<div class="txtc">'+lines.map((l,i)=>`<p style="animation-delay:${(i*gap).toFixed(1)}s">${esc(l)}</p>`).join("")+"</div>"}
  else if(c.kind==="snd"){const sd=SND[c.ref]||SND.boing;m.innerHTML=`<div class="sndc"><div class="em">${sd.e}</div><div class="eq"><b></b><b></b><b></b><b></b><b></b></div><div>🔊 ${esc(sd.n)}</div></div>`;
   [0,7,14,21,28,35,42,49,56].filter(t=>t<S.dur-2).forEach(t=>setTimeout(()=>{if(L.key===key&&S.ph==="round")playSnd(c.ref)},t*1000))}
+}
+/* Filet de sécurité : un lecteur qui a raté son démarrage (iframe pas encore
+   prête, autoplay bloqué puis autorisé, réseau lent) est relancé quelques fois
+   sans afficher de bouton « play » par-dessus le contenu. */
+function nudgeContent(){
+ const c=L.cur,pr=L.prep;
+ if(!c||!pr||!L.started||pr.err||!S||S.ph!=="round")return;
+ const now=Date.now();if(now-(pr.nudgeAt||0)<1400)return;pr.nudgeAt=now;
+ pr.nudge=(pr.nudge||0)+1;if(pr.nudge>6)return;
+ if(c.kind==="yt"&&pr.yt&&pr.yt.getPlayerState){
+  let st=-1;try{st=pr.yt.getPlayerState()}catch(e){}
+  if(st===0)return; // vidéo terminée : on ne la relance pas
+  if(st!==1&&st!==3){try{pr.yt.setVolume(100);pr.yt.unMute();pr.yt.playVideo()}catch(e){}}
+  else if(pr.nudge<=2){try{pr.yt.unMute();pr.yt.setVolume(100)}catch(e){}}
+ }else if(c.kind==="vid"||c.kind==="vurl"){
+  const el=pr.el;
+  if(!el||el.ended)return;
+  // Une lecture automatique démarrée en sourdine (autoplay bloqué) est
+  // remise avec le son dès qu'un nouvel essai est possible.
+  if(el.muted&&pr.nudge<=4){try{el.muted=false}catch(e){}}
+  if(el.paused){
+   const p=el.play();if(p&&p.catch)p.catch(()=>{el.muted=true;el.play().catch(()=>{})});
+  }
+ }
 }
 setInterval(()=>{
  if(!S)return;
@@ -911,6 +976,7 @@ setInterval(()=>{
  }else{
   ov.hidden=true;st.classList.add("open");
   if(!L.started){if(!L.prep)prepare();if(L.prep)startContent()}
+  else nudgeContent();
   $("#tb").style.width=Math.max(0,100-el/S.dur*100)+"%";
  }
  if(!isHost&&!L.cur&&S.t0&&Net.now()>S.t0-2500)R.emit("act",{k:"needc",p:ME},"host");

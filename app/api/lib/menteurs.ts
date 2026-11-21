@@ -31,6 +31,8 @@ export type MenteursAvatar = (typeof MENTEURS_AVATARS)[number];
 
 export type MenteursCard = { v: string; s: string };
 export type MenteursLog = { id: string; t: number; msg: string; kind: string };
+/** Barillet individuel : une balle secrète et la prochaine chambre à tirer. */
+export type MenteursGun = { bullet: number; chamber: number };
 
 export type MenteursConfig = {
   max: number;
@@ -57,6 +59,8 @@ export type MenteursPlayer = {
   spectator: boolean;
   /** Cartes levées devant le joueur (visible par les autres). */
   raised: boolean;
+  /** Revolver personnel : balle cachée + chambre suivante. */
+  gun: MenteursGun;
 };
 
 export type MenteursClaim = {
@@ -74,6 +78,8 @@ export type MenteursReveal = {
   victim: string;
   bullet: boolean;
   chamber: number;
+  /** Chambres encore fermées après ce tir (dénominateur du prochain tir). */
+  remaining: number;
   target: string;
   count: number;
   cards: MenteursCard[];
@@ -134,6 +140,8 @@ export type PublicPlayer = {
   bluffs: number;
   handCount: number;
   raised: boolean;
+  /** Barillet visible : chambre suivante et chambres restantes (la balle reste secrète). */
+  gun: { chamber: number; remaining: number };
 };
 
 export type PublicClaim = { by: string; count: number; target: string; ts: number };
@@ -155,6 +163,7 @@ export type MenteursView = {
     spectator: boolean;
     score: number;
     bluffs: number;
+    gun: { chamber: number; remaining: number };
   };
   turnId: string;
   target: string;
@@ -278,6 +287,30 @@ export class MenteursEngine {
   private player(room: MenteursRoom, id: string) {
     return room.players.find((p) => p.id === id);
   }
+  /** Barillet neuf : une balle placée au hasard, chambre 1 en premier. */
+  private newGun(): MenteursGun {
+    const n = Math.floor(Number(this.roll()) || 1);
+    const bullet = ((n - 1) % 6 + 6) % 6 + 1;
+    return { bullet, chamber: 1 };
+  }
+  private gunView(g?: MenteursGun) {
+    const raw = g ? Math.max(1, Math.floor(g.chamber) || 1) : 1;
+    return { chamber: Math.min(6, raw), remaining: Math.max(0, 7 - raw) };
+  }
+  /** Tire une chambre du revolver personnel du tireur. */
+  private fire(room: MenteursRoom, shooter: string) {
+    const sp = this.player(room, shooter);
+    if (!sp) return { bullet: false, chamber: 1, remaining: 6 };
+    const gun = sp.gun ?? (sp.gun = this.newGun());
+    const chamber = Math.max(1, Math.min(6, Math.floor(gun.chamber) || 1));
+    const bullet = chamber === gun.bullet;
+    gun.chamber = chamber + 1;
+    return { bullet, chamber, remaining: Math.max(0, 6 - chamber) };
+  }
+  /** Après une mort, les survivants repartent avec un barillet plein. */
+  private resetGuns(room: MenteursRoom) {
+    for (const p of room.players) if (p.alive && !p.spectator) p.gun = this.newGun();
+  }
   private alive(room: MenteursRoom) {
     return room.players.filter((p) => p.alive && !p.spectator);
   }
@@ -354,6 +387,7 @@ export class MenteursEngine {
       bluffs: p.bluffs,
       handCount: p.hand.length,
       raised: p.raised !== false,
+      gun: this.gunView(p.gun),
     }));
     const ranking = [...room.players]
       .filter((p) => !p.spectator)
@@ -375,6 +409,7 @@ export class MenteursEngine {
         spectator: me?.spectator ?? true,
         score: me?.score ?? 0,
         bluffs: me?.bluffs ?? 0,
+        gun: this.gunView(me?.gun),
       },
       turnId: room.turnId,
       target: room.target,
@@ -433,6 +468,7 @@ export class MenteursEngine {
           lastSeen: this.now(),
           spectator: false,
           raised: true,
+          gun: this.newGun(),
         },
       ],
       turnId: "",
@@ -504,6 +540,7 @@ export class MenteursEngine {
       lastSeen: this.now(),
       spectator: !lobby,
       raised: true,
+      gun: this.newGun(),
     };
     room.players.push(player);
     this.log(room, lobby ? `➕ ${name} rejoint la table.` : `👁️ ${name} rejoint en spectateur.`, "join");
@@ -721,6 +758,7 @@ export class MenteursEngine {
       p.spectator = false;
       p.raised = true;
     }
+    this.resetGuns(room);
     // Première manche : paquet complet, mains privées et carte cible.
     this.dealHands(room);
     room.turnId = this.shuffle(players.map((p) => p.id))[0] ?? "";
@@ -788,8 +826,9 @@ export class MenteursEngine {
     const claimant = claim.by;
     const shooter = liar ? challenger : claimant;
     const victim = liar ? claimant : challenger;
-    const chamber = this.roll();
-    const bullet = chamber === 1;
+    const shot = this.fire(room, shooter);
+    const chamber = shot.chamber;
+    const bullet = shot.bullet;
     const vp = this.player(room, victim);
     const sp = this.player(room, shooter);
     const cp = this.player(room, claimant);
@@ -799,15 +838,13 @@ export class MenteursEngine {
     const before = room.players.map((p) => ({ id: p.id, alive: p.alive, lives: p.lives }));
     const logCount = room.log.length;
     if (bullet && vp) {
-      vp.lives = Math.max(0, vp.lives - 1);
-      if (vp.lives <= 0) {
-        vp.alive = false;
-        this.log(room, `☠️ ${vp.name} est éliminé.`, "death");
-      } else {
-        this.log(room, `💥 BANG ! ${vp.name} perd une vie (${vp.lives} restante${vp.lives > 1 ? "s" : ""}).`, "hit");
-      }
+      vp.lives = 0;
+      vp.alive = false;
+      this.log(room, `💥 BANG ! ${vp.name} est éliminé.`, "death");
+      this.resetGuns(room);
+      if (this.alive(room).length > 1) this.log(room, "🔫 Les survivants réarment leur revolver (6 chambres).", "gun");
     } else if (vp) {
-      this.log(room, `*clic* Chambre vide : ${vp.name} survit.`, "empty");
+      this.log(room, `*clic* Chambre vide : ${vp.name} survit. ${sp?.name ?? "Le tireur"} a maintenant 1 chance sur ${Math.max(1, shot.remaining)} au prochain tir.`, "empty");
     }
     if (liar && chp) {
       chp.score += 1;
@@ -824,6 +861,7 @@ export class MenteursEngine {
       victim,
       bullet,
       chamber,
+      remaining: shot.remaining,
       target: claim.target,
       count: claim.count,
       cards: claim.cards.map((c) => ({ ...c })),
@@ -956,6 +994,7 @@ export class MenteursEngine {
       p.spectator = false;
       p.raised = true;
     }
+    this.resetGuns(room);
     this.log(room, "🔄 Nouvelle partie : retour au salon.", "rematch");
   }
 

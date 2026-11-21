@@ -71,9 +71,9 @@ Ces fichiers partagés ont un impact transversal : avant de les modifier, recher
 ## 5. Backend / temps réel
 - `api/boot.ts` : création de l'application Hono, montage des routes et démarrage du serveur.
 - `api/routes/rooms.ts` : endpoints HTTP des salons et flux SSE.
-- `api/routes/youtube.ts` : lecture serveur des playlists YouTube.
+- `api/routes/youtube.ts` : lecture serveur des playlists YouTube et des thèmes élargis.
 - `api/lib/relay.ts` : classe `Relay`, gestion des salons, connexions, hôte, événements, snapshots, nettoyage, salons publics et scores.
-- `api/lib/youtube.ts` : validation, parsing RSS/page et cache des playlists YouTube.
+- `api/lib/youtube.ts` : validation, parsing RSS/page, parsing YouTube Music (`musicResponsiveListItemRenderer`), cache des playlists et des thèmes.
 - `api/lib/relay.test.ts`, `api/lib/makeitmeme-room.test.ts`, `api/lib/youtube.test.ts` : tests Vitest.
 - `api/lib/env.ts` : variables d'environnement et configuration.
 - `api/lib/ice.ts` : serveurs ICE/TURN ; nécessaires aux fonctions WebRTC concernées.
@@ -89,7 +89,8 @@ Contrat réseau décrit par `api/routes/rooms.ts` :
 - `POST /api/rooms/score` et `GET /api/rooms/board` : scores et classement de soirée.
 - `GET /api/rooms/ice` : paramètres ICE/TURN.
 - `POST/GET /api/rooms/public` : présence temporaire des salons publics.
-- `GET /api/youtube/playlist?list=…` : identifiants des vidéos d'une playlist YouTube (`{ ok, ids }`), avec cache mémoire de 10 min.
+- `GET /api/youtube/playlist?list=…` : identifiants et métadonnées des vidéos d'une playlist YouTube (`{ ok, ids, items }`), avec cache mémoire de 10 min.
+- `GET /api/youtube/theme?theme=…` : morceaux des sélections YouTube Music officielles d'un thème du Blind Test (`{ ok, items }`), avec cache mémoire de 10 min.
 
 **La Table Des Menteurs** est la seule exception : son moteur est autoritaire côté serveur, pas dans le navigateur de l'hôte.
 - `api/lib/menteurs.ts` : moteur en mémoire (`MenteursEngine`) — paquet 52 + 2 jokers, mains privées, cible limitée à `V`/`D`/`R`/`A`, tours, chronos (`roundAt`, `deadline`), contestation/révélation, barillet, éliminations, classement, `raised` public et action `raise`.
@@ -106,7 +107,7 @@ Le relais est gardé en mémoire du processus serveur : un redémarrage efface l
 - `.env` et `.env.*` sont ignorés par Git. Ne jamais demander à l'utilisateur de transmettre les secrets ; utiliser les noms de variables sans exposer leurs valeurs.
 
 ## 7. Tests et prudence lors des changements
-- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`), les playlists YouTube (`api/lib/youtube.test.ts`) et le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`) — 33 tests Vitest.
+- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`), les playlists et thèmes YouTube (`api/lib/youtube.test.ts`) et le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`) — 39 tests Vitest.
 - Une modification du protocole d'événement doit être vérifiée côté client et serveur, pas uniquement dans les tests du serveur.
 - Les jeux étant exécutés dans de vrais navigateurs de téléphone, les changements d'interface doivent aussi prendre en compte tactile, viewport mobile, permissions média/caméra et reconnexion lorsque cela s'applique.
 - Ne pas changer une API partagée sans rechercher ses consommateurs et adapter les pages concernées.
