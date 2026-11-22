@@ -25,7 +25,7 @@ const THEMES = [
   { id: "musique", label: "Musique", emoji: "🎵" },
   { id: "sport", label: "Sport", emoji: "🏅" },
   { id: "people", label: "People", emoji: "🖼️" },
-  { id: "langue", label: "Rébus & petit bac", emoji: "🔤" },
+  { id: "langue", label: "Charades & petit bac", emoji: "🔤" },
 ];
 const SUBJECTIVE = new Set(["rebus", "who", "film", "serie", "bac"]);
 
@@ -61,6 +61,16 @@ const BANK = [
   { th: "culture", t: "vf", q: "Le nombre Pi vaut environ 3,14.", a: true },
   { th: "culture", t: "vf", q: "Un kilomètre vaut 1 000 mètres.", a: true },
   { th: "culture", t: "vf", q: "La Grande Muraille de Chine est visible à l'œil nu depuis la Lune.", a: false },
+  { th: "culture", t: "qcm", q: "Qui a peint La Nuit étoilée ?", o: ["Claude Monet", "Vincent van Gogh", "Pablo Picasso", "Salvador Dalí"], a: "Vincent van Gogh" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de la Nouvelle-Zélande ?", o: ["Auckland", "Wellington", "Christchurch", "Dunedin"], a: "Wellington" },
+  { th: "culture", t: "qcm", q: "Quel peuple a inventé le papier ?", o: ["Les Égyptiens", "Les Chinois", "Les Romains", "Les Grecs"], a: "Les Chinois" },
+  { th: "culture", t: "qcm", q: "Quelle est la distance officielle du marathon ?", o: ["40 km", "41,5 km", "42,195 km", "45 km"], a: "42,195 km" },
+  { th: "culture", t: "qcm", q: "Qui a composé La Lettre à Élise ?", o: ["Mozart", "Beethoven", "Bach", "Chopin"], a: "Beethoven" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de l'Islande ?", o: ["Oslo", "Reykjavik", "Helsinki", "Tallinn"], a: "Reykjavik" },
+  { th: "culture", t: "qcm", q: "Combien de touches possède un piano de concert standard ?", o: ["66", "76", "88", "96"], a: "88" },
+  { th: "culture", t: "vf", q: "Le kiwi est un oiseau qui ne vole pas.", a: true },
+  { th: "culture", t: "vf", q: "Un mille-pattes possède exactement mille pattes.", a: false },
+  { th: "culture", t: "vf", q: "Le miel peut se conserver plusieurs années sans se périmer.", a: true },
 
   /* ----------------------------- Géographie ----------------------------- */
   { th: "geo", t: "qcm", q: "Quelle est la capitale de l'Australie ?", o: ["Sydney", "Canberra", "Melbourne", "Brisbane"], a: "Canberra" },
@@ -102,6 +112,14 @@ const BANK = [
   { th: "geo", t: "ana", q: "Remets les lettres dans l'ordre pour trouver la ville.", l: "L I S B O N N E", h: "Portugal", a: "LISBONNE" },
   { th: "geo", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le pays.", l: "I T A L I E", h: "Botte européenne", a: "ITALIE" },
   { th: "geo", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'océan.", l: "P I C I F A Q U E", h: "Le plus grand", a: "PACIFIQUE" },
+  { th: "geo", t: "qcm", q: "Quel est le plus long fleuve d'Europe ?", o: ["Le Danube", "La Volga", "Le Rhin", "La Loire"], a: "La Volga" },
+  { th: "geo", t: "qcm", q: "Quelle est la capitale du Maroc ?", o: ["Casablanca", "Marrakech", "Rabat", "Fès"], a: "Rabat" },
+  { th: "geo", t: "qcm", q: "Quel est le plus haut sommet du monde ?", o: ["Le K2", "L'Everest", "Le Mont Blanc", "Le Kilimandjaro"], a: "L'Everest" },
+  { th: "geo", t: "qcm", q: "Quel pays est aussi un continent ?", o: ["L'Inde", "L'Australie", "Le Brésil", "Le Canada"], a: "L'Australie" },
+  { th: "geo", t: "qcm", q: "Quelle mer est la plus salée ?", o: ["La mer Rouge", "La mer Morte", "La mer Noire", "La mer Baltique"], a: "La mer Morte" },
+  { th: "geo", t: "qcm", q: "Quel est le plus grand pays du monde par sa superficie ?", o: ["Le Canada", "La Chine", "La Russie", "Les États-Unis"], a: "La Russie" },
+  { th: "geo", t: "vf", q: "Le mont Kilimandjaro se trouve au Kenya.", a: false },
+  { th: "geo", t: "vf", q: "Le Danube traverse Vienne et Budapest.", a: true },
 
   /* ------------------------------ Histoire ------------------------------- */
   { th: "histoire", t: "qcm", q: "En quelle année a débuté la Première Guerre mondiale ?", o: ["1912", "1914", "1918", "1939"], a: "1914" },
@@ -129,6 +147,17 @@ const BANK = [
   { th: "histoire", t: "vf", q: "La prise de la Bastille date du 14 juillet 1789.", a: true },
   { th: "histoire", t: "vf", q: "Cléopâtre était une reine romaine.", a: false },
   { th: "histoire", t: "vf", q: "La Révolution française a commencé en 1789.", a: true },
+  { th: "histoire", t: "qcm", q: "En quelle année l'Empire romain d'Occident s'est-il effondré ?", o: ["376", "410", "476", "529"], a: "476" },
+  { th: "histoire", t: "qcm", q: "Qui a été le premier empereur romain ?", o: ["Jules César", "Auguste", "Néron", "Trajan"], a: "Auguste" },
+  { th: "histoire", t: "qcm", q: "En quelle année la Seconde Guerre mondiale s'est-elle terminée en Europe ?", o: ["1943", "1944", "1945", "1946"], a: "1945" },
+  { th: "histoire", t: "qcm", q: "Quel traité met fin à la Première Guerre mondiale ?", o: ["Le traité de Vienne", "Le traité de Versailles", "Le traité de Rome", "Le traité de Paris"], a: "Le traité de Versailles" },
+  { th: "histoire", t: "qcm", q: "Qui a mené la marche du sel en Inde en 1930 ?", o: ["Nehru", "Gandhi", "Ambedkar", "Tagore"], a: "Gandhi" },
+  { th: "histoire", t: "qcm", q: "Quelle dynastie chinoise a fait construire la Cité interdite ?", o: ["Les Han", "Les Tang", "Les Ming", "Les Qing"], a: "Les Ming" },
+  { th: "histoire", t: "qcm", q: "En quelle année l'esclavage est-il définitivement aboli en France ?", o: ["1789", "1794", "1848", "1905"], a: "1848" },
+  { th: "histoire", t: "qcm", q: "Quel roi d'Angleterre a fondé l'Église anglicane ?", o: ["Henri VIII", "Édouard III", "Jacques Ier", "Charles Ier"], a: "Henri VIII" },
+  { th: "histoire", t: "qcm", q: "Quelle ville romaine a été ensevelie par le Vésuve en 79 ?", o: ["Herculanum", "Pompéi", "Ostie", "Naples"], a: "Pompéi" },
+  { th: "histoire", t: "vf", q: "La guerre de Cent Ans a duré exactement cent ans.", a: false },
+  { th: "histoire", t: "vf", q: "Élisabeth II a régné plus de 70 ans sur le Royaume-Uni.", a: true },
 
   /* ------------------------------ Sciences ------------------------------- */
   { th: "sciences", t: "qcm", q: "Quelle planète est la plus proche du Soleil ?", o: ["Vénus", "Mercure", "Mars", "La Terre"], a: "Mercure" },
@@ -171,6 +200,14 @@ const BANK = [
   { th: "sciences", t: "ana", q: "Remets les lettres dans l'ordre pour trouver la molécule.", l: "M O L E C U L E", h: "Ensemble d'atomes", a: "MOLECULE" },
   { th: "sciences", t: "ana", q: "Remets les lettres dans l'ordre pour trouver la cellule du cerveau.", l: "N E U R O N E", h: "Elle transmet l'influx nerveux", a: "NEURONE" },
   { th: "sciences", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'astre.", l: "P L A N E T E", h: "Elle tourne autour d'une étoile", a: "PLANETE" },
+  { th: "sciences", t: "qcm", q: "Combien de planètes compte le système solaire ?", o: ["7", "8", "9", "10"], a: "8" },
+  { th: "sciences", t: "qcm", q: "Quel est l'élément chimique le plus abondant dans l'univers ?", o: ["L'oxygène", "L'hydrogène", "Le carbone", "L'hélium"], a: "L'hydrogène" },
+  { th: "sciences", t: "qcm", q: "Quelle partie de la cellule contient l'ADN ?", o: ["La membrane", "Le noyau", "Le cytoplasme", "La paroi"], a: "Le noyau" },
+  { th: "sciences", t: "qcm", q: "Quelle est la vitesse approximative de la lumière dans le vide ?", o: ["30 000 km/s", "300 000 km/s", "3 000 km/s", "3 000 000 km/s"], a: "300 000 km/s" },
+  { th: "sciences", t: "qcm", q: "Quel organe pompe le sang dans le corps ?", o: ["Le foie", "Le cœur", "Les poumons", "L'estomac"], a: "Le cœur" },
+  { th: "sciences", t: "qcm", q: "Que mesure un ampèremètre ?", o: ["La tension", "L'intensité", "La résistance", "La puissance"], a: "L'intensité" },
+  { th: "sciences", t: "qcm", q: "Quel est le plus grand organe interne du corps humain ?", o: ["Le foie", "L'intestin", "Les poumons", "L'estomac"], a: "Le foie" },
+  { th: "sciences", t: "vf", q: "Le son se propage plus vite dans l'eau que dans l'air.", a: true },
 
   /* --------------------------- Cinéma & séries --------------------------- */
   { th: "ecran", t: "qcm", q: "Qui a réalisé le film Titanic ?", o: ["Steven Spielberg", "James Cameron", "Ridley Scott", "Christopher Nolan"], a: "James Cameron" },
@@ -221,6 +258,12 @@ const BANK = [
   { th: "ecran", t: "serie", q: "De quelle série parle ce résumé ?", sum: "Un détective consultant et son ami médecin résolvent des crimes à Londres.", h: "221B Baker Street, version moderne.", a: "Sherlock" },
   { th: "ecran", t: "serie", q: "De quelle série parle ce résumé ?", sum: "Des internes en chirurgie enchaînent gardes, amours et urgences.", h: "Meredith Grey et Seattle.", a: "Grey's Anatomy" },
   { th: "ecran", t: "serie", q: "De quelle série parle ce résumé ?", sum: "Un gang familial règne sur le Birmingham des années 1920.", h: "Casquettes plates et lames de rasoir.", a: "Peaky Blinders" },
+  { th: "ecran", t: "qcm", q: "Qui joue le rôle de Jack Dawson dans Titanic ?", o: ["Brad Pitt", "Leonardo DiCaprio", "Matt Damon", "Johnny Depp"], a: "Leonardo DiCaprio" },
+  { th: "ecran", t: "qcm", q: "Quelle actrice incarne Hermione Granger dans Harry Potter ?", o: ["Emma Watson", "Emma Stone", "Natalie Portman", "Keira Knightley"], a: "Emma Watson" },
+  { th: "ecran", t: "qcm", q: "Quel film d'animation suit Miguel au pays des morts ?", o: ["Coco", "Encanto", "Soul", "Luca"], a: "Coco" },
+  { th: "ecran", t: "vf", q: "Le film Avatar est réalisé par James Cameron.", a: true },
+  { th: "ecran", t: "vf", q: "L'action de Breaking Bad se déroule à Miami.", a: false },
+  { th: "ecran", t: "vf", q: "Dark Vador est le père de Luke Skywalker.", a: true },
 
   /* ------------------------------- Musique ------------------------------- */
   { th: "musique", t: "qcm", q: "Qui a composé la Cinquième Symphonie ?", o: ["Mozart", "Beethoven", "Bach", "Chopin"], a: "Beethoven" },
@@ -249,6 +292,18 @@ const BANK = [
   { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le groupe.", l: "A B B A", h: "Dancing Queen", a: "ABBA" },
   { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le groupe.", l: "Q U E E N", h: "Bohemian Rhapsody", a: "QUEEN" },
   { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le compositeur.", l: "M O Z A R T", h: "La Flûte enchantée", a: "MOZART" },
+  { th: "musique", t: "qcm", q: "Quel instrument de concert possède 47 cordes ?", o: ["Le piano", "La harpe", "Le clavecin", "La guitare"], a: "La harpe" },
+  { th: "musique", t: "qcm", q: "Quelle chanteuse a interprété Rolling in the Deep ?", o: ["Adele", "Amy Winehouse", "Rihanna", "Sia"], a: "Adele" },
+  { th: "musique", t: "qcm", q: "Quel groupe a sorti Stairway to Heaven ?", o: ["Led Zeppelin", "The Doors", "Pink Floyd", "The Who"], a: "Led Zeppelin" },
+  { th: "musique", t: "qcm", q: "Quel instrument Yo-Yo Ma joue-t-il ?", o: ["Le violoncelle", "Le violon", "L'alto", "La contrebasse"], a: "Le violoncelle" },
+  { th: "musique", t: "qcm", q: "Qui est surnommé le « roi de la pop » ?", o: ["Elvis Presley", "Michael Jackson", "Prince", "Freddie Mercury"], a: "Michael Jackson" },
+  { th: "musique", t: "qcm", q: "Quel instrument à percussion se joue avec des baguettes et un pédalier ?", o: ["Le xylophone", "La batterie", "Les timbales", "Le tambourin"], a: "La batterie" },
+  { th: "musique", t: "vf", q: "Le ukulélé est un instrument à quatre cordes.", a: true },
+  { th: "musique", t: "vf", q: "Beethoven était devenu sourd à la fin de sa vie.", a: true },
+  { th: "musique", t: "vf", q: "Le reggae est né en Jamaïque.", a: true },
+  { th: "musique", t: "vf", q: "Un trio compte cinq musiciens.", a: false },
+  { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'instrument.", l: "P I A N O", h: "À touches noires et blanches", a: "PIANO" },
+  { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver la chanteuse.", l: "A D E L E", h: "Rolling in the Deep", a: "ADELE" },
 
   /* -------------------------------- Sport -------------------------------- */
   { th: "sport", t: "qcm", q: "Combien de joueurs compte une équipe de volley sur le terrain ?", o: ["5", "6", "7", "8"], a: "6" },
@@ -277,6 +332,18 @@ const BANK = [
   { th: "sport", t: "vf", q: "Le Tour de France se termine à Paris.", a: true },
   { th: "sport", t: "vf", q: "Les Jeux olympiques d'hiver ont lieu tous les quatre ans.", a: true },
   { th: "sport", t: "vf", q: "Le tennis de table se joue avec une raquette et une balle en plastique.", a: true },
+  { th: "sport", t: "qcm", q: "Combien de sets faut-il gagner pour remporter un match masculin de Grand Chelem ?", o: ["2", "3", "4", "5"], a: "3" },
+  { th: "sport", t: "qcm", q: "Combien de joueurs compte une équipe de water-polo dans l'eau ?", o: ["5", "6", "7", "8"], a: "7" },
+  { th: "sport", t: "qcm", q: "Dans quel pays le judo est-il né ?", o: ["La Chine", "Le Japon", "La Corée", "La Thaïlande"], a: "Le Japon" },
+  { th: "sport", t: "qcm", q: "Quelle est la longueur d'un tour de piste d'athlétisme standard ?", o: ["200 m", "300 m", "400 m", "500 m"], a: "400 m" },
+  { th: "sport", t: "qcm", q: "Combien de joueurs compte une équipe de hockey sur glace sur la glace ?", o: ["5", "6", "7", "8"], a: "6" },
+  { th: "sport", t: "qcm", q: "Quel pays a remporté la Coupe du monde de rugby 2023 ?", o: ["La Nouvelle-Zélande", "L'Afrique du Sud", "La France", "L'Angleterre"], a: "L'Afrique du Sud" },
+  { th: "sport", t: "qcm", q: "Combien de joueurs compte une équipe de cricket ?", o: ["9", "10", "11", "12"], a: "11" },
+  { th: "sport", t: "vf", q: "Le sumo est un sport japonais.", a: true },
+  { th: "sport", t: "vf", q: "Le pentathlon moderne compte cinq épreuves.", a: true },
+  { th: "sport", t: "vf", q: "La Coupe du monde de football a lieu tous les deux ans.", a: false },
+  { th: "sport", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le sport.", l: "J U D O", h: "Art martial japonais", a: "JUDO" },
+  { th: "sport", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le sport.", l: "T E N N I S", h: "Raquette et filet", a: "TENNIS" },
 
   /* -------------------------------- People ------------------------------- */
   { th: "people", t: "who", q: "Qui est cette personnalité ?", img: "/culturegame/people/p17.jpg", h: "Attaquant français, champion du monde 2018 à 19 ans.", a: "Kylian Mbappé", alt: ["Mbappé", "Mbappe", "Kylian Mbappe"] },
@@ -313,18 +380,24 @@ const BANK = [
   { th: "people", t: "vf", q: "Einstein a refusé la présidence d'Israël.", a: true },
 
   /* --------------------------- Rébus & petit bac -------------------------- */
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "🐱 CHAT + 🧴 PEAU", h: "On le porte sur la tête.", a: "CHAPEAU" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "🍲 POT + 🎂 ÂGE", h: "Un velouté de légumes.", a: "POTAGE" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "🏃 COUR + 🎂 AGE", h: "Il en faut pour affronter sa peur.", a: "COURAGE" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "📏 PAR + 🎁 DON", h: "On le demande après une bêtise.", a: "PARDON" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "👍 BON + 👨 HOMME", h: "Un homme au grand cœur, ou un gâteau d'épices.", a: "BONHOMME" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "👎 MAL + 🕐 HEUR", h: "Le contraire du bonheur.", a: "MALHEUR" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "🌊 MER + 👁️ VEILLE", h: "Quelque chose de féerique.", a: "MERVEILLE" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "🥬 CHOU + 🌸 FLEUR", h: "Un légume blanc en bouquets.", a: "CHOUFLEUR", alt: ["CHOU-FLEUR"] },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "🚪 PORTE + 🪙 MONNAIE", h: "Il garde billets et cartes.", a: "PORTEMONNAIE" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces trois morceaux ?", puzzle: "🏹 ARC + ➕ EN + 🌈 CIEL", h: "Il apparaît après la pluie.", a: "ARC-EN-CIEL", alt: ["ARC EN CIEL"] },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "⚽ BAL + 🎈 LON", h: "On le gonfle pour jouer.", a: "BALLON" },
-  { th: "langue", t: "rebus", q: "Quel mot obtient-on en assemblant ces deux morceaux ?", puzzle: "🌙 MI + 🌃 NUIT", h: "L'heure où Cendrillon perd sa pantoufle.", a: "MINUIT" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un félin domestique.\nMon deuxième protège le corps.\nMon tout se porte sur la tête.", h: "Un objet", a: "CHAPEAU" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier sert à cuire.\nMon deuxième vient avec les années.\nMon tout est une soupe épaisse.", h: "Un plat", a: "POTAGE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est la promenade d'une reine.\nMon deuxième arrive avec les ans.\nMon tout permet d'affronter le danger.", h: "Une qualité", a: "COURAGE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un nombre au golf.\nMon deuxième est un cadeau.\nMon tout se demande après une faute.", h: "Un mot poli", a: "PARDON" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est le contraire de mauvais.\nMon deuxième est un être humain.\nMon tout est un petit monsieur de neige.", h: "Deux syllabes", a: "BONHOMME" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est le contraire de bien.\nMon deuxième rime avec « beurre ».\nMon tout est un coup du sort.", h: "Une tuile", a: "MALHEUR" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est une étendue salée.\nMon deuxième précède le jour.\nMon tout est quelque chose d'éblouissant.", h: "Un émerveillement", a: "MERVEILLE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un légume rond.\nMon deuxième sent bon.\nMon tout est un légume blanc en bouquets.", h: "Un légume", a: "CHOUFLEUR", alt: ["CHOU-FLEUR"] },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier s'ouvre avec une clé.\nMon deuxième sert à payer.\nMon tout garde les billets.", h: "Un accessoire", a: "PORTEMONNAIE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier lance des flèches.\nMon deuxième indique le lieu.\nMon troisième est au-dessus de nos têtes.\nMon tout apparaît après la pluie.", h: "Trois syllabes", a: "ARC-EN-CIEL", alt: ["ARC EN CIEL"] },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est une soirée dansante.\nMon deuxième termine le mot « salon ».\nMon tout rebondit et se gonfle.", h: "Un jeu", a: "BALLON" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est une note de musique.\nMon deuxième est le contraire du jour.\nMon tout est l'heure de Cendrillon.", h: "Une heure", a: "MINUIT" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un adjectif possessif.\nMon deuxième est un prénom masculin.\nMon tout sert à se laver.", h: "Dans la salle de bain", a: "SAVON" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un petit légume rond.\nMon deuxième est un bruit.\nMon tout vit dans l'eau.", h: "Un animal", a: "POISSON" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un félin domestique.\nMon deuxième coule dans les rivières.\nMon tout a des tours et un pont-levis.", h: "Un bâtiment", a: "CHATEAU", alt: ["CHÂTEAU"] },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est le contraire de mauvais.\nMon deuxième est aussi le contraire de mauvais.\nMon tout se suce et se partage.", h: "Une friandise", a: "BONBON" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un appareil de cuisson.\nMon deuxième est une note de musique.\nMon tout est un insecte travailleur.", h: "Un insecte", a: "FOURMI" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un adjectif possessif.\nMon deuxième est un arbre résineux.\nMon tout est l'arbre de Noël.", h: "Un arbre", a: "SAPIN" },
   { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un animal", l: "B", free: true, a: "" },
   { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Une ville ou un pays", l: "C", free: true, a: "" },
   { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un métier", l: "M", free: true, a: "" },
@@ -345,6 +418,12 @@ const BANK = [
   { th: "langue", t: "qcm", q: "Combien de syllabes compte le mot « ordinateur » ?", o: ["3", "4", "5", "6"], a: "4" },
   { th: "langue", t: "qcm", q: "Quelle figure de style utilise le mot « comme » ?", o: ["La métaphore", "La comparaison", "L'hyperbole", "La personnification"], a: "La comparaison" },
   { th: "langue", t: "qcm", q: "Quel temps est employé dans « je mangerai » ?", o: ["Le présent", "Le futur simple", "L'imparfait", "Le passé composé"], a: "Le futur simple" },
+  { th: "langue", t: "qcm", q: "Quel est le féminin de « instituteur » ?", o: ["Institutrice", "Instituteure", "Institutaire", "Instituteuse"], a: "Institutrice" },
+  { th: "langue", t: "qcm", q: "Quel est le pluriel de « bijou » ?", o: ["Bijous", "Bijoux", "Bijoues", "Bijouxs"], a: "Bijoux" },
+  { th: "langue", t: "qcm", q: "Quel mot est un synonyme de « maison » ?", o: ["Demeure", "Cheminée", "Jardin", "Toiture"], a: "Demeure" },
+  { th: "langue", t: "qcm", q: "Combien de lettres compte le mot « hibou » ?", o: ["4", "5", "6", "7"], a: "5" },
+  { th: "langue", t: "qcm", q: "Quel est l'antonyme de « généreux » ?", o: ["Avare", "Donneur", "Aimable", "Riche"], a: "Avare" },
+  { th: "langue", t: "qcm", q: "Quel temps est employé dans « nous chantions » ?", o: ["Le présent", "L'imparfait", "Le futur", "Le passé simple"], a: "L'imparfait" },
   { th: "langue", t: "vf", q: "Un palindrome se lit dans les deux sens.", a: true },
   { th: "langue", t: "vf", q: "Le féminin de « acteur » est « actrice ».", a: true },
   { th: "langue", t: "vf", q: "Un haïku est un poème japonais de trois vers.", a: true },
@@ -404,7 +483,7 @@ const typeLabel = (t) =>
   ({
     vf: "Vrai ou faux",
     ana: "Anagramme",
-    rebus: "Rébus",
+    rebus: "Charade",
     who: "Qui est-ce ?",
     film: "Film mystère",
     serie: "Série mystère",
@@ -1030,7 +1109,7 @@ function renderHome(root, message) {
     <div class="cg-glow" aria-hidden="true"></div>
     <p class="cg-kicker">Le quiz show de la soirée</p>
     <h1>Culture <em>Game</em></h1>
-    <p class="cg-lead">QCM, vrai ou faux, anagrammes, rébus, petit bac, people et films mystères.
+    <p class="cg-lead">QCM, vrai ou faux, anagrammes, charades, petit bac, people et films mystères.
       20 secondes, des points de vitesse, et un classement final sans pitié.</p>
     <div class="cg-marquee" aria-hidden="true"><span>🧠 Culture</span><span>⚡ Vitesse</span><span>🕵️ Devinettes</span><span>🏆 Gloire</span></div>
   </section>
