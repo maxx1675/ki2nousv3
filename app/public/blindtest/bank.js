@@ -313,7 +313,16 @@
     t = t.replace(/\s*official(\s+channel)?$/i, "");
     return t.replace(/\s+/g, " ").trim();
   }
-  var GENERIC_ARTIST = /^(various artists|various|va|unknown|unknown artist|artiste inconnu|official)$/;
+  var GENERIC_ARTIST = /^(various artists?|various|va|unknown|unknown artist|artiste inconnu|official|album(?:s)?(?: fr| français| francais| anglais| us| uk)?|playlist|compilation|best of|hits?|chansons?|songs?|musique|music|topic|french music|chansons françaises|chansons francaises)$/;
+  /* Chaînes de compilation : « Album fr », « Album Français », « Best of 80s »…
+     Elles ne sont pas l'artiste du morceau. On préfère alors lire le titre
+     « Artiste - Titre » plutôt que d'afficher le nom de la chaîne. */
+  function isGenericArtist(v) {
+    var n = norm(cleanArtist(v));
+    if (!n) return true;
+    if (GENERIC_ARTIST.test(n)) return true;
+    return /^(album|playlist|compilation|best of)\b/.test(n);
+  }
   function sameSegment(a, b) {
     var x = strip(norm(a)), y = strip(norm(b));
     if (!x || !y) return false;
@@ -349,7 +358,7 @@
     var rawA = String(rawArtist == null ? "" : rawArtist).trim();
     var title = cleanTitle(rawT) || rawT;
     var artist = cleanArtist(rawA) || rawA;
-    var generic = !artist || GENERIC_ARTIST.test(norm(artist));
+    var generic = !artist || isGenericArtist(artist);
     if (!title) return { title: "", artist: generic ? "" : artist };
 
     var parts = title.split(/\s+[-–—]\s+|\s*\|\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
@@ -412,6 +421,7 @@
     editDistance: editDistance,
     cleanTitle: cleanTitle,
     cleanArtist: cleanArtist,
+    isGenericArtist: isGenericArtist,
     songMeta: songMeta,
     extractBase: extractBase,
     pickPos: pickPos

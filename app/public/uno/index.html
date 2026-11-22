@@ -179,7 +179,9 @@ function handPoints(hand){
 function canPlayCard(card,hand,color,top){
  if(!card||!hand.some(c=>c.id===card.id))return false;
  if(card.v==="wild")return true;
- if(card.v==="wd4")return !hand.some(c=>c.c===color);
+ // Le +4 peut toujours être posé : c'est un bluff autorisé, que le joueur
+ // suivant peut contester. La légalité réelle est mémorisée au moment du jeu.
+ if(card.v==="wd4")return true;
  if(card.c===color)return true;
  if(top&&top.c!=="w"&&card.v===top.v)return true;
  return false;
@@ -342,7 +344,6 @@ function act(d){
   if(S.pendingDraw&&S.pendingDraw.by===p&&S.pendingDraw.cid!==card.id)return err(p,"Tu dois jouer la carte piochée ou passer.");
   if(stacking&&card.v!=="d2")return err(p,"Tu dois empiler un +2 ou piocher.");
   if(!stacking&&!canPlayCard(card,hand,S.color,H.discard[H.discard.length-1])){
-   if(card.v==="wd4")return err(p,"Le +4 n’est jouable que si tu n’as aucune carte de la couleur en cours.");
    return err(p,"Cette carte ne correspond ni à la couleur ni au symbole.");
   }
   H.hands[p]=hand.filter(c=>c.id!==card.id);
@@ -482,7 +483,7 @@ function act(d){
   S.uno.announced=true;
   log("📣 "+nm(p)+" annonce UNO !");
  }
- else if(k==="catch"&&S.ph==="play"&&S.uno&&S.uno.id!==p&&!S.uno.announced&&Net.now()<=S.uno.until&&Net.now()-S.uno.at>1200){
+ else if(k==="catch"&&S.ph==="play"&&S.uno&&S.uno.id!==p&&!S.uno.announced&&Net.now()<=S.uno.until){
   const id=S.uno.id;
   drawCards(id,2);
   S.uno=null;
@@ -662,7 +663,7 @@ function renderHome(){
   <li>Chacun reçoit 7 cartes. Pose une carte de la même couleur ou du même symbole que la défausse.</li>
   <li>+2 : le joueur suivant peut empiler un autre +2 (les valeurs s’additionnent) ou piocher et passer. Inversion : le sens change (à 2 joueurs, elle passe le tour). Passe-tour : le suivant est sauté.</li>
   <li>Coupe : si tu as une copie exacte de la carte qui vient d’être jouée, pose-la avant le joueur suivant. Tous les joueurs intermédiaires sont sautés.</li>
-  <li>Joker : choisis la couleur. +4 : seulement si tu n’as aucune carte de la couleur en cours — le suivant peut contester.</li>
+  <li>Joker : choisis la couleur. +4 : tu peux le poser même si tu as la couleur en cours, mais c’est un bluff que le suivant peut contester. S’il conteste et que tu étais légal (aucune carte de la couleur), il pioche 6 ; sinon tu pioches 4.</li>
   <li>Quand il te reste 1 carte, annonce UNO ! Sinon, les autres peuvent te contrer : +2 cartes.</li>
   <li>Le premier à poser sa dernière carte marque les points des mains restantes. Partie en 200 ou 500 points, ou manche unique.</li>
  </ul></details></div>`;
@@ -688,7 +689,7 @@ function opponentsHtml(){
  return `<div class="uno-opps">${S.pl.map(p=>{
   const turn=S.turnId===p.id;
   const uno=S.uno&&S.uno.id===p.id;
-  const counter=uno&&!S.uno.announced&&p.id!==ME&&Net.now()-S.uno.at>1200&&Net.now()<=S.uno.until;
+  const counter=uno&&!S.uno.announced&&p.id!==ME&&Net.now()<=S.uno.until;
   return `<div class="uno-opp${turn?" turn":""}${p.id===ME?" me":""}">
    <span class="nm">${turn?"▶ ":""}${esc(p.n)}${p.id===ME?" (toi)":""}</span>
    <span class="cnt">🂠 ${p.count}</span>
@@ -734,7 +735,7 @@ function renderPlay(){
   actions=`<div class="card"><h2>Tu as pioché ${cardFull(L.drawn)}</h2><p class="hint">${clientPlayable(L.drawn)?'Elle est jouable : pose-la ou passe.':'Elle n’est pas jouable : passe ton tour.'}</p><button class="btn primary big" data-a="pass">Passer mon tour</button></div>`;
  }else if(S.uno&&S.uno.id===ME&&!S.uno.announced){
   actions=`<div class="card"><h2>Il te reste 1 carte !</h2><button class="btn primary big" data-a="uno">📣 UNO !</button><p class="hint">Annonce-le vite, sinon les autres peuvent te dénoncer.</p></div>`;
- }else if(S.uno&&S.uno.id!==ME&&!S.uno.announced&&Net.now()-S.uno.at>1200){
+ }else if(S.uno&&S.uno.id!==ME&&!S.uno.announced){
   actions=`<div class="card"><h2>👀 Contre UNO</h2><p class="hint">${esc(nm(S.uno.id))} n’a plus qu’une carte. S’il ne l’a pas annoncé, contre-le !</p><button class="btn primary big" data-a="catch">🚨 Contre UNO de ${esc(nm(S.uno.id))}</button></div>`;
  }
  const hasCut=hand.some(c=>canCut(c));

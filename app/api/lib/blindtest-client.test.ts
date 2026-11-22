@@ -9,6 +9,7 @@ type BT = {
   match: (guess: unknown, answer: unknown) => boolean;
   cleanTitle: (value: unknown) => string;
   cleanArtist: (value: unknown) => string;
+  isGenericArtist: (value: unknown) => boolean;
   songMeta: (title: unknown, artist: unknown) => SongMeta;
   extractBase: (pos: number, duration: number, extract: number, elapsed?: number) => number;
   pickPos: () => number;
@@ -67,6 +68,15 @@ describe("Blind Test — titres YouTube", () => {
     expect(BT.songMeta("Daft Punk - Get Lucky - Official Video 4K", "Daft Punk")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
     expect(BT.songMeta("Daft Punk - Get Lucky - Live", "Daft Punk")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
     expect(BT.songMeta("Daft Punk - Get Lucky - Live", "")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    // Chaîne de compilation : « Album fr » n'est pas l'artiste, le titre
+    // « Artiste - Titre » reprend le dessus.
+    expect(BT.songMeta("Daft Punk - Get Lucky", "Album fr")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.songMeta("Daft Punk - Get Lucky (Official Video)", "Album Français")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.songMeta("Daft Punk - Get Lucky", "Best of 80s")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.isGenericArtist("Album fr")).toBe(true);
+    expect(BT.isGenericArtist("Album Français")).toBe(true);
+    expect(BT.isGenericArtist("Best of 80s")).toBe(true);
+    expect(BT.isGenericArtist("Daft Punk")).toBe(false);
     expect(BT.songMeta("Daft Punk - Get Lucky - Live - Daft Punk", "Daft Punk")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
     expect(BT.songMeta("Artist - Live - Artist", "")).toEqual({ title: "Live", artist: "Artist" });
   });

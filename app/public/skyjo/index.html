@@ -92,7 +92,7 @@ detail.sj-help summary{cursor:pointer;font-weight:800;color:var(--ink)}
    concerné par un message ciblé. */
 const MIN=2,MAX=8,COLS=4,ROWS=3,CARDS=COLS*ROWS;
 let R=null,S=null,H=null,isHost=false,code="";
-const L={name:"",drawn:null,sig:"",hl:null,hello:null,touch:null,fxSeen:""};
+const L={name:"",drawn:null,sig:"",hl:null,hello:null,touch:null,fxSeen:"",fxT:0};
 let FXACTIVE=null;
 const app=$("#app");
 const pl=id=>S&&S.pl.find(p=>p.id===id);
@@ -231,12 +231,14 @@ function endRound(){
  if(!S)return;
  const sums={};let min=Infinity;
  S.pl.forEach(p=>{sums[p.id]=gridSum(p.id);min=Math.min(min,sums[p.id])});
+ // Le déclencheur ne double son score que s'il n'a pas le plus petit total.
+ // En cas d'égalité au plus bas, la règle officielle double quand même le déclencheur.
+ const lowestCount=S.pl.filter(p=>sums[p.id]===min).length;
  const tr=S.trigger||S.order[S.turn];
  const rows=[];
  S.pl.forEach(p=>{
   const base=sums[p.id];
-  // Le déclencheur voit toujours son score doublé, même s'il a le plus petit total.
-  const doubled=!!tr&&p.id===tr;
+  const doubled=!!tr&&p.id===tr&&(base>min||lowestCount>1);
   const score=doubled?base*2:base;
   p.round=score;p.doubled=doubled;p.sc+=score;
   rows.push({id:p.id,base,score,doubled,total:p.sc});
@@ -474,18 +476,19 @@ function gridHtml(pid,o){
  const cols=b.cols||[],action=o.action||null,fx=FXACTIVE;
  let h='<div class="sj-grid">';
  for(let c=0;c<COLS;c++){
+  const out=cols.includes(c);
+  const cf=out&&fx&&fx.t==="col"&&fx.p===pid?(fx.cols||[]).find(x=>x.c===c):null;
+  // Une colonne retirée ne laisse pas de cases vides : elle disparaît.
+  // Pendant l'animation seulement, ses trois cartes sortent de la table.
+  if(out&&!cf)continue;
   h+='<div class="sj-col">';
+  if(out&&cf){
+   for(let k=0;k<ROWS;k++){const cv=cf.vals[k];h+=`<span class="sj-card ${valClass(cv)} sj-col-out" style="--d:${k*85}ms" aria-hidden="true">${fmt(cv)}</span>`}
+   h+='</div>';
+   continue;
+  }
   for(let r=0;r<ROWS;r++){
    const i=c*ROWS+r,v=b.cells[i];
-   if(cols.includes(c)){
-    const cf=fx&&fx.t==="col"&&fx.p===pid?(fx.cols||[]).find(x=>x.c===c):null;
-    if(cf){
-     for(let k=0;k<ROWS;k++){const cv=cf.vals[k];h+=`<span class="sj-card ${valClass(cv)} sj-col-out" style="--d:${k*85}ms" aria-hidden="true">${fmt(cv)}</span>`}
-    }else{
-     for(let k=0;k<ROWS;k++)h+='<span class="sj-card empty" aria-hidden="true"></span>';
-    }
-    continue;
-   }
    const extra=fx&&fx.p===pid&&fx.i===i?(fx.t==="swap"?"sj-place":(fx.t==="flip"||fx.t==="reveal")?"sj-flip":""):"";
    if(v==null){
     if(action==="swap"||action==="flip"||action==="reveal"){
@@ -509,17 +512,24 @@ function playerMini(p){
   <div class="hint" style="margin-top:5px;font-size:.74rem">${hiddenCount(p.id)} cachée${hiddenCount(p.id)>1?"s":""}${S.ph==="round"||S.ph==="end"?" · "+p.round+" cette manche":""}</div>
  </div>`;
 }
-function render(){
+function render(force){
  if(!S){
   if(R)app.innerHTML='<div class="card center"><div class="big-emoji">🎴</div><h1>Connexion…</h1><p class="hint">En attente de la partie.</p></div>';
   else renderHome();
   return;
  }
  const sig=JSON.stringify([S,L.drawn]);
- if(sig===L.sig)return;
+ if(!force&&sig===L.sig)return;
  L.sig=sig;
- FXACTIVE=S.fx&&S.fx.id!==L.fxSeen?S.fx:null;
- if(FXACTIVE)L.fxSeen=FXACTIVE.id;
+ // Une animation n'est jouée qu'une fois et seulement si elle vient d'arriver.
+ // Elle reste active jusqu'à la fin de son délai, même si un nouvel état
+ // arrive entre-temps. À la fin, on force un rendu pour refermer les colonnes.
+ if(!S.fx)FXACTIVE=null;
+ else if(S.fx.id!==L.fxSeen&&Net.now()-(S.fx.at||0)<2500){
+  FXACTIVE=S.fx;L.fxSeen=S.fx.id;
+  clearTimeout(L.fxT);
+  L.fxT=setTimeout(()=>{FXACTIVE=null;render(true)},S.fx.t==="col"?1050:780);
+ }
  $("#who").textContent=code?"Salon "+code:"";
  if(S.ph==="lobby")renderLobby();
  else if(S.ph==="reveal")renderReveal();
@@ -539,7 +549,7 @@ function renderHome(){
   <li>Chaque joueur a 12 cartes en 4 colonnes de 3. Deux sont révélées au départ.</li>
   <li>À ton tour : pioche ou prends la défausse, puis échange la carte avec une des tiennes. Si tu pioches, tu peux aussi défausser et révéler une carte cachée.</li>
   <li>Trois cartes identiques dans une colonne : la colonne disparaît et compte 0.</li>
-  <li>Dès qu'un joueur a retourné toutes ses cartes, les autres jouent un dernier tour. Le plus petit total marque. Le déclencheur voit toujours son score doublé.</li>
+  <li>Dès qu'un joueur a retourné toutes ses cartes, les autres jouent un dernier tour. Le plus petit total marque. Si le déclencheur n'a pas le plus petit total, son score est doublé (égalité comprise).</li>
   <li>Partie en 100 points : le plus petit score cumulé gagne.</li>
  </ul></details></div>`;
  const c=bootParams().code;if(c&&$("#pcode"))$("#pcode").value=c;
@@ -615,7 +625,7 @@ function renderRound(){
  app.innerHTML=`<div class="center"><div class="big-emoji">📊</div><h1>Manche ${S.r} terminée</h1><p class="hint">${rr.trigger?`<b>${esc(nm(rr.trigger))}</b> a déclenché la fin de manche.`:"Fin de manche."}</p></div>
  <div class="card"><h2>Scores de la manche</h2>
   ${rows.map(p=>{const r=byId[p.id]||{};return`<div class="sj-score-row"><span><b>${esc(p.n)}</b>${p.doubled?' <span class="sj-double">×2</span>':""}<br><small class="hint" style="margin:0">${r.base!=null?"somme "+fmt(r.base):""}</small></span><span class="big">${fmtGain(r.score||0)}</span><span class="tot">${p.sc}</span></div>`}).join("")}
-  <p class="hint" style="margin-top:8px">Le déclencheur voit toujours son score doublé, même s’il a le plus petit total.</p>
+  <p class="hint" style="margin-top:8px">Le score du déclencheur est doublé seulement s’il n’a pas le plus petit total (égalité comprise).</p>
  </div>
  <div class="card"><h2>Classement cumulé</h2>${rows.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}
   ${S.over?`<div class="sj-banner last">🎯 Objectif de ${S.cfg.target} points atteint : la partie se termine.</div>`:`<p class="hint">Objectif : ${S.cfg.target} points. Le plus petit score cumulé gagne.</p>`}

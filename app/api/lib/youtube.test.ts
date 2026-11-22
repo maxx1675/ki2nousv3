@@ -50,6 +50,18 @@ describe("YouTube playlist parser", () => {
     ]);
   });
 
+  it("préfère la chaîne de la vidéo au propriétaire de la playlist", () => {
+    const xml = `<feed><entry>
+      <yt:videoId>DDDDDDDDDDD</yt:videoId>
+      <author><name>Album fr</name></author>
+      <media:credit role="uploader">Daft Punk</media:credit>
+      <media:group><media:title>Get Lucky (Official Video)</media:title></media:group>
+    </entry></feed>`;
+    expect(parsePlaylistFeedItems(xml)).toEqual([
+      { id: "DDDDDDDDDDD", title: "Get Lucky (Official Video)", artist: "Daft Punk" },
+    ]);
+  });
+
   it("décode les entités XML des titres", () => {
     const xml = `<feed><entry>
       <yt:videoId>CCCCCCCCCCC</yt:videoId>

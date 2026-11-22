@@ -82,7 +82,7 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     expect(bad.ok).toBe(false);
   });
 
-  it("révèle un mensonge et tire avec le revolver personnel du lanceur", () => {
+  it("révèle un mensonge et le menteur se tire dessus avec son propre revolver", () => {
     const { e, code, ta, tb, adv, setGun } = setup();
     e.action(code, "a", ta, { k: "start" });
     adv(5_100);
@@ -91,7 +91,7 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     room.target = "R";
     const a = room.players.find((p) => p.id === "a")!;
     a.hand = [{ v: "9", s: "" }, { v: "V", s: "" }];
-    setGun("b", 1); // la balle de Bob est en première chambre
+    setGun("a", 1); // la balle d'Alice est en première chambre
     const claim = e.action(code, "a", ta, { k: "claim", cards: [0] });
     expect(claim.ok).toBe(true);
     const ch = e.action(code, "b", tb, { k: "challenge" });
@@ -100,7 +100,7 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     expect(rv.phase).toBe("reveal");
     expect(rv.reveal?.liar).toBe(true);
     expect(rv.reveal?.victim).toBe("a");
-    expect(rv.reveal?.shooter).toBe("b");
+    expect(rv.reveal?.shooter).toBe("a");
     expect(rv.reveal?.bullet).toBe(true);
     expect(rv.reveal?.chamber).toBe(1);
     expect(rv.reveal?.remaining).toBe(5);
@@ -112,7 +112,7 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     expect(fin.winner).toBe("b");
   });
 
-  it("tire sur l'accusateur quand l'annonce était vraie", () => {
+  it("l'accusateur se tire dessus quand l'annonce était vraie", () => {
     const { e, code, ta, tb, setGun, adv } = setup();
     e.action(code, "a", ta, { k: "start" });
     adv(5_100);
@@ -120,19 +120,19 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     room.turnId = "a";
     room.target = "R";
     room.players.find((p) => p.id === "a")!.hand = [{ v: "R", s: "" }];
-    setGun("a", 1);
+    setGun("b", 1);
     e.action(code, "a", ta, { k: "claim", cards: [0] });
     e.action(code, "b", tb, { k: "challenge" });
     const rv = view(e, code, "b", tb);
     expect(rv.reveal?.liar).toBe(false);
     expect(rv.reveal?.victim).toBe("b");
-    expect(rv.reveal?.shooter).toBe("a");
+    expect(rv.reveal?.shooter).toBe("b");
     expect(rv.reveal?.bullet).toBe(true);
     expect(rv.players.find((p) => p.id === "b")!.lives).toBe(0);
     expect(rv.players.find((p) => p.id === "b")!.alive).toBe(false);
   });
 
-  it("une chambre vide laisse vivre la cible et augmente les chances du prochain tir", () => {
+  it("une chambre vide laisse vivre le tireur et augmente ses chances au prochain tir", () => {
     const { e, code, ta, tb, setGun, adv } = setup();
     e.action(code, "a", ta, { k: "start" });
     adv(5_100);
@@ -140,7 +140,7 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     room.turnId = "a";
     room.target = "R";
     room.players.find((p) => p.id === "a")!.hand = [{ v: "9", s: "" }];
-    setGun("b", 3, 1); // balle en chambre 3 : les deux premiers tirs sont vides
+    setGun("a", 3, 1); // balle en chambre 3 : les deux premiers tirs sont vides
     e.action(code, "a", ta, { k: "claim", cards: [0] });
     e.action(code, "b", tb, { k: "challenge" });
     const rv = view(e, code, "b", tb);
@@ -149,10 +149,10 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     expect(rv.reveal?.remaining).toBe(5);
     expect(rv.players.find((p) => p.id === "a")!.lives).toBe(2);
     expect(rv.players.find((p) => p.id === "a")!.alive).toBe(true);
-    expect(rv.players.find((p) => p.id === "b")!.gun).toEqual({ chamber: 2, remaining: 5 });
+    expect(rv.players.find((p) => p.id === "a")!.gun).toEqual({ chamber: 2, remaining: 5 });
   });
 
-  it("une balle élimine la victime, les survivants continuent et leurs revolvers sont réarmés", () => {
+  it("une balle élimine le tireur, les survivants gardent leur barillet entamé", () => {
     const { e, code, ta, tb, adv, setGun } = setup({ lives: 2 });
     const joinC = e.join({ room: code, id: "c", name: "Cara", avatar: "cowgirl" });
     if (!joinC.ok) throw new Error(joinC.error);
@@ -162,8 +162,9 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     room.turnId = "a";
     room.target = "R";
     room.players.find((p) => p.id === "a")!.hand = [{ v: "9", s: "" }];
-    setGun("b", 1);
-    setGun("c", 4, 3);
+    setGun("a", 1);
+    setGun("b", 4, 2);
+    setGun("c", 5, 3);
     e.action(code, "a", ta, { k: "claim", cards: [0] });
     e.action(code, "b", tb, { k: "challenge" });
     let rv = view(e, code, "b", tb);
@@ -171,8 +172,9 @@ describe("La Table Des Menteurs — autorité serveur", () => {
     expect(rv.players.find((p) => p.id === "a")!.alive).toBe(false);
     expect(rv.players.find((p) => p.id === "b")!.alive).toBe(true);
     expect(rv.players.find((p) => p.id === "c")!.alive).toBe(true);
-    expect(rv.players.find((p) => p.id === "b")!.gun).toEqual({ chamber: 1, remaining: 6 });
-    expect(rv.players.find((p) => p.id === "c")!.gun).toEqual({ chamber: 1, remaining: 6 });
+    // Aucun réarmement : les chambres déjà vidées par les survivants restent vides.
+    expect(rv.players.find((p) => p.id === "b")!.gun).toEqual({ chamber: 2, remaining: 5 });
+    expect(rv.players.find((p) => p.id === "c")!.gun).toEqual({ chamber: 3, remaining: 4 });
     adv(6000);
     rv = view(e, code, "b", tb);
     expect(rv.phase).toBe("claim");

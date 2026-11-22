@@ -306,46 +306,58 @@ function analyse(){
   const med=a=>{const b=[...a].sort((x,y)=>x-y);return b.length?b[Math.floor(b.length/2)]:0};L.base={};for(const k in s)L.base[k]=med(L.cal.map(x=>x[k]))
   L.poseBase=L.calPose.length>=3?medPose(L.calPose):(pose||null);
  }
- /* Un simple mouvement de tête modifie les blendshapes (mâchoire, lèvres,
-    sourcils) et pouvait suffire à craquer. On neutralise la détection quand
-    la pose du visage s'éloigne trop de la calibration. */
+ /* Un mouvement de tête modifie les blendshapes et peut créer de faux
+    signaux. On ne coupe plus la détection pour autant : on exige juste un peu
+    plus de netteté pendant le mouvement. Seuls les mouvements vraiment énormes
+    (visage presque de profil) sont ignorés. */
  const moved=poseMoved(pose,L.poseBase);
- if(moved){
+ let huge=false;
+ if(pose&&L.poseBase){
+  const sc=Math.max(.05,L.poseBase.scale);
+  huge=Math.abs(pose.yaw-L.poseBase.yaw)>.34||Math.abs(pose.pitch-L.poseBase.pitch)>.4||Math.abs(pose.roll-L.poseBase.roll)>.5||Math.abs(pose.scale-L.poseBase.scale)/sc>.4;
+ }
+ if(huge){
   L.streak=0;L.gv*=.7;
   if(gf){gf.style.width=((1-L.gv)*100)+"%";gf.style.background="#27e08a"}
-  if(gt)gt.textContent=L.out?"💀":"🙅 mouvement de tête ignoré";
+  if(gt)gt.textContent=L.out?"💀":"🙅 recentre ton visage";
   return;
  }
- const thr=.55-.004*L.sens;let sig=0,mx=0;const dv={};
+ // Plus sensible qu'avant : un sourire franc doit suffire, même petit.
+ const thr=(.46-.0032*L.sens)*(moved?1.18:1);let sig=0,mx=0;const dv={};
  for(const k in s){
   L.sm[k]=L.sm[k]==null?s[k]:L.sm[k]*.55+s[k]*.45;
   const d=dv[k]=L.sm[k]-L.base[k];
   if(d<thr*.35)L.base[k]=L.base[k]*.995+L.sm[k]*.005; // dérive lente du visage neutre
-  // Sourire, plissement des yeux et mâchoire ne sont pas des expressions
-  // « génériques » : ils ne peuvent craquer que via un vrai rire ci-dessous.
-  if(k==="smile"||k==="cheek"||k==="laugh")continue;
+  if(k==="laugh")continue; // la mâchoire est analysée avec le rire plus bas
   if(talk&&k==="lips")continue;
-  if(d>thr){sig++;mx=Math.max(mx,d/thr)}
+  // Sourire et plissement des yeux comptent comme de vraies expressions :
+  // c'est le cœur du jeu, ils ne doivent plus être ignorés.
+  const easy=k==="smile"||k==="cheek";
+  if(k==="smile"&&smileNow<.08)continue;
+  if(k==="cheek"&&cheekNow<.07)continue;
+  const lim=easy?thr*.45:thr;
+  if(d>lim){sig++;mx=Math.max(mx,d/lim)}
  }
- /* Rire authentique : bouche nettement ouverte + sourire ou plissement des
-    yeux + mouvement de mâchoire. Un sourire seul, une bouche entrouverte pour
-    parler ou une expression figée ne suffisent donc plus à faire craquer. */
+ /* Rire authentique : bouche ouverte + sourire/plissement + rythme de
+    mâchoire. Les seuils sont bas pour que le jeu reste fun. */
  const jaw=jh[jh.length-1]||0;
- const openMouth=jaw>=.2&&(dv.laugh||0)>=Math.max(.12,thr*.5);
- const happy=Math.max(dv.smile||0,dv.cheek||0)>=Math.max(.09,thr*.25)&&(smileNow>=.12||cheekNow>=.1);
- const rhythm=(jawRange>=.15&&rev>=2)||(jaw>=.46&&(dv.cheek||0)>=.1);
+ const openMouth=jaw>=.16&&(dv.laugh||0)>=Math.max(.08,thr*.3);
+ const happy=Math.max(dv.smile||0,dv.cheek||0)>=Math.max(.06,thr*.18)&&(smileNow>=.1||cheekNow>=.07);
+ const rhythm=(jawRange>=.12&&rev>=2)||(jaw>=.36&&(dv.cheek||0)>=.07);
  const laughHit=!talk&&openMouth&&happy&&rhythm;
- if(laughHit)sig++;
- const nearLaugh=openMouth&&happy?Math.min(1,.45+Math.max(0,jaw-.2)*1.6):0;
+ if(laughHit)sig=Math.max(2,sig+1);
+ const nearLaugh=openMouth&&happy?Math.min(1,.45+Math.max(0,jaw-.16)*1.8):0;
  mx=Math.max(mx,nearLaugh*1.8);
- /* Deux expressions concordantes, ou un rire authentique. */
- const hit=laughHit||sig>=2;
+ // Un sourire net suffit ; sinon deux expressions concordantes ou un rire.
+ const smileHit=(dv.smile||0)>=Math.max(.06,thr*.35)&&smileNow>=.09;
+ const hit=laughHit||smileHit||sig>=2;
  L.gv=L.gv*.65+Math.max(0,Math.min(1,mx))*.35;
  if(gf){gf.style.width=((1-L.gv)*100)+"%";gf.style.background=L.gv<.5?"#27e08a":L.gv<.8?"#ffc531":"#ff1a40";const gw=gf.closest(".gauge");if(gw)gw.setAttribute("aria-valuenow",String(Math.round((1-L.gv)*100)))}
- if(gt)gt.textContent=L.out?"💀":talk?"🗣 parole ignorée":laughHit?"😂 rire détecté":L.gv>.75?"⚠ tiens bon…":"";
+ if(gt)gt.textContent=L.out?"💀":talk?"🗣 parole ignorée":laughHit?"😂 rire détecté":smileHit?"🙂 sourire détecté":L.gv>.75?"⚠ tiens bon…":"";
  if(L.out)return;
+ // Quatre frames (~280 ms) suffisent : réaction immédiate, comme la version de base.
  L.streak=hit?L.streak+1:0;
- if(L.streak>=6)crack();
+ if(L.streak>=4)crack();
 }
 function crack(){if(L.out||!S||S.ph!=="round"||!S.t0||Net.now()<S.t0)return;L.out=true;if(L.snapOn)grabFace();const lost=$("#lost");if(lost){lost.hidden=false;lost.onclick=()=>{lost.hidden=true}}
  // L'écran rouge reste ~3 s, puis on revoit la vidéo. La caméra reste

@@ -2680,8 +2680,14 @@ export class SaloonScene {
       const isVictimMe = fx.victim === this.ownId;
       this.camShake = (fx.bullet ? 0.2 : 0.07) + (isVictimMe ? 0.12 : 0);
       sfx(fx.bullet ? "gunshot" : "empty");
-      this.setAnim(fx.shooter, "shoot", 1500);
-      this.setAnim(fx.victim, fx.bullet ? "hit" : "flinch", 2400);
+      // Tir sur soi : le tireur et la cible sont le même personnage. On laisse
+      // l'animation de tir se voir un instant avant de jouer la réaction,
+      // sinon elle serait immédiatement remplacée par « touché ».
+      const self = fx.shooter === fx.victim;
+      this.setAnim(fx.shooter, "shoot", self ? 900 : 1500);
+      const react = () => this.setAnim(fx.victim, fx.bullet ? "hit" : "flinch", self ? 1800 : 2400);
+      if (self) setTimeout(react, 240);
+      else react();
       if (fx.bullet) setTimeout(() => sfx("gasp"), 260);
     } else if (!fx.fired && dt > REVEAL_TIMING.fire - 700) {
       // dernier petit clic de gâchette, juste avant le coup

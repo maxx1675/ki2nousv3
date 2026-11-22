@@ -26,12 +26,14 @@
 .bt-source-info{font-size:.82rem;color:var(--muted);margin:6px 0 0}
 .snd-gate{display:flex;flex-direction:column;align-items:center;gap:6px;margin:10px auto;padding:10px 14px;max-width:360px;background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;box-shadow:4px 4px 0 var(--sh);text-align:center}
 .snd-gate small{color:var(--muted);font-size:.8rem}
-@media(max-width:520px){.top{flex-wrap:wrap;gap:6px}.bt-topright{width:100%;justify-content:flex-end}}
+.bt-vol{display:flex;align-items:center;gap:6px;font-size:.9rem}
+.bt-vol input[type=range]{width:88px;accent-color:var(--bt-glow);cursor:pointer}
+@media(max-width:520px){.top{flex-wrap:wrap;gap:6px}.bt-topright{width:100%;justify-content:flex-end}.bt-vol input[type=range]{width:72px}}
 </style>
 <link rel="stylesheet" href="/themes/blindtest.css">
 </head><body>
 <main class="wrap">
-<div class="top"><a href="/">← Hub</a><span id="who" class="hint"></span><div class="bt-topright"><button class="pill" id="sndbtn" data-a="sound" aria-label="Activer le son des extraits">🔇 Activer le son</button></div></div>
+<div class="top"><a href="/">← Hub</a><span id="who" class="hint"></span><div class="bt-topright"><label class="bt-vol" title="Volume de l'extrait sur cet appareil"><span aria-hidden="true">🔊</span><input id="btvol" type="range" min="0" max="100" step="5" aria-label="Volume de l'extrait"></label><button class="pill" id="sndbtn" data-a="sound" aria-label="Activer le son des extraits">🔇 Activer le son</button></div></div>
 
 <section id="s-home">
  <header class="hero"><div class="logo">🎧</div><h1>Blind Test</h1>
@@ -41,7 +43,7 @@
  <div class="card"><h2>Rejoindre avec un code PIN</h2><div class="row"><input type="text" id="pcode" maxlength="4" placeholder="PIN" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn primary" data-a="join">Rejoindre</button></div></div>
  <div class="card bt-rules"><h2>Comment ça marche ?</h2>
   <p style="margin:0 0 8px">🎵 Chaque manche diffuse le même extrait sur tous les écrans. Tu tapes le <b>titre</b> et/ou l'<b>artiste</b> : plus tu réponds vite, plus tu marques de points.</p>
-  <p style="margin:0">🔒 <b>Réponses privées</b> : personne ne voit les propositions, la manche s'arrête quand tout le monde a trouvé quelque chose (ou après le temps). 👀 <b>Réponses visibles</b> : le premier qui trouve le titre termine la manche. Une mauvaise réponse ne bloque pas : tu peux réessayer.</p></div>
+  <p style="margin:0">🔒 <b>Réponses privées</b> : personne ne voit les propositions. Quand tout le monde a trouvé quelque chose (ou après le temps), l'extrait continue jusqu'au bout avant la révélation. 👀 <b>Réponses visibles</b> : le premier qui trouve le titre lance la révélation, mais l'extrait joue toujours les secondes choisies. Une mauvaise réponse ne bloque pas : tu peux réessayer.</p></div>
  <p id="hmsg" class="hint center" role="status"></p>
 </section>
 
@@ -82,17 +84,41 @@
 const MIN=2,MAX=12;
 let R=null,S=null,isHost=false,code="";
 let H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0};
-const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,soundR:-1,unlocked:false,needT:0,starting:false,lastSend:0,token:0,stopT:0,loadSeq:0,expectedId:"",cueReady:false,probe:null,bad:{},playerResets:0,readySeen:false,playerGen:0,brokenKey:""};
+const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,soundR:-1,unlocked:false,needT:0,starting:false,lastSend:0,token:0,stopT:0,loadSeq:0,expectedId:"",cueReady:false,probe:null,bad:{},playerResets:0,readySeen:false,playerGen:0,brokenKey:"",vol:90};
+try{const v=Number(localStorage.getItem("soiree:bt_vol"));if(Number.isFinite(v))L.vol=Math.max(0,Math.min(100,v))}catch(e){}
+const volNow=()=>Math.max(0,Math.min(100,Number.isFinite(Number(L.vol))?Number(L.vol):90));
+function applyVolume(){
+ try{
+  if(!YT_PLAYER||typeof YT_PLAYER.setVolume!=="function")return;
+  YT_PLAYER.setVolume(volNow());
+  if(volNow()>0&&typeof YT_PLAYER.unMute==="function")YT_PLAYER.unMute();
+ }catch(e){}
+}
 let YT_READY=false,YT_PLAYER=null,YT_QUEUE=[],YT_LOADING=false;
 
 const nm=id=>(S&&S.pl.find(p=>p.id===id)||{n:"?"}).n;
 const rid=()=>Math.random().toString(36).slice(2,10);
 const msg=t=>$("#hmsg").textContent=t;
 const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!=id);
+/* Anti-triche : le lecteur YouTube peut exposer le vrai titre dans la
+   notification système / le panneau média de Windows. On réaffirme un titre
+   neutre pendant la manche (sans jamais révéler la réponse avant la fin). */
+function maskMedia(force){
+ const now=Date.now();
+ if(!force&&now-(L.maskT||0)<1500)return;
+ L.maskT=now;
+ const round=!!(S&&S.ph==="round");
+ try{document.title=round?"Blind Test — écoute l'extrait":"Blind Test"}catch(e){}
+ if(!round||!("mediaSession" in navigator)||typeof MediaMetadata==="undefined")return;
+ try{
+  navigator.mediaSession.metadata=new MediaMetadata({title:"Blind Test",artist:"Devine la chanson",album:"Hub de Soirée"});
+ }catch(e){}
+}
 const bc=()=>{if(isHost&&R){R.emit("st",S).catch(()=>{});R.snap({S,H:snapH()})}};
 const send=d=>{d.p=ME;if(isHost)hostAct(d);else R&&R.emit("act",d,"host")};
 const snapH=()=>({song:H.song,res:H.res,pts:H.pts,order:H.order,spare:H.spare,idx:H.idx,stat:H.stat});
 try{$("#pname").value=localStorage.getItem("soiree:name")||""}catch(e){}
+{const v=$("#btvol");if(v){v.value=String(volNow());v.addEventListener("input",e=>{L.vol=Math.max(0,Math.min(100,Number(e.target.value)||0));try{localStorage.setItem("soiree:bt_vol",String(L.vol))}catch(x){}applyVolume()})}}
 
 /* ---------- lecteur YouTube ---------- */
 /* L'API IFrame expose parfois YT.Player avant d'avoir installé les méthodes
@@ -177,6 +203,7 @@ function ensurePlayer(cb){
           if(gen!==L.playerGen||YT_PLAYER!==p)return;
           if(playerApiReady()){
             YT_READY=true;YT_LOADING=false;L.playerResets=0;
+            try{p.setVolume(volNow())}catch(e){}
             clearTimeout(initT);
             const q=YT_QUEUE.splice(0);
             q.forEach(f=>{try{f(YT_PLAYER)}catch(e){}});
@@ -200,7 +227,7 @@ function ensurePlayer(cb){
         if(L.expectedId&&vid&&vid!==L.expectedId)return;
         if(e.data===5)L.cueReady=true;
         if(e.data===1){
-          if(muted&&L.unlocked){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);muted=YT_PLAYER.isMuted()}catch(x){}}
+          if(muted&&L.unlocked){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(volNow());muted=YT_PLAYER.isMuted()}catch(x){}}
           if(!muted&&S&&S.ph==="round"&&!S.loading){
             L.sound=true;L.soundR=S.r;syncSnd();updVinyl(true);updGame();
             if(isHost)H.skipFails=0;
@@ -275,7 +302,7 @@ function unlockAudio(){
     // playTrack démarrera l'extrait à l'heure prévue, sans avance.
     if(now<start-80){
       L.unlocked=true;
-      try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100)}catch(e){}
+      try{YT_PLAYER.unMute();YT_PLAYER.setVolume(volNow())}catch(e){}
       L.sound=false;L.soundR=-1;syncSnd();
       toast("🔊 Son autorisé : l'extrait démarre à l'heure prévue");
       return;
@@ -288,7 +315,7 @@ function unlockAudio(){
       const at=Net.now();
       const seek=Math.min(base+Math.max(0,(at-start)/1000),base+Math.max(0,(end-start)/1000)-0.5);
       try{
-        YT_PLAYER.unMute();YT_PLAYER.setVolume(100);
+        YT_PLAYER.unMute();YT_PLAYER.setVolume(volNow());
         // loadVideoById recharge la vidéo au bon endroit même si le lecteur
         // vient d'être recréé (rechargement de page) ou n'a jamais chargé l'extrait.
         YT_PLAYER.loadVideoById({videoId:cur.id,startSeconds:Math.max(base,seek)});
@@ -328,7 +355,7 @@ function verifySound(r,tries,id,token,base,start,end){
       else if(R&&id)R.emit("act",{k:"broken",p:ME,r,id,code:"stale"},"host");
       return;
     }
-    if(muted){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(100);muted=YT_PLAYER.isMuted()}catch(e){}}
+    if(muted){try{YT_PLAYER.unMute();YT_PLAYER.setVolume(volNow());muted=YT_PLAYER.isMuted()}catch(e){}}
     const seek=Math.min(base+Math.max(0,(Net.now()-start)/1000),base+Math.max(0,(end-start)/1000)-0.5);
     if(state===5){L.cueReady=true;try{YT_PLAYER.seekTo(Math.max(base,seek),true);YT_PLAYER.playVideo()}catch(e){}}
     else if(state===0||state===-1||state===2){try{YT_PLAYER.playVideo()}catch(e){}}
@@ -391,7 +418,7 @@ function playTrack(p){
         const base=playBase(p,duration);
         const seek=Math.min(base+Math.max(0,(Net.now()-start)/1000),base+Math.max(0,(end-start)/1000)-0.5);
         try{
-          YT_PLAYER.unMute();YT_PLAYER.setVolume(100);
+          YT_PLAYER.unMute();YT_PLAYER.setVolume(volNow());
           if(L.cueReady){YT_PLAYER.seekTo(Math.max(base,seek),true);YT_PLAYER.playVideo()}
           else{YT_PLAYER.loadVideoById({videoId:p.id,startSeconds:Math.max(base,seek)})}
         }catch(e){}
@@ -455,7 +482,7 @@ function markBad(id){
 /* Lit les métadonnées et vérifie que la vidéo peut être lue. On compare
    l'identifiant renvoyé par getVideoData() pour ne jamais accepter le titre
    d'une vidéo précédente quand la nouvelle est indisponible. */
-function probeMeta(id,cb){
+function probeMeta(id,cb,fallbackArtist){
   ensurePlayer(()=>{
     if(!playerReady()){cb(null,"player");return}
     const seq=++L.loadSeq;
@@ -476,8 +503,13 @@ function probeMeta(id,cb){
       const vid=data&&data.video_id||"";
       if(vid&&vid!==id){if(n++<30){setTimeout(chk,200);return}finish(null,"stale");return}
       if(data&&data.title&&(state===5||state===1||state===2||state===3)){
-        const meta=BT.songMeta(data.title,data.author);
-        finish({title:meta.title||data.title,artist:meta.artist||"",duration:dur||0});
+        // Si la chaîne de la vidéo est une compilation (« Album fr »), on
+        // s'appuie sur l'artiste connu de la playlist/du thème pour éviter les
+        // inversions titre/artiste. Sinon on garde la chaîne comme ancre.
+        const known=String(fallbackArtist||"").trim();
+        const anchor=known&&BT.isGenericArtist(data.author)?known:data.author;
+        const meta=BT.songMeta(data.title,anchor);
+        finish({title:meta.title||data.title,artist:meta.artist||known,duration:dur||0});
         return;
       }
       if(n++<30){setTimeout(chk,200);return}
@@ -546,9 +578,9 @@ function retryRound(){
       if(!isHost||!S||S.ph!=="round"||S.r!==r)return;
       if(!meta||!meta.title){roundPrepFailed(err);return}
       L.starting=false;S.loading=false;
-      H.song.title=meta.title;H.song.artist=meta.artist||"";
+      H.song.title=meta.title;H.song.artist=meta.artist||song.artist||"";
       launchRound();
-    });
+    },song.artist);
     return;
   }
   launchRound();
@@ -713,9 +745,9 @@ function resumeHostRound(){
       if(!isHost||!S||S.ph!=="round"||S.r!==r)return;
       if(!meta||!meta.title){roundPrepFailed(err);return}
       L.starting=false;S.loading=false;
-      H.song.title=meta.title;H.song.artist=meta.artist||"";
+      H.song.title=meta.title;H.song.artist=meta.artist||H.song.artist||"";
       resumePlayback();
-    });
+    },H.song.artist);
     return true;
   }
   resumePlayback();
@@ -745,7 +777,7 @@ function hostAct(d){
   else if(d.k==="ans")answer(p,d);
   else if(d.k==="skip"&&p===ME&&S.ph==="round")endRound("skip");
   else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
-  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;S.song=null;S.loading=false;S.t0=0;S.ansUntil=0;S.extract=0;L.starting=false;H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0}}
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;S.song=null;S.loading=false;S.t0=0;S.ansUntil=0;S.extract=0;S.awaitEnd=0;L.starting=false;H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0}}
   else if(d.k==="need"&&S.ph==="round"&&S.song&&S.song.id){R.emit("play",playPayload(S.song.id,700),p);return}
   else if(d.k==="broken"&&S.ph==="round"&&d.r===S.r&&H.song&&H.song.id===d.id&&S.pl.some(x=>x.id===p))handleBrokenSong(d.code);
   S.on=[...R.peers(),ME];bc();route();
@@ -803,7 +835,7 @@ function beginGame(list){
 function nextRound(){
   if(!isHost||!S||L.starting)return;
   if(H.idx+1>=S.total){finish();return}
-  H.idx++;S.r=H.idx;S.ph="round";S.feed=[];S.done=[];S.rev=null;S.nextAt=0;S.last=S.r+1>=S.total;
+  H.idx++;S.r=H.idx;S.ph="round";S.feed=[];S.done=[];S.rev=null;S.nextAt=0;S.awaitEnd=0;S.last=S.r+1>=S.total;
   H.res={};H.pts={};
   const song=H.order[H.idx]||{};
   H.song={...song};S.song=song.id?{id:song.id}:null;
@@ -817,9 +849,9 @@ function nextRound(){
       if(!isHost||!S||S.ph!=="round"||S.r!==r)return;
       if(!meta||!meta.title){roundPrepFailed(err);return}
       L.starting=false;S.loading=false;
-      H.fails=0;H.song.title=meta.title;H.song.artist=meta.artist||"";
+      H.fails=0;H.song.title=meta.title;H.song.artist=meta.artist||song.artist||"";
       launchRound();
-    });
+    },song.artist);
   } else launchRound();
 }
 function launchRound(){
@@ -827,7 +859,7 @@ function launchRound(){
   const start=Net.now()+2800;
   const extract=Math.max(1,S.cfg.extract||15);
   H.fails=0;L.starting=false;S.loading=false;
-  S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=extract;
+  S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=extract;S.awaitEnd=0;
   // On démarre l'extrait vers 40-52 % du morceau : ni l'intro, ni la fin.
   if(typeof H.song.pos!=="number")H.song.pos=BT.pickPos();
   const p={r:S.r,id:H.song.id,start,offset:0,pos:H.song.pos,elapsed:0,extract,end:start+extract*1000};
@@ -836,6 +868,7 @@ function launchRound(){
 }
 function answer(p,d){
   if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song||!S.pl.some(x=>x.id===p))return;
+  if(S.awaitEnd)return; // la manche est jouée, on laisse l'extrait aller au bout
   if(!S.t0||Net.now()<S.t0-300)return;
   H.res[p]=H.res[p]||{};
   const results=[];
@@ -861,9 +894,10 @@ function answer(p,d){
   feedback(p,results,{t:d.t,a:d.a});
   if(S.cfg.mode==="live"){
     results.forEach(x=>{const t=x.f==="title"?d.t:d.a;if(t)S.feed=(S.feed||[]).concat([{n:nm(p),f:x.f,ok:x.ok,t:String(t).slice(0,60)}]).slice(-8)});
-    if(titleOk){endRound("live");return}
+    if(titleOk)S.awaitEnd="live";
   }
-  if(S.cfg.mode==="private"&&S.pl.length&&S.done.length>=S.pl.length){endRound("all");return}
+  if(!S.awaitEnd&&S.cfg.mode==="private"&&S.pl.length&&S.done.length>=S.pl.length)S.awaitEnd="all";
+  // On ne coupe pas l'extrait : la révélation attend la fin des secondes choisies.
   bc();route();
 }
 function feedback(p,results,raw){
@@ -877,6 +911,7 @@ function feedback(p,results,raw){
 function endRound(reason){
   if(!isHost||!S||S.ph!=="round")return;
   stopYT();
+  S.awaitEnd=0;
   S.ph="reveal";
   S.rev={title:(H.song&&H.song.title)||"",artist:(H.song&&H.song.artist)||""};
   S.rev.per=S.pl.map(p=>{const r=H.res[p.id]||{};return{id:p.id,t:!!r.title,a:!!r.artist,pts:H.pts[p.id]||0}});
@@ -888,12 +923,17 @@ function tick(){
   if(!isHost||!S)return;
   if(S.ph==="round"){
     if(S.loading)return;
+    if(S.awaitEnd){
+      const end=(S.t0||0)+Math.max(1,S.extract||S.cfg.extract||15)*1000;
+      if(Net.now()>=end+250)endRound(S.awaitEnd);
+      return;
+    }
     if(S.ansUntil&&Net.now()>S.ansUntil+1000)endRound("time");
   }else if(S.ph==="reveal"&&S.nextAt&&Net.now()>=S.nextAt)nextRound();
 }
 function finish(){
   stopYT();
-  S.ph="end";S.nextAt=0;S.last=true;
+  S.ph="end";S.nextAt=0;S.awaitEnd=0;S.last=true;
   const rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
   const best=rank[0];
   const te=Object.entries(H.stat.titles||{}).sort((a,b)=>b[1]-a[1])[0];
@@ -909,6 +949,7 @@ function route(){
   if(!S)return;
   if(S.ph==="lobby"){L.key="";view("lobby");renderLobby();return}
   view("game");
+  maskMedia();
   const key=S.ph+":"+(S.ph==="end"?0:S.r);
   if(key!==L.key){L.key=key;renderGame(true)}
   else{ if(S.ph==="round")updGame(); else if(S.ph==="reveal")updReveal() }
@@ -1011,16 +1052,17 @@ function updGame(){
   if(status){
     if(S.loading)status.textContent="Préparation de l'extrait…";
     else if(now<S.t0-300)status.textContent="🎧 Prépare-toi…";
+    else if(S.awaitEnd)status.innerHTML=(S.awaitEnd==="live"?"🎯 Titre trouvé !":"✅ Tout le monde a répondu.")+" L'extrait continue jusqu'au bout…";
     else if(left>0)status.innerHTML="🎶 Écoute bien… <b>"+Math.ceil(left/1000)+" s</b>";
     else status.textContent="⏱ Temps écoulé — l'hôte révèle la réponse.";
-    status.className="bt-status"+(S.cfg.mode==="live"&&left>0?" live":"");
+    status.className="bt-status"+((S.cfg.mode==="live"||S.awaitEnd)&&left>0?" live":"");
   }
   const gate=$("#sndgate");
   if(gate)gate.hidden=!gateShouldShow();
   const t=$("#bt-title"),a=$("#bt-artist");
-  if(t){t.disabled=!!L.ok.title||S.loading;t.classList.toggle("ok",!!L.ok.title)}
-  if(a){a.disabled=!!L.ok.artist||S.loading;a.classList.toggle("ok",!!L.ok.artist)}
-  const send=$("#btSend");if(send)send.disabled=S.loading;
+  if(t){t.disabled=!!L.ok.title||S.loading||!!S.awaitEnd;t.classList.toggle("ok",!!L.ok.title)}
+  if(a){a.disabled=!!L.ok.artist||S.loading||!!S.awaitEnd;a.classList.toggle("ok",!!L.ok.artist)}
+  const send=$("#btSend");if(send)send.disabled=S.loading||!!S.awaitEnd;
   const fb=$("#btFb");
   if(fb){
     const f=L.fb&&L.fb.r===S.r?L.fb:null;
@@ -1033,7 +1075,8 @@ function updGame(){
   }
   const pr=$("#btProg");
   if(pr){
-    if(S.cfg.mode==="live")pr.innerHTML="👀 Réponses visibles · le premier titre trouvé termine la manche";
+    if(S.awaitEnd)pr.innerHTML=S.awaitEnd==="live"?"🎯 Titre trouvé — l'extrait va jusqu'au bout":"✅ Tout le monde a répondu — l'extrait va jusqu'au bout";
+    else if(S.cfg.mode==="live")pr.innerHTML="👀 Réponses visibles · le premier titre trouvé termine la manche";
     else pr.innerHTML="<span>"+(S.done?S.done.length:0)+"/"+S.pl.length+"</span> joueurs ont trouvé quelque chose";
   }
   const feed=$("#btFeed");
@@ -1043,12 +1086,13 @@ function updGame(){
   }
   updVinyl(!S.loading&&now>=S.t0-300&&left>0);
   syncSnd();
+  maskMedia();
 }
 function updReveal(){
   if(!S||S.ph!=="reveal")return;
   const el=$("#btNext");if(!el)return;
   if(S.nextAt){const left=Math.max(0,Math.ceil((S.nextAt-Net.now())/1000));el.textContent=left>0?`Chanson suivante dans ${left} s…`:(isHost?"Tu peux enchaîner.":"En attente de l'hôte…")}
-  else el.textContent=S.reason==="all"?"Tout le monde a trouvé quelque chose !":S.reason==="time"?"Temps écoulé.":"";
+  else el.textContent=S.reason==="all"?"Tout le monde a trouvé quelque chose !":S.reason==="live"?"Titre trouvé !":S.reason==="time"?"Temps écoulé.":"";
 }
 function ensurePlayback(){
   if(!S||S.ph!=="round"||S.loading)return;

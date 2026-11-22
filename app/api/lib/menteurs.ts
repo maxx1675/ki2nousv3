@@ -74,7 +74,9 @@ export type MenteursClaim = {
 export type MenteursReveal = {
   ts: number;
   liar: boolean;
+  /** Le joueur qui s'est trompé et retourne son propre revolver contre lui. */
   shooter: string;
+  /** Identique à `shooter` : on garde les deux champs pour l'affichage. */
   victim: string;
   bullet: boolean;
   chamber: number;
@@ -301,7 +303,8 @@ export class MenteursEngine {
     gun.chamber = chamber + 1;
     return { bullet, chamber, remaining: Math.max(0, 6 - chamber) };
   }
-  /** Après une mort, les survivants repartent avec un barillet plein. */
+  /** Réarme tous les revolvers en début de partie (les barillets restent
+      ensuite individuels : chaque tir vide une chambre de SON revolver). */
   private resetGuns(room: MenteursRoom) {
     for (const p of room.players) if (p.alive && !p.spectator) p.gun = this.newGun();
   }
@@ -816,23 +819,24 @@ export class MenteursEngine {
     const liar = !claim.cards.every((c) => this.matches(c, claim.target));
     const challenger = room.challenger;
     const claimant = claim.by;
-    const shooter = liar ? challenger : claimant;
-    const victim = liar ? claimant : challenger;
+    // Règle du barillet personnel : celui qui s'est trompé retourne son propre
+    // revolver contre lui-même. Un menteur démasqué se tire dessus ; un
+    // accusateur qui avait tort se tire dessus. Le barillet avance donc pour
+    // ce joueur uniquement et ne se réinitialise plus après une élimination.
+    const shooter = liar ? claimant : challenger;
+    const victim = shooter;
     const shot = this.fire(room, shooter);
     const chamber = shot.chamber;
     const bullet = shot.bullet;
     const vp = this.player(room, victim);
-    const sp = this.player(room, shooter);
     const cp = this.player(room, claimant);
     const chp = this.player(room, challenger);
     if (bullet && vp) {
       vp.lives = 0;
       vp.alive = false;
       this.log(room, `💥 BANG ! ${vp.name} est éliminé.`, "death");
-      this.resetGuns(room);
-      if (this.alive(room).length > 1) this.log(room, "🔫 Les survivants réarment leur revolver (6 chambres).", "gun");
     } else if (vp) {
-      this.log(room, `*clic* Chambre vide : ${vp.name} survit. ${sp?.name ?? "Le tireur"} a maintenant 1 chance sur ${Math.max(1, shot.remaining)} au prochain tir.`, "empty");
+      this.log(room, `*clic* Chambre vide : ${vp.name} survit. 1 chance sur ${Math.max(1, shot.remaining)} au prochain tir avec son revolver.`, "empty");
     }
     if (liar && chp) {
       chp.score += 1;
@@ -859,8 +863,7 @@ export class MenteursEngine {
     room.phase = "reveal";
     room.deadline = this.now() + 4800;
     const sv = this.nameOf(room, shooter);
-    const vn = this.nameOf(room, victim);
-    this.log(room, liar ? `⚖️ Mensonge démasqué ! ${sv} tire sur ${vn}.` : `⚖️ C'était vrai. ${sv} retourne l'arme contre ${vn}.`, "reveal");
+    this.log(room, liar ? `⚖️ Mensonge démasqué ! ${sv} se tire dessus avec son revolver.` : `⚖️ C'était vrai. ${sv} s'est trompé et se tire dessus.`, "reveal");
   }
   private beginTurn(room: MenteursRoom, firstId: string, newTarget = false) {
     room.claim = null;

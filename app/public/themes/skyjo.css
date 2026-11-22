@@ -75,7 +75,14 @@ html[data-theme="dark"] .sj-card.v0{background:linear-gradient(180deg,#ffdf6a,#e
 .sj-player{background:color-mix(in srgb,var(--surface) 92%,transparent)}
 .sj-log{color:var(--muted)}
 .sj-score-row .tot{background:var(--amber);color:#1b1340}
-.sj-double{background:var(--danger)}
+.sj-score-row{animation:sjScoreIn .42s ease-out both}
+.sj-score-row:nth-child(2){animation-delay:.06s}
+.sj-score-row:nth-child(3){animation-delay:.12s}
+.sj-score-row:nth-child(4){animation-delay:.18s}
+.sj-score-row:nth-child(n+5){animation-delay:.24s}
+@keyframes sjScoreIn{0%{opacity:0;transform:translateX(-9px)}100%{opacity:1;transform:none}}
+.sj-double{background:var(--danger);animation:sjDoublePop .5s cubic-bezier(.2,.9,.3,1.5) both}
+@keyframes sjDoublePop{0%{transform:scale(.4) rotate(-8deg);opacity:.2}70%{transform:scale(1.12) rotate(2deg);opacity:1}100%{transform:none}}
 .sj-rules{line-height:1.55}
 .sj-help summary{color:var(--ink)}
 
@@ -86,5 +93,5 @@ html[data-theme="dark"] .sj-banner{color:#1b1340}
 html[data-theme="dark"] .sj-banner.last{color:#fff}
 
 @media(prefers-reduced-motion:reduce){
-  .sj-card.act,.sj-card.drawable{animation:none!important}
+  .sj-card.act,.sj-card.drawable,.sj-score-row,.sj-double{animation:none!important}
 }

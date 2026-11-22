@@ -82,9 +82,13 @@ export function parsePlaylistFeedItems(xml: string): PlaylistItem[] {
     const id = block.match(/<yt:videoId>([A-Za-z0-9_-]{11})<\/yt:videoId>/)?.[1];
     if (!id || seen.has(id)) continue;
     const rawTitle = block.match(/<media:title>([\s\S]*?)<\/media:title>/)?.[1] ?? block.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? "";
+    // Dans un flux de playlist, <author> désigne le propriétaire de la
+    // playlist (parfois une chaîne de compilation comme « Album fr »), alors
+    // que media:credit porte la chaîne qui a publié la vidéo. On préfère donc
+    // le crédit vidéo pour retrouver le vrai artiste.
     const rawChannel =
-      block.match(/<author>\s*<name>([\s\S]*?)<\/name>/)?.[1] ??
       block.match(/<media:credit[^>]*>([\s\S]*?)<\/media:credit>/)?.[1] ??
+      block.match(/<author>\s*<name>([\s\S]*?)<\/name>/)?.[1] ??
       "";
     const title = decodeXml(rawTitle);
     const artist = decodeXml(rawChannel)

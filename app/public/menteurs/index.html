@@ -142,12 +142,12 @@ Déroulement d'une manche
 5. Révélation : le serveur retourne les cartes et vérifie l'annonce.
 
 Le revolver (une balle cachée par joueur)
-• Chaque joueur a SON revolver à 6 chambres, avec une balle placée au hasard. Il ne le prend qu'au moment de tirer.
-• Contestation juste (le joueur a menti) : l'accusateur tire sur le menteur.
-• Contestation fausse (l'annonce était vraie) : le menteur retourne l'arme contre l'accusateur.
-• Chaque tir vide une chambre : 1 chance sur 6, puis 1 sur 5, 1 sur 4, etc.
-• Une balle = élimination immédiate. Un clic = chambre vide, la cible survit.
-• Après une élimination, les survivants repartent avec un barillet neuf (1 chance sur 6).
+• Chaque joueur a SON revolver à 6 chambres, avec une balle placée au hasard. Personne ne tire sur les autres : celui qui s'est trompé retourne son arme contre lui-même.
+• Mensonge démasqué : le menteur se tire dessus avec son propre revolver.
+• Fausse accusation (l'annonce était vraie) : l'accusateur se tire dessus avec son propre revolver.
+• Chaque tir vide une chambre de TON revolver : 1 chance sur 6, puis 1 sur 5, 1 sur 4, etc. La pression monte à chaque fois que tu tires.
+• Une balle = élimination immédiate. Un clic = chambre vide, tu survis et ton barillet avance.
+• Les barillets sont personnels et ne se réinitialisent plus après une élimination : chaque survivant garde ses chambres déjà vidées.
 
 Cartes spéciales (option)
 • JOKER : compte comme la cible. Ce sont des cartes de bluff supplémentaires.
@@ -941,7 +941,7 @@ function buildNotice() {
   } else if (S.phase === "reveal" && S.reveal) {
     const rv = S.reveal;
     const cards = rv.cards.map(miniCard).join("");
-    html = `<div><b>${rv.liar ? "Mensonge !" : "Vérité !"}</b> ${esc(nameOf(rv.shooter))} → ${esc(nameOf(rv.victim))}</div><div class="reveal-line">${cards}</div>`;
+    html = `<div><b>${rv.liar ? "Mensonge !" : "Vérité !"}</b> ${esc(nameOf(rv.shooter))} se tire dessus</div><div class="reveal-line">${cards}</div>`;
   }
   return { html, signature: [S.phase, S.paused, S.you.alive, S.you.spectator, S.turnId, S.claim?.ts || 0, S.claim?.by || "", S.reveal?.ts || 0, S.claim?.count || 0, S.reveal?.liar].join("|") };
 }
@@ -1133,7 +1133,7 @@ function updateRevealResult() {
   } else if (rv.bullet) {
     el.textContent = `💥 BANG ! ${nameOf(rv.victim)} est éliminé.`;
   } else {
-    el.textContent = `*clic* Chambre vide : ${nameOf(rv.victim)} survit. ${nameOf(rv.shooter)} : 1 chance sur ${Math.max(1, rv.remaining ?? 6)} au prochain tir.`;
+    el.textContent = `*clic* Chambre vide : ${nameOf(rv.victim)} survit. Son revolver affiche maintenant 1 chance sur ${Math.max(1, rv.remaining ?? 6)} au prochain tir.`;
   }
 }
 
@@ -1156,7 +1156,7 @@ function renderPlayersMini() {
           <span class="pav">${av}</span>
           <span class="pn">${esc(p.name)}${p.id === ME ? " · toi" : ""}</span>
           <span class="praise ${raised ? "up" : "down"}" title="${raised ? "Cartes levées" : "Cartes baissées"}">${raised ? "🃏↑" : "🃏↓"}</span>
-          <span class="pl" title="${p.alive ? "Chambres restantes avant la balle" : "Éliminé"}">${p.alive ? "🔫" + (p.gun?.remaining ?? 6) : "💀"}</span>
+          <span class="pl" title="${p.alive ? "Chambres encore fermées dans son revolver" : "Éliminé"}">${p.alive ? "🔫" + (p.gun?.remaining ?? 6) : "💀"}</span>
           <span class="pl" style="color:#ffd98a">${p.score ? "⭐" + p.score : ""}</span>
         </div>`;
       })
