@@ -51,6 +51,8 @@ Chaque jeu est une page autonome sous `public/<jeu>/index.html` :
 - `public/makeitmeme/index.html` (données `templates.js`, helpers `room-state.js`)
 - `public/skyjo/index.html`
 - `public/uno/index.html`
+- `public/culturegame/index.html` (+ `game.js`, banque de questions, portraits `people/`)
+- `public/garlicphone/index.html` (+ `game.js`)
 
 Une partie du JavaScript et du CSS est intégrée directement aux pages. Il faut donc lire le fichier de la page avant de supposer qu'il existe un module JS séparé.
 
@@ -112,4 +114,6 @@ Le relais est gardé en mémoire du processus serveur : un redémarrage efface l
 
 ## 8. Crédits des assets
 - `public/menteurs/assets/revolver-quaternius.glb` : revolver low-poly de **Quaternius**, licence **CC0**, via **Poly Pizza**.
+- `public/culturegame/people/` : portraits de Wikimedia Commons, domaine public pour les personnalités anciennes et CC BY / CC BY-SA / CC0 pour les récentes. Attribution et sources dans `public/culturegame/people/CREDITS.md` et `credits.json`, volontairement non affichées dans le jeu ; **ne pas supprimer ces fichiers** sans remplacer les images par des œuvres libres de droits.
+- `public/garlicphone/game.js` : en-tête de licence MIT du projet d'origine (attribution légale conservée dans le code, plus affichée dans l'interface).
 - Le reste du saloon, les cartes, la table et les personnages de La Table Des Menteurs sont des modèles procéduraux créés dans `public/menteurs/scene.js` (aucune autre ressource externe). Les autres GLB téléchargés pour évaluation ont été retirés du dépôt.

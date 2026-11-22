@@ -1291,22 +1291,85 @@ function buildCharacter(avatar) {
   }
   g.add(rig);
 
+  // Le buste procédural sert de secours tant que le GLB n'est pas chargé.
+  // Tout ce qui doit s'effacer devant le vrai personnage est regroupé ici.
+  const fallback = new THREE.Group();
+  for (const child of [...rig.children]) fallback.add(child);
+  rig.add(fallback);
+
   // Cartes tenues en main : dos tourné vers la table, faces vers le joueur.
   const fan = buildCardFan(5);
   fan.position.set(0, 1.24, 0.34);
   fan.rotation.set(-0.5, Math.PI, 0);
   rig.add(fan);
 
+  // Emplacement du personnage GLB (char_4.glb), vide jusqu'au chargement.
+  const modelRoot = new THREE.Group();
+  modelRoot.visible = false;
+  rig.add(modelRoot);
+
   g.userData = {
-    avatar, style: st, chair, rig, fan, cardsUp: true,
+    avatar, style: st, chair, rig, fan, fallback, modelRoot, model: null, cardsUp: true,
     body: torso, head,
     armL: armL.shoulder, armR: armR.shoulder,
-    foreL: armL.fore, foreR: armR.fore,
+    foreL: armL.fore, foreR: armL.fore,
     anim: null, phase: Math.random() * Math.PI * 2,
     dead: false, victory: false, isTurn: false,
     baseY: 0, index: 0, seatAngle: 0,
   };
   return g;
+}
+
+/**
+ * Installe le personnage fourni (char_4.glb) dans un siège. Le modèle est
+ * statique : on l'anime par le buste entier (oscillation, penché, recul,
+ * chute) puisque le GLB n'a ni squelette ni clips d'animation.
+ */
+function applyCharacterModel(scene, ch) {
+  if (!scene.charTemplate || !ch) return;
+  const u = ch.userData;
+  const st = AVATARS[u.avatar] || AVATARS.cowboy;
+  const holder = new THREE.Group();
+  holder.position.y = -0.12;
+  const model = scene.charTemplate.clone(true);
+  // Le GLB regarde vers +Z ; les sièges sont orientés -Z vers la table.
+  model.rotation.y = Math.PI;
+  const tint = new THREE.Color(st.shirt);
+  const white = new THREE.Color(0xffffff);
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+    if (o.material) {
+      o.material = o.material.clone();
+      // Le corps (mesh_13_79) reçoit la couleur du personnage : même modèle,
+      // mais chaque joueur reste identifiable au premier coup d'œil.
+      if (/mesh_13_79/.test(o.name)) {
+        o.material.color.copy(tint).lerp(white, 0.34);
+        o.material.roughness = Math.min(1, (o.material.roughness ?? 0.8) + 0.08);
+      }
+    }
+  });
+  holder.add(model);
+  // Repère de couleur au sol : lisible même quand la table cache le torse.
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.3, 0.36, 28),
+    new THREE.MeshBasicMaterial({
+      color: st.accent,
+      transparent: true,
+      opacity: 0.42,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.015;
+  holder.add(ring);
+  for (const child of [...u.modelRoot.children]) u.modelRoot.remove(child);
+  u.modelRoot.add(holder);
+  u.modelRoot.visible = true;
+  u.model = holder;
+  u.fallback.visible = false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1368,6 +1431,7 @@ export class SaloonScene {
     this.revealFx = null;
     this.patternIndex = 0;
     this.gunTemplate = null;
+    this.charTemplate = null;
     this.onCardPick = null;
     this.onRaiseChange = null;
 
@@ -1378,6 +1442,7 @@ export class SaloonScene {
     this.scene.add(this.camera);
     this.buildHand();
     this.loadGunModel();
+    this.loadCharacterModel();
 
     this.resize();
     this._onResize = () => this.resize();
@@ -1947,6 +2012,48 @@ export class SaloonScene {
   }
 
   /* ------------------------------------------------------------------ */
+  /* Personnage GLB fourni (char_4.glb)                                  */
+  /* ------------------------------------------------------------------ */
+  loadCharacterModel() {
+    const loader = new GLTFLoader();
+    loader.load(
+      "./assets/char_4.glb",
+      (gltf) => {
+        try {
+          const tpl = gltf.scene;
+          tpl.traverse((o) => {
+            if (o.isMesh) {
+              o.castShadow = true;
+              o.receiveShadow = true;
+            }
+          });
+          tpl.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(tpl);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          // Hauteur assise crédible derrière la table (environ 1,55 m avec
+          // l'échelle 1,1 appliquée aux sièges).
+          const scale = 1.42 / (size.y || 1.73);
+          tpl.scale.setScalar(scale);
+          tpl.updateMatrixWorld(true);
+          const box2 = new THREE.Box3().setFromObject(tpl);
+          const center = new THREE.Vector3();
+          box2.getCenter(center);
+          tpl.position.x -= center.x;
+          tpl.position.z -= center.z;
+          tpl.position.y -= box2.min.y;
+          this.charTemplate = tpl;
+          for (const ch of this.chars.values()) applyCharacterModel(this, ch);
+        } catch (e) {
+          console.warn("[menteurs] personnage GLB illisible", e);
+        }
+      },
+      undefined,
+      () => console.warn("[menteurs] char_4.glb indisponible : personnages procéduraux conservés"),
+    );
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Revolver GLB CC0 (Quaternius) — remplace le modèle procédural       */
   /* ------------------------------------------------------------------ */
   loadGunModel() {
@@ -2082,6 +2189,7 @@ export class SaloonScene {
         this.scene.add(fresh);
         ch = fresh;
       }
+      if (!ch.userData.model) applyCharacterModel(this, ch);
       const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
       this.seatAngles.set(p.id, a);
       ch.userData.seatAngle = a;
@@ -2147,12 +2255,22 @@ export class SaloonScene {
       return;
     }
     this.ownId = state.you?.id || this.ownId;
-    // Fin du dévoilement de la cible (5 s côté serveur) : la carte 3D reste
-    // affichée exactement ce temps-là.
-    const holdMs = state.roundAt
-      ? Math.max(0, state.roundAt + 5000 - (state.serverNow || Date.now()))
-      : 0;
-    this.targetHideAt = holdMs > 0 ? performance.now() + holdMs : 0;
+    // Nouvelle manche ? On ne recalcule l'échéance de la carte cible QUE dans
+    // ce cas : avant, chaque synchronisation repoussait `targetHideAt`, et un
+    // premier état tardif pouvait ne jamais afficher la carte.
+    const isNewRound =
+      state.phase === "claim" &&
+      (state.round !== this.lastRound || state.target !== this.lastTarget);
+    if (isNewRound) {
+      const remain = state.roundAt
+        ? state.roundAt + 5000 - (state.serverNow || Date.now())
+        : 5000;
+      // Transition en direct : on garantit 2,4 s de carte, même si le réseau a
+      // mangé le début des 5 s. Après un rechargement tardif, le badge suffit.
+      const minLive = this.lastPhase ? 2400 : 0;
+      const holdMs = remain > 0 ? Math.max(remain, minLive) : minLive;
+      this.targetHideAt = holdMs > 0 ? performance.now() + holdMs : 0;
+    }
     this.syncPlayers(state.players || []);
     this.setTurn(state.turnId);
     for (const p of state.players || []) {
@@ -2193,15 +2311,18 @@ export class SaloonScene {
 
     if (state.phase === "reveal" && state.reveal && state.reveal.ts !== this.lastRevealTs) {
       this.lastRevealTs = state.reveal.ts;
-      this.showClaimCards(state.reveal.count, state.reveal.cards, true, state.reveal.shooter);
+      this.showClaimCards(
+        state.reveal.count,
+        state.reveal.cards,
+        true,
+        state.reveal.shooter,
+        Number(state.reveal.fireIn) || 0,
+      );
       this.playReveal(state.reveal);
     }
 
     // Nouvelle manche : mélange puis carte cible.
-    if (
-      state.phase === "claim" &&
-      (state.round !== this.lastRound || state.target !== this.lastTarget)
-    ) {
+    if (isNewRound) {
       this.lastRound = state.round;
       this.lastTarget = state.target;
       this.startRound(state.target);
@@ -2398,7 +2519,7 @@ export class SaloonScene {
     this.tableCards = [];
   }
 
-  showClaimCards(count, cards, reveal, fromId) {
+  showClaimCards(count, cards, reveal, fromId, flipDelay = 0) {
     this.clearTableCards();
     const n = Math.max(0, Math.min(6, count || 0));
     if (!n) return;
@@ -2434,6 +2555,9 @@ export class SaloonScene {
         t0: now + i * 70,
         dur: 380,
         flip: !!reveal,
+        // Les cartes restent face cachée jusqu'à la détonation : le mensonge
+        // ne se devine pas avant que le revolver ne parle.
+        flipAt: now + Math.max(0, flipDelay) + i * 70 + 274,
         flipped: false,
         arc: 0.015 + Math.random() * 0.02,
       });
@@ -2456,14 +2580,14 @@ export class SaloonScene {
       c.holder.position.y = c.from.y + (c.to.y - c.from.y) * ease + Math.sin(k * Math.PI) * c.arc;
       c.holder.rotation.y = c.fromRotY + (c.toRotY - c.fromRotY) * ease;
       c.holder.rotation.z = c.roll * ease;
-      if (c.flip && k >= 0.72) {
-        const f = Math.min(1, (k - 0.72) / 0.28);
+      if (c.flip && now >= c.flipAt) {
+        const f = Math.min(1, (now - c.flipAt) / 140);
         c.card.rotation.x = Math.PI / 2 - f * Math.PI;
         if (f >= 1 && !c.flipped) {
           c.flipped = true;
           sfx("card");
         }
-      } else if (!c.flip) {
+      } else if (!c.flip || now < c.flipAt) {
         c.card.rotation.x = Math.PI / 2;
       }
     }
@@ -2909,20 +3033,57 @@ export class SaloonScene {
       u.fan.rotation.x += (trx - u.fan.rotation.x) * 0.14;
       u.fan.rotation.z = Math.sin(t * 0.9 + u.phase) * 0.02;
     }
-    if (u.head) {
+    if (u.model) {
+      // GLB statique : tout le corps parle. On garde les mêmes intentions
+      // (parler, viser, encaisser, gagner, tomber) avec des inclinaisons.
+      let my = -0.12 + bob;
+      let mYaw = 0;
+      let mRoll = 0;
+      if (anim) {
+        const mk = Math.min(1, (now - anim.t0) / anim.dur);
+        const env = Math.sin(Math.min(1, mk) * Math.PI);
+        if (anim.name === "talk") mYaw = Math.sin(mk * Math.PI * 6) * 0.14;
+        else if (anim.name === "point") {
+          mYaw = 0.16;
+          mRoll = -0.03;
+        } else if (anim.name === "laugh") {
+          mRoll = Math.sin(t * 16) * 0.025 * env;
+          my += Math.abs(Math.sin(t * 14)) * 0.018 * env;
+        } else if (anim.name === "surprise") my += 0.055 * env;
+        else if (anim.name === "draw") mRoll = Math.sin(t * 24) * 0.012;
+        else if (anim.name === "shoot") mRoll = -0.06 * env;
+        else if (anim.name === "hit") {
+          mRoll = 0.32 * env;
+          my -= 0.12 * env;
+        } else if (anim.name === "flinch") mRoll = Math.sin(mk * Math.PI * 8) * 0.1 * env;
+        else if (anim.name === "victory") my += Math.abs(Math.sin(t * 4)) * 0.12 * env;
+        else if (anim.name === "defeat") {
+          mRoll = 0.2 * env;
+          my -= 0.06 * env;
+        }
+      }
+      if (u.dead) {
+        my = -0.2;
+        mRoll = 0.34;
+      }
+      u.model.position.y += (my - u.model.position.y) * 0.16;
+      u.model.rotation.y += (mYaw - u.model.rotation.y) * 0.16;
+      u.model.rotation.z += (mRoll - u.model.rotation.z) * 0.16;
+    }
+    if (!u.model && u.head) {
       u.head.rotation.x += (headX - u.head.rotation.x) * 0.16;
       u.head.rotation.y += (headY - u.head.rotation.y) * 0.16;
     }
-    if (u.armL) {
+    if (!u.model && u.armL) {
       u.armL.rotation.x += (armLX - u.armL.rotation.x) * 0.16;
       u.armL.rotation.z += (armLZ - u.armL.rotation.z) * 0.16;
     }
-    if (u.armR) {
+    if (!u.model && u.armR) {
       u.armR.rotation.x += (armRX - u.armR.rotation.x) * 0.16;
       u.armR.rotation.z += (armRZ - u.armR.rotation.z) * 0.16;
     }
-    if (u.foreL) u.foreL.rotation.x += (foreLX - u.foreL.rotation.x) * 0.16;
-    if (u.foreR) u.foreR.rotation.x += (foreRX - u.foreR.rotation.x) * 0.16;
+    if (!u.model && u.foreL) u.foreL.rotation.x += (foreLX - u.foreL.rotation.x) * 0.16;
+    if (!u.model && u.foreR) u.foreR.rotation.x += (foreRX - u.foreR.rotation.x) * 0.16;
     void id;
   }
 
@@ -3042,7 +3203,7 @@ export class SaloonScene {
         continue;
       }
       ch.getWorldPosition(v);
-      v.y += 2.02;
+      v.y += 1.8;
       v.project(this.camera);
       const x = (v.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-v.y * 0.5 + 0.5) * window.innerHeight;

@@ -200,6 +200,32 @@ const GAMES: Game[] = [
     tilt: 1.3,
     pattern: "stripes",
   },
+  {
+    id: "culturegame",
+    title: "Culture Game",
+    tagline: "Le quiz show de la soirée",
+    emoji: "🧠",
+    path: "/culturegame/index.html",
+    players: "2 – 8 joueurs",
+    duration: "5 – 20 min",
+    desc: "QCM, vrai ou faux et anagrammes : 20 secondes par question, des points de vitesse et un classement final sans pitié. Le plateau télé à portée de téléphone.",
+    color: "#8b5cff",
+    tilt: 1.6,
+    pattern: "dots",
+  },
+  {
+    id: "garlicphone",
+    title: "Garlic Phone",
+    tagline: "Le téléphone arabe du dessin",
+    emoji: "🧄",
+    path: "/garlicphone/index.html",
+    players: "2 – 8 joueurs",
+    duration: "10 – 30 min",
+    desc: "Une phrase devient un dessin, le dessin devient une phrase… jusqu’au chaos final. Dessine au doigt, puis feuillette et télécharge l’album des catastrophes.",
+    color: "#7b4bb7",
+    tilt: -1.5,
+    pattern: "grid",
+  },
 ];
 
 function useClock() {
