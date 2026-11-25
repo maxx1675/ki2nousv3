@@ -11,7 +11,7 @@ export default defineConfig({
     port: 3000,
     // Le GLB est écrit/servi par Vite : l'ignorer évite un crash EBUSY du watcher
     // sur Windows pendant les téléchargements d'assets.
-    watch: { ignored: ["**/public/menteurs/assets/**"] },
+    watch: { ignored: ["**/public/menteurs/assets/**", "**/public/mimicparty/sounds/**"] },
   },
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   build: {

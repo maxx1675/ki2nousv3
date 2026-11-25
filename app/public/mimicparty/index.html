@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr" data-anim="light" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mimic Party — imite les mèmes, vole la vedette</title>
+<meta name="theme-color" content="#6a47ff">
+<meta name="description" content="Mimic Party : écoutez un mème culte, imitez-le au micro, puis découvrez la note de votre imitation. 2 à 8 joueurs, chacun sur son téléphone.">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/base.css">
+<link rel="stylesheet" href="/shared/widgets.css">
+<link rel="stylesheet" href="/themes/mimicparty.css">
+</head>
+<body class="mp-body">
+<main class="wrap mp-wrap">
+  <div class="top mp-top">
+    <a href="/" class="mp-brand"><span>🤪</span> Mimic Party</a>
+    <span id="who" class="hint"></span>
+  </div>
+  <div id="app" class="mp-app mp-fade-in" aria-live="polite"></div>
+</main>
+
+<div id="mp-modal" class="mp-modal" hidden aria-hidden="true">
+  <div class="mp-modal-card" role="dialog" aria-modal="true" aria-labelledby="mp-modal-title"></div>
+</div>
+
+<a class="homelink" href="/" aria-label="Retour au hub de jeux">🏠</a>
+
+<script src="/shared/net.js"></script>
+<script src="/shared/theme.js"></script>
+<script src="/shared/profile.js"></script>
+<script src="/shared/party.js"></script>
+<script src="/shared/library.js"></script>
+<script src="./memes.js"></script>
+<script src="./score.js"></script>
+<script src="./audio.js"></script>
+<script src="./game.js"></script>
+</body>
+</html>

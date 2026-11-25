@@ -53,6 +53,7 @@ Chaque jeu est une page autonome sous `public/<jeu>/index.html` :
 - `public/uno/index.html`
 - `public/culturegame/index.html` (+ `game.js`, banque de questions, portraits `people/`)
 - `public/garlicphone/index.html` (+ `game.js`)
+- `public/mimicparty/index.html` (+ `game.js`, `audio.js`, `memes.js`, `score.js`, `sounds/` — 40 extraits MP3 réels)
 
 Une partie du JavaScript et du CSS est intégrée directement aux pages. Il faut donc lire le fichier de la page avant de supposer qu'il existe un module JS séparé.
 
@@ -67,6 +68,8 @@ Code réutilisé :
 - `public/themes/` : styles thématiques propres aux jeux.
 
 Ces fichiers partagés ont un impact transversal : avant de les modifier, rechercher leurs usages dans toutes les pages de jeux. Conserver les contrats globaux et l'ordre des scripts, sauf refonte explicitement demandée.
+
+Mimic Party charge ses extraits officiels depuis `public/mimicparty/sounds/` (MP3 réels, métadonnées `file`/`start`/`dur` dans `memes.js`). Ces fichiers ne sont jamais transmis par le relais ; chaque client télécharge et rogne le même passage. Le watcher Vite ignore ce dossier (`vite.config.ts`) pour éviter les verrous de fichier sous Windows.
 
 ## 5. Backend / temps réel
 - `api/boot.ts` : création de l'application Hono, montage des routes et démarrage du serveur.
@@ -107,7 +110,7 @@ Le relais est gardé en mémoire du processus serveur : un redémarrage efface l
 - `.env` et `.env.*` sont ignorés par Git. Ne jamais demander à l'utilisateur de transmettre les secrets ; utiliser les noms de variables sans exposer leurs valeurs.
 
 ## 7. Tests et prudence lors des changements
-- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`), les playlists et thèmes YouTube (`api/lib/youtube.test.ts`) et le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`) — 39 tests Vitest.
+- Les tests connus ciblent le relais (`api/lib/relay.test.ts`), les helpers de salon Make It Meme (`api/lib/makeitmeme-room.test.ts`), les playlists et thèmes YouTube (`api/lib/youtube.test.ts`), le moteur La Table Des Menteurs (`api/lib/menteurs.test.ts`), les helpers client du Blind Test (`api/lib/blindtest-client.test.ts`), le mélange d'anagrammes Culture Game (`api/lib/culturegame-letters.test.ts`) et la banque/score de Mimic Party (`api/lib/mimicparty-client.test.ts`) — **68 tests Vitest**.
 - Une modification du protocole d'événement doit être vérifiée côté client et serveur, pas uniquement dans les tests du serveur.
 - Les jeux étant exécutés dans de vrais navigateurs de téléphone, les changements d'interface doivent aussi prendre en compte tactile, viewport mobile, permissions média/caméra et reconnexion lorsque cela s'applique.
 - Ne pas changer une API partagée sans rechercher ses consommateurs et adapter les pages concernées.

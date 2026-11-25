@@ -226,6 +226,19 @@ const GAMES: Game[] = [
     tilt: -1.5,
     pattern: "grid",
   },
+  {
+    id: "mimicparty",
+    title: "Mimic Party",
+    tagline: "Imite les mèmes cultes",
+    emoji: "🤪",
+    path: "/mimicparty/index.html",
+    players: "2 – 8 joueurs",
+    duration: "10 – 20 min",
+    desc: "Écoute un son de mème, imite-le au micro, puis écoute les prestations de tous. Une note de ressemblance tombe, la roue bonus tourne : le meilleur imitateur rafle la mise.",
+    color: "#ff4f8b",
+    tilt: -2.1,
+    pattern: "dots",
+  },
 ];
 
 function useClock() {
