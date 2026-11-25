@@ -105,7 +105,9 @@
    L'hôte garde les 108 cartes et toutes les mains. Le serveur relaie
    les événements et l'état public ; chaque main part en message ciblé.
    Règles : 7 cartes, +2, inversion, passe-tour, joker, +4 contestable,
-   annonce UNO, manche unique ou partie en 200/500 points. */
+   annonce UNO, manche unique ou partie en 200/500 points.
+   Score : chaque joueur cumule les points des cartes qui lui restent.
+   Le premier à atteindre le seuil perd la partie ; le plus petit total gagne. */
 const MIN=2,MAX=10;
 const COLORS=["r","y","g","b"];
 const CNAME={r:"Rouge",y:"Jaune",g:"Vert",b:"Bleu"};
@@ -270,25 +272,20 @@ function dealRound(){
 }
 function endRound(winner){
  if(!S||S.ph!=="play")return;
- const rows=[];let sum=0;
- const hands={};
+ const rows=[];
  S.pl.forEach(p=>{
   const hand=p.id===winner?[]:(H.hands[p.id]||[]);
-  hands[p.id]=sortHand(hand);
   const pts=handPoints(hand);
-  if(p.id!==winner)sum+=pts;
-  rows.push({id:p.id,points:pts,cards:hands[p.id],score:0});
- });
- S.pl.forEach(p=>{
-  const r=rows.find(x=>x.id===p.id);
-  r.score=p.id===winner?sum:0;
-  p.sc+=r.score;
+  // Score inversé : les cartes restantes sont des points de pénalité.
+  // Le gagnant de la manche ne marque rien, les autres ajoutent leur main.
+  rows.push({id:p.id,points:pts,cards:sortHand(hand),score:pts});
+  p.sc+=pts;
   p.count=(H.hands[p.id]||[]).length;
  });
- S.roundResult={winner,sum,rows};
+ S.roundResult={winner,rows};
  S.ph="round";S.pending=null;S.pendingDraw=null;S.pending2=null;S.lastPlay=null;S.uno=null;H.pending4=null;H.pendingPlay=null;
- S.over=S.cfg.target===0||(pl(winner)&&pl(winner).sc>=S.cfg.target);
- log("🏁 "+nm(winner)+" n’a plus de cartes et marque "+sum+" points.");
+ S.over=S.cfg.target===0||S.pl.some(p=>p.sc>=S.cfg.target);
+ log("🏁 "+nm(winner)+" n’a plus de cartes. Les autres ajoutent les points de leur main.");
  bc();render();
 }
 function finishGame(){
@@ -296,7 +293,9 @@ function finishGame(){
  S.ph="end";S.pending=null;S.pendingDraw=null;S.pending2=null;S.lastPlay=null;S.uno=null;
  if(!S.reported){
   S.reported=true;
-  Party.report(R,"uno",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:p.sc})));
+  // Classement de soirée : plus de points = mieux. En UNO le plus petit
+  // total gagne, on envoie donc l'opposé du score.
+  Party.report(R,"uno",S.sid,S.pl.map(p=>({id:p.id,n:p.n,s:-p.sc})));
  }
  bc();render();
 }
@@ -665,7 +664,7 @@ function renderHome(){
   <li>Coupe : si tu as une copie exacte de la carte qui vient d’être jouée, pose-la avant le joueur suivant. Tous les joueurs intermédiaires sont sautés.</li>
   <li>Joker : choisis la couleur. +4 : tu peux le poser même si tu as la couleur en cours, mais c’est un bluff que le suivant peut contester. S’il conteste et que tu étais légal (aucune carte de la couleur), il pioche 6 ; sinon tu pioches 4.</li>
   <li>Quand il te reste 1 carte, annonce UNO ! Sinon, les autres peuvent te contrer : +2 cartes.</li>
-  <li>Le premier à poser sa dernière carte marque les points des mains restantes. Partie en 200 ou 500 points, ou manche unique.</li>
+  <li>Le premier à poser sa dernière carte arrête la manche. Les autres ajoutent les points de leur main à leur total. Le premier à atteindre 200/500 points perd : le plus petit total gagne.</li>
  </ul></details></div>`;
  const c=bootParams().code;if(c&&$("#pcode"))$("#pcode").value=c;
  Profile.attach("#pname");
@@ -677,7 +676,7 @@ function renderLobby(){
   <div class="chips">${S.pl.map(p=>`<span class="chip ${p.id===S.host?"host":""}${p.id===ME?" me":""}">${esc(p.n)}${host&&p.id!==ME?` <button class="link mini" style="display:inline;margin:0" data-a="del" data-id="${p.id}">✕</button>`:""}</span>`).join("")||'<span class="hint">Personne pour l’instant.</span>'}</div>
   <p class="hint">${n<MIN?"Il faut au moins "+MIN+" joueurs.":"Prêts à distribuer ?"}</p>`;
  if(host){
-  h+=`<div class="srow"><span>Format de la partie<small>Manche unique, ou premier à atteindre le score.</small></span>
+  h+=`<div class="srow"><span>Format de la partie<small>Manche unique, ou premier à atteindre le seuil (il perd). Le plus petit total gagne.</small></span>
    <div class="uno-target">${[[0,"Manche unique"],[200,"200 pts"],[500,"500 pts"]].map(([v,l])=>`<button class="pill ${S.cfg.target===+v?"on":""}" data-a="target" data-v="${v}">${l}</button>`).join("")}</div></div>
    <button class="btn primary big" data-a="start" ${n<MIN?"disabled":""}>Lancer la partie 🚀</button>`;
  }else h+=`<p class="hint center">L’hôte lance la partie quand tout le monde est là.</p>`;
@@ -775,15 +774,14 @@ function renderPlay(){
 }
 function renderRound(){
  const rr=S.roundResult||{rows:[]};
- const rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
- const byId=Object.fromEntries((rr.rows||[]).map(r=>[r.id,r]));
- app.innerHTML=`<div class="center"><div class="big-emoji">🏁</div><h1>Manche ${S.r} terminée</h1><p><b>${esc(nm(rr.winner))}</b> n’a plus de cartes et marque <b>${rr.sum||0} points</b>.</p></div>
+ const rank=[...S.pl].sort((a,b)=>a.sc-b.sc||a.n.localeCompare(b.n,"fr"));
+ app.innerHTML=`<div class="center"><div class="big-emoji">🏁</div><h1>Manche ${S.r} terminée</h1><p><b>${esc(nm(rr.winner))}</b> n’a plus de cartes. Chacun ajoute les points de sa main : le plus petit total mène.</p></div>
  <div class="card"><h2>Mains restantes</h2>
-  ${(rr.rows||[]).map(r=>`<div class="uno-round-row"><span><b>${esc(nm(r.id))}</b>${r.id===rr.winner?" 🏆":""}<div class="mini">${r.cards.length?r.cards.map(c=>cardHtml(c)).join(""):'<span class="hint" style="margin:0">Main vide</span>'}</div></span><span><span class="pts">${r.points} pts</span><br><small class="hint" style="margin:0">${r.id===rr.winner?"+"+r.score+" au total":"+0"}</small></span></div>`).join("")}
-  <p class="hint">Le gagnant de la manche marque la somme des points restants dans les autres mains. Cartes chiffres = valeur, actions = 20, jokers = 50.</p>
+  ${(rr.rows||[]).map(r=>`<div class="uno-round-row"><span><b>${esc(nm(r.id))}</b>${r.id===rr.winner?" 🏆":""}<div class="mini">${r.cards.length?r.cards.map(c=>cardHtml(c)).join(""):'<span class="hint" style="margin:0">Main vide</span>'}</div></span><span><span class="pts">+${r.points} pts</span><br><small class="hint" style="margin:0">total ${pl(r.id)?.sc??0}</small></span></div>`).join("")}
+  <p class="hint">Cartes chiffres = valeur, actions = 20, jokers = 50. Le gagnant de la manche ne marque aucun point ; les autres ajoutent leur main.</p>
  </div>
  <div class="card"><h2>Classement</h2>${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}
-  ${S.over?`<div class="uno-banner hot">🎯 ${S.cfg.target===0?"Manche unique terminée":"Objectif de "+S.cfg.target+" points atteint"} : la partie se termine.</div>`:`<p class="hint">${S.cfg.target===0?"Manche unique.":"Premier à "+S.cfg.target+" points."}</p>`}
+  ${S.over?`<div class="uno-banner hot">🎯 ${S.cfg.target===0?"Manche unique terminée":"Le seuil de "+S.cfg.target+" points est atteint"} : la partie se termine, le plus petit total gagne.</div>`:`<p class="hint">${S.cfg.target===0?"Manche unique.":"Premier à "+S.cfg.target+" points perd ; le plus petit total gagne."}</p>`}
  </div>
  <div id="ptmid"></div>
  ${isHost?`<button class="btn primary big" data-a="next">${S.over?"Voir les résultats 🏆":"Manche suivante →"}</button>`:`<p class="hint center">L’hôte lance la suite.</p>`}
@@ -791,9 +789,10 @@ function renderRound(){
  if(!S.over&&R&&code)Party.endCard("#ptmid",{R,code,isHost,compact:true,onLeave:()=>Sess.clear("uno")});
 }
 function renderEnd(){
- const rank=[...S.pl].sort((a,b)=>b.sc-a.sc),w=rank[0];
+ const rank=[...S.pl].sort((a,b)=>a.sc-b.sc||a.n.localeCompare(b.n,"fr")),w=rank[0];
+ const tie=rank[1]&&w&&rank[1].sc===w.sc;
  const med=["🥇","🥈","🥉"];
- app.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Partie terminée</h1><p><b>${w?esc(w.n):"—"}</b> remporte la partie avec <b>${w?w.sc:0} points</b>.</p></div>
+ app.innerHTML=`<div class="center"><div class="big-emoji">🏆</div><h1>Partie terminée</h1><p><b>${w?esc(w.n):"—"}</b> ${tie?"fait match nul avec":"gagne avec le plus petit total :"} <b>${w?w.sc:0} points</b>.</p></div>
  <div class="card"><h2>Classement final</h2>${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${med[i]||(i+1)+"."} ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}</div>
  <div class="card"><h2>La soirée continue</h2><p class="hint">Retourne au salon pour enchaîner sur un autre jeu : les points UNO sont déjà envoyés au classement de la soirée.</p></div>
  <div id="gage"></div><div id="ptend"></div>

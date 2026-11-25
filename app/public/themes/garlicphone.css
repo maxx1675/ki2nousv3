@@ -1,6 +1,6 @@
 /* ============================================================
    GARLIC PHONE — carnet de croquis, papier crème et encre violette
-   Thème chaleureux façon sketchnote : gribouillis, scotch et Caveat.
+   Thème chaleureux façon sketchnote : gribouillis et papier.
    Chargé APRÈS base.css et widgets.css.
    ============================================================ */
 
@@ -22,7 +22,6 @@ html[data-theme="light"] {
   --gp-line: rgba(42, 33, 24, .09);
   --gp-glow: rgba(123, 75, 183, .18);
   --gp-glow-2: rgba(217, 79, 138, .14);
-  --gp-tape: rgba(240, 200, 120, .72);
 }
 
 html[data-theme="dark"] {
@@ -43,7 +42,6 @@ html[data-theme="dark"] {
   --gp-line: rgba(255, 255, 255, .07);
   --gp-glow: rgba(177, 140, 240, .22);
   --gp-glow-2: rgba(255, 127, 178, .16);
-  --gp-tape: rgba(255, 196, 102, .5);
 }
 
 .gp-body {
@@ -79,7 +77,7 @@ html[data-theme="dark"] {
   50% { transform: translateY(-12px) rotate(6deg); opacity: .26; }
 }
 
-.gp-wrap { max-width: 760px; position: relative; z-index: 1; }
+.gp-wrap { max-width: 1040px; position: relative; z-index: 1; }
 .gp-top { margin-bottom: 4px; }
 .gp-hub {
   text-decoration: none;
@@ -131,7 +129,7 @@ html[data-theme="dark"] {
 @keyframes gpBreath { 50% { transform: scale(1.12); opacity: .8; } }
 .gp-kicker {
   margin: 0 0 4px;
-  font: 700 .82rem/1.2 "Caveat", cursive;
+  font: 800 .78rem/1.2 "Bricolage Grotesque", system-ui, sans-serif;
   letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--violet);
@@ -146,9 +144,10 @@ html[data-theme="dark"] {
   animation: gpTitle .75s cubic-bezier(.2, 1.4, .4, 1) both;
 }
 .gp-hero h1 em {
-  font-family: "Caveat", cursive;
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
   font-style: normal;
-  font-size: 1.16em;
+  font-weight: 800;
+  font-size: 1.02em;
   color: var(--violet);
   background: linear-gradient(100deg, var(--violet), var(--pink) 60%, var(--amber));
   -webkit-background-clip: text;
@@ -361,20 +360,6 @@ html[data-theme="dark"] {
   position: relative;
   animation: gpStageIn .4s cubic-bezier(.2, 1.2, .4, 1) both;
 }
-.gp-stage::before {
-  content: "";
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  width: 92px;
-  height: 24px;
-  margin-left: -46px;
-  background: var(--gp-tape);
-  transform: rotate(-2deg);
-  border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
-  opacity: .85;
-}
 @keyframes gpStageIn { from { opacity: 0; transform: translateY(10px) rotate(-.4deg); } }
 
 .gp-prompt { margin: 6px 0 16px; }
@@ -431,7 +416,7 @@ html[data-theme="dark"] {
   width: 100%;
   min-height: 110px;
   resize: vertical;
-  font: 700 1.15rem/1.4 "Caveat", cursive;
+  font: 600 1.08rem/1.45 "Bricolage Grotesque", system-ui, sans-serif;
   padding: 12px;
   border-radius: 14px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -446,7 +431,7 @@ html[data-theme="dark"] {
 .gp-write-foot .btn { margin-left: auto; }
 .gp-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .gp-suggest button {
-  font: 600 .92rem/1.2 "Caveat", cursive;
+  font: 700 .88rem/1.2 "Bricolage Grotesque", system-ui, sans-serif;
   color: var(--muted);
   background: transparent;
   border: 2px dashed color-mix(in srgb, var(--edge) 45%, transparent);
@@ -477,30 +462,17 @@ html[data-theme="dark"] {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 8 / 5;
+  aspect-ratio: 16 / 10;
   cursor: crosshair;
   touch-action: none;
   background: var(--gp-paper);
-  transition: opacity .2s, filter .2s;
 }
-.gp-canvas.timeup { opacity: .5; filter: grayscale(.5); pointer-events: none; }
-.gp-tape {
-  position: absolute;
-  width: 64px;
-  height: 18px;
-  background: var(--gp-tape);
-  opacity: .8;
-  border-radius: 2px;
-  pointer-events: none;
-}
-.gp-tape.t1 { top: -6px; left: 12%; transform: rotate(-4deg); }
-.gp-tape.t2 { bottom: -6px; right: 10%; transform: rotate(3deg); }
 .gp-canvas-hint {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) rotate(-3deg);
-  font: 700 1.5rem/1 "Caveat", cursive;
+  font: 800 1.5rem/1 "Bricolage Grotesque", system-ui, sans-serif;
   color: rgba(42, 33, 24, .16);
   pointer-events: none;
   transition: opacity .2s;
@@ -508,11 +480,15 @@ html[data-theme="dark"] {
 .gp-canvas-hint.hide { opacity: 0; }
 html[data-theme="dark"] .gp-canvas-hint { color: rgba(42, 33, 24, .2); }
 
-.gp-tools { display: grid; gap: 8px; }
-.gp-colors { display: flex; gap: 7px; flex-wrap: wrap; }
+.gp-tools { display: grid; gap: 9px; }
+.gp-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 34px);
+  gap: 7px;
+}
 .gp-color {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 2.5px solid var(--edge);
   background: var(--c);
@@ -523,10 +499,22 @@ html[data-theme="dark"] .gp-canvas-hint { color: rgba(42, 33, 24, .2); }
 }
 .gp-color:hover { transform: scale(1.1) rotate(6deg); }
 .gp-color.on { outline: 3px solid var(--amber); outline-offset: 2px; transform: scale(1.12); }
-.gp-sizes { display: flex; gap: 7px; align-items: center; }
+.gp-sizebar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.gp-tool-label {
+  font: 800 .72rem/1 "Bricolage Grotesque", system-ui, sans-serif;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.gp-sizes { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
 .gp-size {
-  width: 36px;
-  height: 32px;
+  width: 38px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 9px;
@@ -537,26 +525,48 @@ html[data-theme="dark"] .gp-canvas-hint { color: rgba(42, 33, 24, .2); }
 }
 .gp-size i { display: block; border-radius: 50%; background: var(--ink); }
 .gp-size.on { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 16%, var(--surface)); }
-.gp-toolgroup { display: flex; gap: 7px; }
+.gp-toolgroup { display: flex; gap: 7px; flex-wrap: wrap; }
 .gp-tool {
-  width: 44px;
-  height: 38px;
+  min-width: 68px;
+  min-height: 46px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px 9px;
   border-radius: 10px;
   border: 2.5px solid var(--edge);
   background: var(--surface);
-  font-size: 1.05rem;
   cursor: pointer;
   box-shadow: 2px 2px 0 var(--sh);
   transition: transform .12s, box-shadow .12s;
 }
+.gp-tool span { font-size: 1.05rem; line-height: 1; }
+.gp-tool small {
+  font: 800 .64rem/1 "Bricolage Grotesque", system-ui, sans-serif;
+  color: var(--muted);
+}
 .gp-tool:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--sh); }
 .gp-tool.on { background: color-mix(in srgb, var(--violet) 22%, var(--surface)); border-color: var(--violet); }
+.gp-tool.on small { color: var(--ink); }
 
 /* Copie rendue */
 .gp-sent {
   text-align: center;
   padding: 18px 10px 8px;
   animation: gpFade .3s ease-out;
+}
+.gp-sent-shot {
+  display: block;
+  width: 100%;
+  max-height: 46vh;
+  object-fit: contain;
+  margin: 12px auto 6px;
+  border: 2.5px solid var(--edge);
+  border-radius: 12px;
+  background: var(--gp-paper);
+  box-shadow: 3px 3px 0 var(--sh);
 }
 .gp-stamp {
   width: 74px;
@@ -648,13 +658,13 @@ html[data-theme="dark"] .gp-canvas-hint { color: rgba(42, 33, 24, .2); }
 @keyframes gpEntryIn { from { opacity: 0; transform: translateX(-10px); } }
 .gp-entry-by {
   display: inline-block;
-  font: 700 .8rem/1 "Caveat", cursive;
+  font: 800 .78rem/1 "Bricolage Grotesque", system-ui, sans-serif;
   color: var(--muted);
   margin-bottom: 6px;
 }
 .gp-entry-bubble {
   margin: 0;
-  font: 700 1.18rem/1.35 "Caveat", cursive;
+  font: 600 1.1rem/1.45 "Bricolage Grotesque", system-ui, sans-serif;
   overflow-wrap: anywhere;
 }
 .gp-entry-img {
@@ -698,6 +708,10 @@ html[data-theme="dark"] .gp-canvas-hint { color: rgba(42, 33, 24, .2); }
   .gp-chain-card { padding: 6px 9px; font-size: 1.1rem; }
   .gp-write-foot { flex-wrap: wrap; }
   .gp-write-foot .btn { width: 100%; margin-left: 0; }
+  .gp-stage { padding: 14px 10px; }
+  .gp-colors { grid-template-columns: repeat(auto-fit, 30px); gap: 6px; }
+  .gp-color { width: 30px; height: 30px; }
+  .gp-tool { min-width: 60px; }
   .gp-album-nav { flex-wrap: wrap; }
   .gp-album-nav .btn { flex: 1; }
   .gp-album-dots { order: 3; width: 100%; margin-top: 4px; }

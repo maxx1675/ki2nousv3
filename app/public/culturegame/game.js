@@ -430,6 +430,369 @@ const BANK = [
   { th: "langue", t: "vf", q: "Le mot « souris » peut désigner un animal et un accessoire.", a: true },
   { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le mot.", l: "R E B U S", h: "Une devinette d'images", a: "REBUS" },
   { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le mot.", l: "P A L I N D R O M E", h: "Se lit dans les deux sens", a: "PALINDROME" },
+
+  /* -------------------- Banque étendue (vague novembre 2026) -------------------- */
+  /* Culture générale */
+  { th: "culture", t: "qcm", q: "Combien de cordes possède un violon ?", o: ["4", "5", "6", "7"], a: "4" },
+  { th: "culture", t: "qcm", q: "Quel est le plus petit État souverain du monde ?", o: ["Monaco", "Le Vatican", "Saint-Marin", "Le Liechtenstein"], a: "Le Vatican" },
+  { th: "culture", t: "qcm", q: "Qui a écrit Les Misérables ?", o: ["Émile Zola", "Victor Hugo", "Gustave Flaubert", "Jules Verne"], a: "Victor Hugo" },
+  { th: "culture", t: "qcm", q: "Qui a peint La Joconde ?", o: ["Michel-Ange", "Raphaël", "Léonard de Vinci", "Botticelli"], a: "Léonard de Vinci" },
+  { th: "culture", t: "qcm", q: "Quelle langue compte le plus de locuteurs natifs ?", o: ["L'anglais", "L'espagnol", "Le mandarin", "L'hindi"], a: "Le mandarin" },
+  { th: "culture", t: "qcm", q: "Combien de secondes compte une heure ?", o: ["3 000", "3 600", "4 000", "4 200"], a: "3 600" },
+  { th: "culture", t: "qcm", q: "Combien de dents compte un adulte sans les dents de sagesse ?", o: ["24", "26", "28", "32"], a: "28" },
+  { th: "culture", t: "qcm", q: "Quel est le plus grand pays d'Amérique du Sud ?", o: ["L'Argentine", "Le Brésil", "Le Pérou", "La Colombie"], a: "Le Brésil" },
+  { th: "culture", t: "qcm", q: "Quelle est la monnaie du Royaume-Uni ?", o: ["L'euro", "La livre sterling", "Le dollar", "La couronne"], a: "La livre sterling" },
+  { th: "culture", t: "qcm", q: "Qui a écrit Roméo et Juliette ?", o: ["Molière", "Victor Hugo", "William Shakespeare", "Charles Dickens"], a: "William Shakespeare" },
+  { th: "culture", t: "qcm", q: "Quel est le plus grand mammifère terrestre ?", o: ["Le rhinocéros", "L'éléphant d'Afrique", "L'hippopotame", "Le buffle"], a: "L'éléphant d'Afrique" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de l'Égypte ?", o: ["Alexandrie", "Le Caire", "Louxor", "Assouan"], a: "Le Caire" },
+  { th: "culture", t: "qcm", q: "Qui est crédité de l'invention du téléphone ?", o: ["Thomas Edison", "Alexander Graham Bell", "Nikola Tesla", "Guglielmo Marconi"], a: "Alexander Graham Bell" },
+  { th: "culture", t: "qcm", q: "Quelle mer sépare l'Europe de l'Afrique ?", o: ["La mer Noire", "La mer Méditerranée", "La mer Rouge", "La mer Baltique"], a: "La mer Méditerranée" },
+  { th: "culture", t: "qcm", q: "Quel est le plus grand lac du monde ?", o: ["Le lac Victoria", "Le lac Supérieur", "La mer Caspienne", "Le lac Baïkal"], a: "La mer Caspienne" },
+  { th: "culture", t: "qcm", q: "Qui a créé Le Petit Nicolas avec René Goscinny ?", o: ["Jean-Jacques Sempé", "Hergé", "Uderzo", "Peyo"], a: "Jean-Jacques Sempé" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de l'Autriche ?", o: ["Salzbourg", "Vienne", "Graz", "Innsbruck"], a: "Vienne" },
+  { th: "culture", t: "qcm", q: "Quel est le plus long mur jamais construit ?", o: ["Le mur d'Hadrien", "La Grande Muraille", "Le mur de Berlin", "Les remparts de Carcassonne"], a: "La Grande Muraille" },
+  { th: "culture", t: "qcm", q: "Quelle planète est célèbre pour ses anneaux visibles ?", o: ["Jupiter", "Saturne", "Uranus", "Neptune"], a: "Saturne" },
+  { th: "culture", t: "qcm", q: "Combien de joueurs compte une équipe de rugby à XV sur le terrain ?", o: ["11", "13", "15", "18"], a: "15" },
+  { th: "culture", t: "qcm", q: "Quel est le plus volumineux organe interne du corps humain ?", o: ["Le cerveau", "Le foie", "Les poumons", "L'estomac"], a: "Le foie" },
+  { th: "culture", t: "qcm", q: "Qui a peint Guernica ?", o: ["Salvador Dalí", "Pablo Picasso", "Joan Miró", "Claude Monet"], a: "Pablo Picasso" },
+  { th: "culture", t: "qcm", q: "Quel est le plus grand volcan actif d'Europe ?", o: ["Le Vésuve", "L'Etna", "Le Stromboli", "Le Teide"], a: "L'Etna" },
+  { th: "culture", t: "qcm", q: "Combien de lettres compte l'alphabet grec ?", o: ["22", "24", "26", "28"], a: "24" },
+  { th: "culture", t: "qcm", q: "Quel fleuve est le plus puissant du monde par son débit ?", o: ["Le Nil", "L'Amazone", "Le Mississippi", "Le Yangtsé"], a: "L'Amazone" },
+  { th: "culture", t: "qcm", q: "Quel pays est le plus peuplé d'Afrique ?", o: ["L'Égypte", "Le Nigeria", "L'Éthiopie", "L'Afrique du Sud"], a: "Le Nigeria" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale du Brésil ?", o: ["Rio de Janeiro", "São Paulo", "Brasilia", "Salvador"], a: "Brasilia" },
+  { th: "culture", t: "qcm", q: "Qui a écrit L'Étranger ?", o: ["Jean-Paul Sartre", "Albert Camus", "Marcel Proust", "André Gide"], a: "Albert Camus" },
+  { th: "culture", t: "qcm", q: "Quel est le symbole chimique du potassium ?", o: ["P", "Po", "K", "Ka"], a: "K" },
+  { th: "culture", t: "qcm", q: "Combien de faces possède un cube ?", o: ["4", "6", "8", "12"], a: "6" },
+  { th: "culture", t: "qcm", q: "Quel est le plus grand désert froid du monde ?", o: ["Le Groenland", "L'Antarctique", "La Sibérie", "Le Canada"], a: "L'Antarctique" },
+  { th: "culture", t: "qcm", q: "Quelle est la durée approximative d'une journée sur Mars ?", o: ["12 heures", "18 heures", "24 h 37", "48 heures"], a: "24 h 37" },
+  { th: "culture", t: "qcm", q: "Quel pays a pour drapeau une feuille d'érable rouge ?", o: ["Les États-Unis", "Le Canada", "La Nouvelle-Zélande", "Le Liban"], a: "Le Canada" },
+  { th: "culture", t: "qcm", q: "Quel océan borde l'Afrique de l'Est et l'Australie ?", o: ["L'Atlantique", "Le Pacifique", "L'Indien", "L'Arctique"], a: "L'Indien" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de la Finlande ?", o: ["Oslo", "Stockholm", "Helsinki", "Copenhague"], a: "Helsinki" },
+  { th: "culture", t: "qcm", q: "Quel est le pays en forme de botte ?", o: ["L'Espagne", "La Grèce", "L'Italie", "Le Portugal"], a: "L'Italie" },
+  { th: "culture", t: "qcm", q: "Quelle est la plus grande île du monde ?", o: ["L'Australie", "Le Groenland", "Bornéo", "Madagascar"], a: "Le Groenland" },
+  { th: "culture", t: "qcm", q: "Quel détroit sépare l'Europe et l'Asie à Istanbul ?", o: ["Le détroit de Gibraltar", "Le Bosphore", "Le détroit de Messine", "Le pas de Calais"], a: "Le Bosphore" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de la Suède ?", o: ["Oslo", "Stockholm", "Helsinki", "Reykjavik"], a: "Stockholm" },
+  { th: "culture", t: "qcm", q: "Quel pays du Maghreb est le plus à l'ouest ?", o: ["La Tunisie", "L'Algérie", "Le Maroc", "La Libye"], a: "Le Maroc" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de la Pologne ?", o: ["Cracovie", "Varsovie", "Gdansk", "Lodz"], a: "Varsovie" },
+  { th: "culture", t: "qcm", q: "Quelle mer est la plus salée du monde ?", o: ["La mer Rouge", "La mer Morte", "La mer Caspienne", "La mer Noire"], a: "La mer Morte" },
+  { th: "culture", t: "qcm", q: "Quelle chaîne de montagnes traverse l'Amérique du Sud ?", o: ["Les Rocheuses", "Les Andes", "Les Alpes", "L'Himalaya"], a: "Les Andes" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de la Hongrie ?", o: ["Bucarest", "Budapest", "Prague", "Vienne"], a: "Budapest" },
+  { th: "culture", t: "qcm", q: "Quel fleuve est le plus long d'Afrique ?", o: ["Le Congo", "Le Niger", "Le Nil", "Le Zambèze"], a: "Le Nil" },
+  { th: "culture", t: "qcm", q: "Quel pays abrite le Machu Picchu ?", o: ["Le Mexique", "Le Pérou", "Le Chili", "La Bolivie"], a: "Le Pérou" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale du Danemark ?", o: ["Oslo", "Copenhague", "Stockholm", "Amsterdam"], a: "Copenhague" },
+  { th: "culture", t: "qcm", q: "Quel pays abrite le Kilimandjaro ?", o: ["Le Kenya", "La Tanzanie", "L'Ouganda", "Le Rwanda"], a: "La Tanzanie" },
+  { th: "culture", t: "qcm", q: "Quel pays abrite le désert d'Atacama ?", o: ["Le Pérou", "Le Chili", "L'Argentine", "Le Brésil"], a: "Le Chili" },
+  { th: "culture", t: "qcm", q: "Quel fleuve traverse Paris ?", o: ["La Loire", "La Seine", "Le Rhône", "La Garonne"], a: "La Seine" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de l'Argentine ?", o: ["Santiago", "Buenos Aires", "Montevideo", "Lima"], a: "Buenos Aires" },
+  { th: "culture", t: "qcm", q: "Quelle est la capitale de la République tchèque ?", o: ["Bratislava", "Prague", "Vienne", "Budapest"], a: "Prague" },
+  { th: "culture", t: "vf", q: "Un carré possède cinq côtés.", a: false },
+  { th: "culture", t: "vf", q: "Le cœur est un muscle.", a: true },
+  { th: "culture", t: "vf", q: "L'Antarctique est un désert.", a: true },
+  { th: "culture", t: "vf", q: "Le fer est plus léger que l'aluminium.", a: false },
+  { th: "culture", t: "vf", q: "Les chauves-souris sont des mammifères.", a: true },
+  { th: "culture", t: "vf", q: "Venise se trouve en Espagne.", a: false },
+  { th: "culture", t: "vf", q: "Le Portugal borde l'océan Atlantique.", a: true },
+
+  /* Histoire */
+  { th: "histoire", t: "qcm", q: "En quelle année a eu lieu la prise de la Bastille ?", o: ["1492", "1789", "1848", "1914"], a: "1789" },
+  { th: "histoire", t: "qcm", q: "En quelle année est tombé le mur de Berlin ?", o: ["1961", "1979", "1989", "1991"], a: "1989" },
+  { th: "histoire", t: "qcm", q: "Quand a eu lieu le débarquement de Normandie ?", o: ["Le 6 juin 1944", "Le 8 mai 1945", "Le 11 novembre 1918", "Le 14 juillet 1789"], a: "Le 6 juin 1944" },
+  { th: "histoire", t: "qcm", q: "Quel empire Napoléon Bonaparte a-t-il fondé ?", o: ["Le Second Empire", "Le Premier Empire", "L'Empire romain", "Le Saint-Empire"], a: "Le Premier Empire" },
+  { th: "histoire", t: "qcm", q: "La guerre de Cent Ans a opposé la France à quel pays ?", o: ["L'Espagne", "L'Angleterre", "L'Italie", "L'Allemagne"], a: "L'Angleterre" },
+  { th: "histoire", t: "qcm", q: "À quelle dynastie appartenait Louis XIV ?", o: ["Les Capétiens", "Les Bourbons", "Les Valois", "Les Mérovingiens"], a: "Les Bourbons" },
+  { th: "histoire", t: "qcm", q: "En quelle année Christophe Colomb atteint-il l'Amérique ?", o: ["1453", "1492", "1515", "1589"], a: "1492" },
+  { th: "histoire", t: "qcm", q: "Qui a été la première femme Première ministre en France ?", o: ["Simone Veil", "Édith Cresson", "Élisabeth Borne", "Ségolène Royal"], a: "Édith Cresson" },
+  { th: "histoire", t: "qcm", q: "En quelle année l'esclavage a-t-il été définitivement aboli en France ?", o: ["1789", "1794", "1848", "1905"], a: "1848" },
+  { th: "histoire", t: "qcm", q: "En quelle année le Titanic a-t-il coulé ?", o: ["1898", "1912", "1920", "1935"], a: "1912" },
+  { th: "histoire", t: "qcm", q: "En quelle année le mur de Berlin a-t-il été construit ?", o: ["1945", "1953", "1961", "1975"], a: "1961" },
+  { th: "histoire", t: "qcm", q: "Quel traité met fin à la Première Guerre mondiale en 1919 ?", o: ["Le traité de Rome", "Le traité de Versailles", "Le traité de Vienne", "Le traité de Lisbonne"], a: "Le traité de Versailles" },
+  { th: "histoire", t: "qcm", q: "En quelle année Charlemagne a-t-il été couronné empereur ?", o: ["476", "800", "987", "1066"], a: "800" },
+  { th: "histoire", t: "qcm", q: "Dans quelle ville Jeanne d'Arc a-t-elle été brûlée ?", o: ["Orléans", "Rouen", "Paris", "Reims"], a: "Rouen" },
+  { th: "histoire", t: "qcm", q: "La guerre froide a opposé les États-Unis à quel pays ?", o: ["La Chine", "L'URSS", "L'Allemagne", "Le Japon"], a: "L'URSS" },
+  { th: "histoire", t: "qcm", q: "En quelle année ont eu lieu les attentats du 11 septembre ?", o: ["1999", "2000", "2001", "2003"], a: "2001" },
+  { th: "histoire", t: "qcm", q: "En quelle année l'ONU a-t-elle été créée ?", o: ["1919", "1939", "1945", "1957"], a: "1945" },
+  { th: "histoire", t: "qcm", q: "En quelle année l'Algérie a-t-elle obtenu son indépendance ?", o: ["1954", "1958", "1962", "1968"], a: "1962" },
+  { th: "histoire", t: "qcm", q: "Quelles années couvre la Première Guerre mondiale ?", o: ["1912-1916", "1914-1918", "1918-1922", "1939-1945"], a: "1914-1918" },
+  { th: "histoire", t: "qcm", q: "Sur quelle île Napoléon a-t-il été exilé après Waterloo ?", o: ["L'île d'Elbe", "Sainte-Hélène", "La Corse", "Malte"], a: "Sainte-Hélène" },
+  { th: "histoire", t: "qcm", q: "Dans quelle ville italienne la Renaissance a-t-elle largement commencé ?", o: ["Rome", "Venise", "Florence", "Naples"], a: "Florence" },
+  { th: "histoire", t: "qcm", q: "En quelle année Louis XVI a-t-il été guillotiné ?", o: ["1789", "1791", "1793", "1799"], a: "1793" },
+  { th: "histoire", t: "qcm", q: "En quelle année le suffrage universel masculin a-t-il été instauré en France ?", o: ["1789", "1830", "1848", "1870"], a: "1848" },
+  { th: "histoire", t: "qcm", q: "En quelle année François Mitterrand a-t-il été élu président ?", o: ["1969", "1974", "1981", "1988"], a: "1981" },
+  { th: "histoire", t: "qcm", q: "En quelle année l'URSS a-t-elle été dissoute ?", o: ["1985", "1989", "1991", "1993"], a: "1991" },
+  { th: "histoire", t: "qcm", q: "Au service de quel pays Christophe Colomb a-t-il navigué en 1492 ?", o: ["Le Portugal", "L'Espagne", "La France", "L'Angleterre"], a: "L'Espagne" },
+  { th: "histoire", t: "qcm", q: "Quel chef gaulois a affronté Jules César à Alésia ?", o: ["Vercingétorix", "Brennus", "Ambiorix", "Clovis"], a: "Vercingétorix" },
+  { th: "histoire", t: "qcm", q: "En quelle année a eu lieu la bataille de Waterloo ?", o: ["1799", "1805", "1815", "1830"], a: "1815" },
+  { th: "histoire", t: "qcm", q: "Quel traité de 1957 crée la Communauté économique européenne ?", o: ["Le traité de Paris", "Le traité de Rome", "Le traité de Maastricht", "Le traité de Lisbonne"], a: "Le traité de Rome" },
+  { th: "histoire", t: "qcm", q: "Qui a assassiné Henri IV en 1610 ?", o: ["Ravaillac", "Damiens", "Charlotte Corday", "Fieschi"], a: "Ravaillac" },
+  { th: "histoire", t: "qcm", q: "Quelle reine d'Égypte a été la dernière souveraine de la dynastie ptolémaïque ?", o: ["Néfertiti", "Cléopâtre VII", "Hatchepsout", "Théodora"], a: "Cléopâtre VII" },
+  { th: "histoire", t: "qcm", q: "Quel mur a été détruit en 1989 ?", o: ["Le mur d'Hadrien", "Le mur de Berlin", "La Grande Muraille", "Le mur de l'Atlantique"], a: "Le mur de Berlin" },
+  { th: "histoire", t: "vf", q: "Napoléon a été empereur des Français.", a: true },
+  { th: "histoire", t: "vf", q: "Le débarquement de Normandie a eu lieu en 1945.", a: false },
+  { th: "histoire", t: "vf", q: "Cléopâtre était une reine d'Égypte.", a: true },
+  { th: "histoire", t: "vf", q: "Le mur de Berlin est tombé avant la fin de l'URSS.", a: true },
+  { th: "histoire", t: "vf", q: "Louis XIV a régné plus de 70 ans.", a: true },
+  { th: "histoire", t: "vf", q: "La Première Guerre mondiale a commencé en 1939.", a: false },
+
+  /* Sciences */
+  { th: "sciences", t: "qcm", q: "Combien de chromosomes compte une cellule humaine normale ?", o: ["23", "44", "46", "48"], a: "46" },
+  { th: "sciences", t: "qcm", q: "Quel organe permet la respiration ?", o: ["Le foie", "Les poumons", "Les reins", "L'estomac"], a: "Les poumons" },
+  { th: "sciences", t: "qcm", q: "Quelle est la vitesse approximative du son dans l'air ?", o: ["34 m/s", "340 m/s", "3 400 m/s", "34 000 m/s"], a: "340 m/s" },
+  { th: "sciences", t: "qcm", q: "Quelle planète est appelée la planète rouge ?", o: ["Vénus", "Mars", "Jupiter", "Mercure"], a: "Mars" },
+  { th: "sciences", t: "qcm", q: "Quel est le plus long os du corps humain ?", o: ["Le tibia", "Le fémur", "L'humérus", "Le radius"], a: "Le fémur" },
+  { th: "sciences", t: "qcm", q: "Quelle particule possède une charge négative ?", o: ["Le proton", "Le neutron", "L'électron", "Le photon"], a: "L'électron" },
+  { th: "sciences", t: "qcm", q: "Qui a proposé le tableau périodique des éléments ?", o: ["Marie Curie", "Dmitri Mendeleïev", "Albert Einstein", "Niels Bohr"], a: "Dmitri Mendeleïev" },
+  { th: "sciences", t: "qcm", q: "Quelle loi décrit l'attraction entre les masses ?", o: ["La loi d'Ohm", "La gravitation de Newton", "La relativité d'Einstein", "La thermodynamique"], a: "La gravitation de Newton" },
+  { th: "sciences", t: "qcm", q: "Quel est le pH d'une solution neutre ?", o: ["0", "5", "7", "14"], a: "7" },
+  { th: "sciences", t: "qcm", q: "Quel organe produit l'insuline ?", o: ["Le foie", "Le pancréas", "La thyroïde", "Les reins"], a: "Le pancréas" },
+  { th: "sciences", t: "qcm", q: "Quelle est la cellule reproductrice femelle ?", o: ["Le spermatozoïde", "L'ovule", "Le neurone", "Le globule rouge"], a: "L'ovule" },
+  { th: "sciences", t: "qcm", q: "Quelle planète est la plus grande du système solaire ?", o: ["Saturne", "Jupiter", "Neptune", "Uranus"], a: "Jupiter" },
+  { th: "sciences", t: "qcm", q: "Quel instrument décompose la lumière blanche ?", o: ["Un miroir", "Un prisme", "Une lentille", "Un aimant"], a: "Un prisme" },
+  { th: "sciences", t: "qcm", q: "Quel est le symbole chimique du carbone ?", o: ["Ca", "C", "Co", "Cr"], a: "C" },
+  { th: "sciences", t: "qcm", q: "Quelle hormone favorise le sommeil ?", o: ["L'adrénaline", "La mélatonine", "L'insuline", "La testostérone"], a: "La mélatonine" },
+  { th: "sciences", t: "qcm", q: "Qui a développé un vaccin contre la rage ?", o: ["Alexander Fleming", "Louis Pasteur", "Marie Curie", "Edward Jenner"], a: "Louis Pasteur" },
+  { th: "sciences", t: "qcm", q: "Quelle théorie est associée à Albert Einstein ?", o: ["La sélection naturelle", "La relativité", "La gravité quantique", "La génétique"], a: "La relativité" },
+  { th: "sciences", t: "qcm", q: "Combien de pattes possède une araignée ?", o: ["6", "8", "10", "12"], a: "8" },
+  { th: "sciences", t: "qcm", q: "Quel gaz l'être humain respire-t-il pour vivre ?", o: ["L'azote", "L'oxygène", "Le dioxyde de carbone", "L'hélium"], a: "L'oxygène" },
+  { th: "sciences", t: "qcm", q: "Quelle est l'unité de mesure de la masse ?", o: ["Le mètre", "Le kilogramme", "Le litre", "Le newton"], a: "Le kilogramme" },
+  { th: "sciences", t: "qcm", q: "Quelle planète est la plus éloignée du Soleil ?", o: ["Uranus", "Neptune", "Saturne", "Pluton"], a: "Neptune" },
+  { th: "sciences", t: "qcm", q: "Quel organe est protégé par la boîte crânienne ?", o: ["Le cœur", "Le cerveau", "Le foie", "Les poumons"], a: "Le cerveau" },
+  { th: "sciences", t: "qcm", q: "Quel astre provoque principalement les marées ?", o: ["Le Soleil", "La Lune", "Mars", "Vénus"], a: "La Lune" },
+  { th: "sciences", t: "qcm", q: "Quelle énergie provient du Soleil ?", o: ["L'énergie fossile", "L'énergie solaire", "L'énergie nucléaire", "L'énergie marémotrice"], a: "L'énergie solaire" },
+  { th: "sciences", t: "qcm", q: "Quelle est l'unité de puissance ?", o: ["Le volt", "Le watt", "L'ampère", "Le joule"], a: "Le watt" },
+  { th: "sciences", t: "qcm", q: "Quel est le groupe sanguin donneur universel ?", o: ["A positif", "B négatif", "O négatif", "AB positif"], a: "O négatif" },
+  { th: "sciences", t: "qcm", q: "Quelle est la température d'ébullition de l'eau au niveau de la mer ?", o: ["50 °C", "80 °C", "100 °C", "120 °C"], a: "100 °C" },
+  { th: "sciences", t: "qcm", q: "Quel est le plus grand nerf du corps humain ?", o: ["Le nerf optique", "Le nerf sciatique", "Le nerf facial", "Le nerf vague"], a: "Le nerf sciatique" },
+  { th: "sciences", t: "qcm", q: "Quel type de roche provient du refroidissement du magma ?", o: ["Sédimentaire", "Magmatique", "Métamorphique", "Calcaire"], a: "Magmatique" },
+  { th: "sciences", t: "qcm", q: "Quel phénomène produit un arc-en-ciel ?", o: ["La réflexion des ondes radio", "La dispersion de la lumière", "L'écho du son", "La gravité"], a: "La dispersion de la lumière" },
+  { th: "sciences", t: "qcm", q: "Quelle est la fonction des globules rouges ?", o: ["Transporter l'oxygène", "Produire de l'insuline", "Digérer les aliments", "Filtrer l'air"], a: "Transporter l'oxygène" },
+  { th: "sciences", t: "vf", q: "L'eau est composée d'hydrogène et d'oxygène.", a: true },
+  { th: "sciences", t: "vf", q: "La Terre tourne autour du Soleil en environ un an.", a: true },
+  { th: "sciences", t: "vf", q: "Les dinosaures et les humains ont vécu à la même époque.", a: false },
+  { th: "sciences", t: "vf", q: "Le cerveau consomme de l'oxygène.", a: true },
+  { th: "sciences", t: "vf", q: "Un atome est plus petit qu'une molécule.", a: true },
+  { th: "sciences", t: "vf", q: "Le Soleil tourne autour de la Terre.", a: false },
+
+  /* Cinéma & séries */
+  { th: "ecran", t: "qcm", q: "Qui a réalisé Titanic ?", o: ["Steven Spielberg", "James Cameron", "Ridley Scott", "Christopher Nolan"], a: "James Cameron" },
+  { th: "ecran", t: "qcm", q: "Quel film met en scène un grand requin blanc ?", o: ["Les Dents de la mer", "Abyss", "Orca", "Le Grand Bleu"], a: "Les Dents de la mer" },
+  { th: "ecran", t: "qcm", q: "Dans quelle saga trouve-t-on Dark Vador ?", o: ["Star Trek", "Star Wars", "Dune", "Matrix"], a: "Star Wars" },
+  { th: "ecran", t: "qcm", q: "Dans quel film Disney trouve-t-on Elsa ?", o: ["Raiponce", "La Reine des neiges", "Vaiana", "Coco"], a: "La Reine des neiges" },
+  { th: "ecran", t: "qcm", q: "Dans quelle série trouve-t-on Eleven ?", o: ["Dark", "Stranger Things", "Lost", "The 100"], a: "Stranger Things" },
+  { th: "ecran", t: "qcm", q: "Qui a réalisé Pulp Fiction ?", o: ["Martin Scorsese", "Quentin Tarantino", "David Fincher", "Coen"], a: "Quentin Tarantino" },
+  { th: "ecran", t: "qcm", q: "Quel film français raconte l'amitié entre un riche tétraplégique et son aide-soignant ?", o: ["Intouchables", "La Haine", "Le Dîner de cons", "Amélie"], a: "Intouchables" },
+  { th: "ecran", t: "qcm", q: "Quelle série espagnole suit un braquage de la Fabrique nationale de la monnaie ?", o: ["Élite", "La Casa de Papel", "Narcos", "Vis a vis"], a: "La Casa de Papel" },
+  { th: "ecran", t: "qcm", q: "Dans quel film Neo découvre-t-il la vérité sur sa réalité ?", o: ["Matrix", "Inception", "Interstellar", "Tron"], a: "Matrix" },
+  { th: "ecran", t: "qcm", q: "Quel film de 2023 met en scène une poupée rose dans le monde réel ?", o: ["Barbie", "Oppenheimer", "Mario", "Wonka"], a: "Barbie" },
+  { th: "ecran", t: "qcm", q: "Quelle série médiévale fantastique met en scène le Trône de fer ?", o: ["Vikings", "Game of Thrones", "The Witcher", "Rome"], a: "Game of Thrones" },
+  { th: "ecran", t: "qcm", q: "Quel film d'animation japonais raconte l'histoire de Chihiro ?", o: ["Mon voisin Totoro", "Le Voyage de Chihiro", "Princesse Mononoké", "Akira"], a: "Le Voyage de Chihiro" },
+  { th: "ecran", t: "qcm", q: "Quel acteur incarne Forrest Gump ?", o: ["Tom Hanks", "Brad Pitt", "Kevin Costner", "Robin Williams"], a: "Tom Hanks" },
+  { th: "ecran", t: "qcm", q: "Quelle série médicale se déroule au Grey Sloan Memorial ?", o: ["Urgences", "Grey's Anatomy", "Dr House", "New Amsterdam"], a: "Grey's Anatomy" },
+  { th: "ecran", t: "qcm", q: "Quel film suit la quête d'un anneau unique ?", o: ["Harry Potter", "Le Seigneur des anneaux", "Narnia", "Eragon"], a: "Le Seigneur des anneaux" },
+  { th: "ecran", t: "qcm", q: "Qui a réalisé Inception ?", o: ["Christopher Nolan", "Denis Villeneuve", "Ridley Scott", "James Cameron"], a: "Christopher Nolan" },
+  { th: "ecran", t: "qcm", q: "Quel film Disney met en scène Simba ?", o: ["Le Roi lion", "Le Livre de la jungle", "Tarzan", "Bambi"], a: "Le Roi lion" },
+  { th: "ecran", t: "qcm", q: "Quelle série française met en scène un gentleman cambrioleur inspiré d'Arsène Lupin ?", o: ["Lupin", "Dix pour cent", "Le Bureau des légendes", "Engrenages"], a: "Lupin" },
+  { th: "ecran", t: "qcm", q: "Quel acteur incarne John Wick ?", o: ["Keanu Reeves", "Tom Cruise", "Jason Statham", "Liam Neeson"], a: "Keanu Reeves" },
+  { th: "ecran", t: "qcm", q: "Quel film d'horreur met en scène le clown Grippe-Sou ?", o: ["Ça", "Halloween", "Freddy", "Conjuring"], a: "Ça" },
+  { th: "ecran", t: "qcm", q: "Quel film Pixar met en scène des jouets qui prennent vie ?", o: ["Toy Story", "Cars", "Là-haut", "Ratatouille"], a: "Toy Story" },
+  { th: "ecran", t: "qcm", q: "Quel film met en scène des dinosaures dans un parc ?", o: ["Jurassic Park", "Godzilla", "King Kong", "Le Monde perdu"], a: "Jurassic Park" },
+  { th: "ecran", t: "qcm", q: "Quel acteur incarne Sherlock dans la série Sherlock de la BBC ?", o: ["Martin Freeman", "Benedict Cumberbatch", "Tom Hiddleston", "Eddie Redmayne"], a: "Benedict Cumberbatch" },
+  { th: "ecran", t: "qcm", q: "Quel film français suit Amélie Poulain à Montmartre ?", o: ["Le Fabuleux Destin d'Amélie Poulain", "La Haine", "Les Choristes", "Le Dîner de cons"], a: "Le Fabuleux Destin d'Amélie Poulain" },
+  { th: "ecran", t: "qcm", q: "Quel film de boxe met en scène Rocky Balboa ?", o: ["Rocky", "Raging Bull", "Creed", "Ali"], a: "Rocky" },
+  { th: "ecran", t: "qcm", q: "Quel film de science-fiction met en scène un extraterrestre perdu sur Terre ?", o: ["E.T.", "Alien", "Close Encounters", "Signes"], a: "E.T." },
+  { th: "ecran", t: "qcm", q: "Quelle série met en scène des survivants face à des zombies ?", o: ["The Walking Dead", "The Last of Us", "Z Nation", "Black Summer"], a: "The Walking Dead" },
+  { th: "ecran", t: "qcm", q: "Quelle actrice française a joué dans La Môme ?", o: ["Audrey Tautou", "Marion Cotillard", "Léa Seydoux", "Isabelle Huppert"], a: "Marion Cotillard" },
+  { th: "ecran", t: "qcm", q: "Quel film d'animation Pixar met en scène un poisson clown nommé Nemo ?", o: ["Le Monde de Nemo", "Dory", "Océans", "La Petite Sirène"], a: "Le Monde de Nemo" },
+  { th: "ecran", t: "qcm", q: "Quelle série suit un professeur de chimie devenu trafiquant ?", o: ["Breaking Bad", "Better Call Saul", "Narcos", "Ozark"], a: "Breaking Bad" },
+  { th: "ecran", t: "qcm", q: "Quelle sitcom suit six amis à New York ?", o: ["Friends", "How I Met Your Mother", "The Big Bang Theory", "Seinfeld"], a: "Friends" },
+  { th: "ecran", t: "qcm", q: "Quelle série coréenne met en scène des jeux d'enfants mortels ?", o: ["Squid Game", "Alice in Borderland", "Sweet Home", "Kingdom"], a: "Squid Game" },
+  { th: "ecran", t: "qcm", q: "Quel film de 1994 raconte la vie de Forrest Gump à travers l'histoire américaine ?", o: ["Forrest Gump", "Philadelphia", "Apollo 13", "Big"], a: "Forrest Gump" },
+  { th: "ecran", t: "qcm", q: "Quel film de Ridley Scott se déroule dans la Rome antique ?", o: ["Gladiator", "Troie", "300", "Ben-Hur"], a: "Gladiator" },
+  { th: "ecran", t: "qcm", q: "Quel film de Robert Zemeckis utilise une DeLorean voyageant dans le temps ?", o: ["Retour vers le futur", "Contact", "Forrest Gump", "Qui veut la peau de Roger Rabbit"], a: "Retour vers le futur" },
+  { th: "ecran", t: "film", q: "De quel film parle ce résumé ?", sum: "Une serveuse parisienne rêveuse décide d'aider les autres à Montmartre.", h: "Un film français de 2001.", a: "Le Fabuleux Destin d'Amélie Poulain", alt: ["Amélie", "Amelie"] },
+  { th: "ecran", t: "film", q: "De quel film parle ce résumé ?", sum: "Trois amis de banlieue vivent une journée qui bascule après une nuit de violence policière.", h: "Un film français de Mathieu Kassovitz.", a: "La Haine" },
+  { th: "ecran", t: "film", q: "De quel film parle ce résumé ?", sum: "Un homme simple traverse les décennies de l'histoire américaine sans jamais perdre son cœur.", h: "Avec Tom Hanks.", a: "Forrest Gump" },
+  { th: "ecran", t: "film", q: "De quel film parle ce résumé ?", sum: "Un général romain trahi devient gladiateur pour se venger de l'empereur.", h: "Avec Russell Crowe.", a: "Gladiator" },
+  { th: "ecran", t: "film", q: "De quel film parle ce résumé ?", sum: "Un adolescent voyage dans le temps grâce à une voiture modifiée par un savant fou.", h: "Une trilogie des années 1980.", a: "Retour vers le futur", alt: ["Back to the Future"] },
+  { th: "ecran", t: "serie", q: "De quelle série parle ce résumé ?", sum: "Un cambrioleur charismatique s'inspire d'Arsène Lupin pour venger son père.", h: "Une série française avec Omar Sy.", a: "Lupin" },
+  { th: "ecran", t: "serie", q: "De quelle série parle ce résumé ?", sum: "Des survivants tentent de rester en vie après une épidémie de zombies.", h: "Adaptée d'une bande dessinée.", a: "The Walking Dead" },
+  { th: "ecran", t: "serie", q: "De quelle série parle ce résumé ?", sum: "Une équipe de braqueurs prend d'assaut la Fabrique nationale de la monnaie espagnole.", h: "Une série espagnole.", a: "La Casa de Papel", alt: ["Money Heist"] },
+  { th: "ecran", t: "vf", q: "Titanic a été réalisé par James Cameron.", a: true },
+  { th: "ecran", t: "vf", q: "Dark Vador est un personnage de Star Trek.", a: false },
+  { th: "ecran", t: "vf", q: "Friends se déroule à New York.", a: true },
+  { th: "ecran", t: "vf", q: "Le Voyage de Chihiro est un film Pixar.", a: false },
+  { th: "ecran", t: "vf", q: "Matrix est sorti en 1999.", a: true },
+  { th: "ecran", t: "vf", q: "La Casa de Papel est une série espagnole.", a: true },
+  { th: "ecran", t: "vf", q: "Le Parrain a été réalisé par Martin Scorsese.", a: false },
+  { th: "ecran", t: "vf", q: "Toy Story est le premier long métrage entièrement en images de synthèse.", a: true },
+
+  /* Musique */
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Bohemian Rhapsody ?", o: ["The Beatles", "Queen", "Led Zeppelin", "Pink Floyd"], a: "Queen" },
+  { th: "musique", t: "qcm", q: "Quel groupe britannique vient de Liverpool ?", o: ["The Rolling Stones", "The Beatles", "The Who", "Oasis"], a: "The Beatles" },
+  { th: "musique", t: "qcm", q: "Qui chante Rolling in the Deep ?", o: ["Rihanna", "Adele", "Beyoncé", "Taylor Swift"], a: "Adele" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Stairway to Heaven ?", o: ["Led Zeppelin", "Deep Purple", "Black Sabbath", "The Doors"], a: "Led Zeppelin" },
+  { th: "musique", t: "qcm", q: "Qui a chanté Thriller ?", o: ["Prince", "Michael Jackson", "Stevie Wonder", "Lionel Richie"], a: "Michael Jackson" },
+  { th: "musique", t: "qcm", q: "Quelle chanteuse française a popularisé La Vie en rose ?", o: ["Dalida", "Édith Piaf", "Barbara", "Juliette Gréco"], a: "Édith Piaf" },
+  { th: "musique", t: "qcm", q: "Quel groupe irlandais a pour chanteur Bono ?", o: ["U2", "The Cranberries", "The Script", "Thin Lizzy"], a: "U2" },
+  { th: "musique", t: "qcm", q: "Qui chante Shape of You ?", o: ["Ed Sheeran", "Sam Smith", "James Blunt", "Shawn Mendes"], a: "Ed Sheeran" },
+  { th: "musique", t: "qcm", q: "Qui chante Bad Guy ?", o: ["Billie Eilish", "Lorde", "Halsey", "Dua Lipa"], a: "Billie Eilish" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Wonderwall ?", o: ["Blur", "Oasis", "Pulp", "The Verve"], a: "Oasis" },
+  { th: "musique", t: "qcm", q: "Qui chante Hotline Bling ?", o: ["Drake", "Kanye West", "Kendrick Lamar", "Travis Scott"], a: "Drake" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Smells Like Teen Spirit ?", o: ["Pearl Jam", "Nirvana", "Soundgarden", "Alice in Chains"], a: "Nirvana" },
+  { th: "musique", t: "qcm", q: "Qui chante Rocket Man ?", o: ["Elton John", "David Bowie", "Freddie Mercury", "Phil Collins"], a: "Elton John" },
+  { th: "musique", t: "qcm", q: "Qui chante Umbrella ?", o: ["Beyoncé", "Rihanna", "Nicki Minaj", "Alicia Keys"], a: "Rihanna" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Yellow ?", o: ["Coldplay", "Radiohead", "Keane", "Snow Patrol"], a: "Coldplay" },
+  { th: "musique", t: "qcm", q: "Qui a chanté Purple Rain ?", o: ["Michael Jackson", "Prince", "Rick James", "Stevie Wonder"], a: "Prince" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Highway to Hell ?", o: ["AC/DC", "Guns N' Roses", "Metallica", "Aerosmith"], a: "AC/DC" },
+  { th: "musique", t: "qcm", q: "Quel groupe norvégien interprète Take On Me ?", o: ["A-ha", "Roxette", "ABBA", "Europe"], a: "A-ha" },
+  { th: "musique", t: "qcm", q: "Qui chante Waka Waka ?", o: ["Shakira", "Jennifer Lopez", "Ricky Martin", "Enrique Iglesias"], a: "Shakira" },
+  { th: "musique", t: "qcm", q: "Quel groupe suédois interprète Dancing Queen ?", o: ["ABBA", "Roxette", "Ace of Base", "Europe"], a: "ABBA" },
+  { th: "musique", t: "qcm", q: "Quel instrument est associé à Jimi Hendrix ?", o: ["La batterie", "La guitare électrique", "Le piano", "La basse"], a: "La guitare électrique" },
+  { th: "musique", t: "qcm", q: "Qui a chanté My Way ?", o: ["Frank Sinatra", "Dean Martin", "Nat King Cole", "Tony Bennett"], a: "Frank Sinatra" },
+  { th: "musique", t: "qcm", q: "Qui chante Halo ?", o: ["Beyoncé", "Alicia Keys", "Mary J. Blige", "Janet Jackson"], a: "Beyoncé" },
+  { th: "musique", t: "qcm", q: "Qui chante Lose Yourself ?", o: ["Eminem", "50 Cent", "Jay-Z", "Nas"], a: "Eminem" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Clocks ?", o: ["Coldplay", "Muse", "Radiohead", "Travis"], a: "Coldplay" },
+  { th: "musique", t: "qcm", q: "Qui a chanté Imagine ?", o: ["John Lennon", "Paul McCartney", "George Harrison", "Elton John"], a: "John Lennon" },
+  { th: "musique", t: "qcm", q: "Qui chante Like a Prayer ?", o: ["Madonna", "Cyndi Lauper", "Whitney Houston", "Kylie Minogue"], a: "Madonna" },
+  { th: "musique", t: "qcm", q: "Quel groupe irlandais interprète Zombie ?", o: ["The Cranberries", "U2", "The Corrs", "Sinead O'Connor"], a: "The Cranberries" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Back in Black ?", o: ["AC/DC", "Metallica", "Motörhead", "Iron Maiden"], a: "AC/DC" },
+  { th: "musique", t: "qcm", q: "Quel instrument Mozart jouait-il principalement ?", o: ["Le violon", "Le piano-forte", "La flûte", "Le violoncelle"], a: "Le piano-forte" },
+  { th: "musique", t: "qcm", q: "Qui a composé Les Quatre Saisons ?", o: ["Bach", "Vivaldi", "Haendel", "Mozart"], a: "Vivaldi" },
+  { th: "musique", t: "qcm", q: "Quel groupe interprète Sweet Child O' Mine ?", o: ["Guns N' Roses", "Bon Jovi", "Aerosmith", "Def Leppard"], a: "Guns N' Roses" },
+  { th: "musique", t: "qcm", q: "Qui chante Rolling in the Deep et Hello ?", o: ["Adele", "Sam Smith", "Amy Winehouse", "Duffy"], a: "Adele" },
+  { th: "musique", t: "qcm", q: "Quel rappeur français a sorti l'album Fenêtre sur rue ?", o: ["Booba", "Nekfeu", "Damso", "Orelsan"], a: "Nekfeu" },
+  { th: "musique", t: "qcm", q: "Qui chante Djadja ?", o: ["Aya Nakamura", "Dadju", "Soprano", "Vitaa"], a: "Aya Nakamura" },
+  { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le chanteur.", l: "L V I S", h: "Le King du rock'n'roll", a: "ELVIS" },
+  { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'instrument.", l: "A R U T I G E", h: "À six cordes", a: "GUITARE" },
+  { th: "musique", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le groupe.", l: "E T A B E L S", h: "Quatre garçons de Liverpool", a: "BEATLES" },
+  { th: "musique", t: "vf", q: "Mozart est né en Autriche.", a: true },
+  { th: "musique", t: "vf", q: "Le piano possède 88 touches.", a: true },
+  { th: "musique", t: "vf", q: "Beethoven était sourd à la fin de sa vie.", a: true },
+  { th: "musique", t: "vf", q: "ABBA est un groupe norvégien.", a: false },
+  { th: "musique", t: "vf", q: "La guitare acoustique possède six cordes.", a: true },
+  { th: "musique", t: "vf", q: "Queen a sorti Bohemian Rhapsody en 1975.", a: true },
+
+  /* Sport */
+  { th: "sport", t: "qcm", q: "Dans quel pays se trouve le Real Madrid ?", o: ["L'Italie", "L'Espagne", "Le Portugal", "La France"], a: "L'Espagne" },
+  { th: "sport", t: "qcm", q: "Le Tour de France est une compétition de quel sport ?", o: ["Course à pied", "Cyclisme", "Natation", "Rallye"], a: "Cyclisme" },
+  { th: "sport", t: "qcm", q: "Dans quel pays le sumo est-il un sport national ?", o: ["La Chine", "Le Japon", "La Corée du Sud", "La Thaïlande"], a: "Le Japon" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Lionel Messi ?", o: ["Le football", "Le rugby", "Le tennis", "Le handball"], a: "Le football" },
+  { th: "sport", t: "qcm", q: "Quel sport utilise un volant ?", o: ["Le tennis de table", "Le badminton", "Le squash", "Le tennis"], a: "Le badminton" },
+  { th: "sport", t: "qcm", q: "Quel sport a rendu Michael Jordan célèbre ?", o: ["Le baseball", "Le basket", "Le football américain", "Le hockey"], a: "Le basket" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Serena Williams ?", o: ["Le tennis", "Le golf", "L'athlétisme", "La natation"], a: "Le tennis" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Simone Biles ?", o: ["La gymnastique", "L'athlétisme", "La natation", "Le plongeon"], a: "La gymnastique" },
+  { th: "sport", t: "qcm", q: "Quel tournoi de tennis se joue sur gazon ?", o: ["Roland-Garros", "Wimbledon", "L'US Open", "L'Open d'Australie"], a: "Wimbledon" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Lewis Hamilton ?", o: ["La Formule 1", "Le MotoGP", "Le rallye", "Le karting"], a: "La Formule 1" },
+  { th: "sport", t: "qcm", q: "Combien de joueurs compte une équipe de handball sur le terrain ?", o: ["5", "6", "7", "8"], a: "7" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Novak Djokovic ?", o: ["Le tennis", "Le football", "Le basket", "Le golf"], a: "Le tennis" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Kylian Mbappé ?", o: ["Le football", "Le rugby", "Le tennis", "Le handball"], a: "Le football" },
+  { th: "sport", t: "qcm", q: "De quel pays le judo est-il originaire ?", o: ["La Chine", "Le Japon", "La Corée", "Le Brésil"], a: "Le Japon" },
+  { th: "sport", t: "qcm", q: "Quel sport a rendu Tony Parker célèbre ?", o: ["Le basket", "Le football", "Le tennis", "Le rugby"], a: "Le basket" },
+  { th: "sport", t: "qcm", q: "Combien de points vaut un essai au rugby ?", o: ["3", "5", "7", "10"], a: "5" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Zinédine Zidane ?", o: ["Le football", "Le basket", "Le tennis", "Le handball"], a: "Le football" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Tiger Woods ?", o: ["Le golf", "Le tennis", "Le cricket", "Le base-ball"], a: "Le golf" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Usain Bolt ?", o: ["L'athlétisme", "La natation", "Le cyclisme", "La boxe"], a: "L'athlétisme" },
+  { th: "sport", t: "qcm", q: "Quel sport pratique Florent Manaudou ?", o: ["La natation", "L'athlétisme", "Le plongeon", "L'aviron"], a: "La natation" },
+  { th: "sport", t: "qcm", q: "Quel pays a inventé le cricket moderne ?", o: ["L'Inde", "L'Angleterre", "L'Australie", "Le Pakistan"], a: "L'Angleterre" },
+  { th: "sport", t: "qcm", q: "Quel sport se joue avec un ballon ovale et des essais ?", o: ["Le rugby", "Le football", "Le handball", "Le basket"], a: "Le rugby" },
+  { th: "sport", t: "qcm", q: "Quel Grand Chelem de tennis se joue à Paris ?", o: ["Wimbledon", "Roland-Garros", "L'US Open", "L'Open d'Australie"], a: "Roland-Garros" },
+  { th: "sport", t: "vf", q: "Le football se joue avec onze joueurs par équipe.", a: true },
+  { th: "sport", t: "vf", q: "Le Tour de France est une course de motos.", a: false },
+  { th: "sport", t: "vf", q: "Le basket se joue avec un ballon orange.", a: true },
+  { th: "sport", t: "vf", q: "Le judo est un sport de combat japonais.", a: true },
+  { th: "sport", t: "vf", q: "Un match de tennis se joue toujours en trois sets.", a: false },
+
+  /* People */
+  { th: "people", t: "qcm", q: "Quel acteur incarne Ethan Hunt dans Mission Impossible ?", o: ["Tom Cruise", "Brad Pitt", "Matt Damon", "Keanu Reeves"], a: "Tom Cruise" },
+  { th: "people", t: "qcm", q: "Qui chante Shake It Off ?", o: ["Taylor Swift", "Ariana Grande", "Katy Perry", "Selena Gomez"], a: "Taylor Swift" },
+  { th: "people", t: "qcm", q: "Quel entrepreneur dirige Tesla et SpaceX ?", o: ["Jeff Bezos", "Elon Musk", "Mark Zuckerberg", "Bill Gates"], a: "Elon Musk" },
+  { th: "people", t: "qcm", q: "Quel rappeur français est surnommé le Duc de Boulogne ?", o: ["Booba", "Kaaris", "Soprano", "Rohff"], a: "Booba" },
+  { th: "people", t: "qcm", q: "Quel footballeur portugais est surnommé CR7 ?", o: ["Cristiano Ronaldo", "Luis Figo", "Eusébio", "Bernardo Silva"], a: "Cristiano Ronaldo" },
+  { th: "people", t: "qcm", q: "Quel acteur a incarné Black Panther ?", o: ["Michael B. Jordan", "Chadwick Boseman", "Anthony Mackie", "Idris Elba"], a: "Chadwick Boseman" },
+  { th: "people", t: "qcm", q: "Quel acteur incarne Jack Dawson dans Titanic ?", o: ["Leonardo DiCaprio", "Brad Pitt", "Johnny Depp", "Matt Damon"], a: "Leonardo DiCaprio" },
+  { th: "people", t: "qcm", q: "Quel youtubeur français a lancé le GP Explorer ?", o: ["Squeezie", "Cyprien", "Norman", "Amixem"], a: "Squeezie" },
+  { th: "people", t: "qcm", q: "Qui chante Blinding Lights ?", o: ["The Weeknd", "Drake", "Post Malone", "Bruno Mars"], a: "The Weeknd" },
+  { th: "people", t: "qcm", q: "Quelle actrice a joué Rachel dans Friends ?", o: ["Jennifer Aniston", "Courteney Cox", "Lisa Kudrow", "Julia Roberts"], a: "Jennifer Aniston" },
+  { th: "people", t: "qcm", q: "Quel acteur est surnommé The Rock ?", o: ["Dwayne Johnson", "Vin Diesel", "Jason Momoa", "Dave Bautista"], a: "Dwayne Johnson" },
+  { th: "people", t: "qcm", q: "Quelle chanteuse française a interprété Djadja ?", o: ["Aya Nakamura", "Louane", "Angèle", "Vitaa"], a: "Aya Nakamura" },
+  { th: "people", t: "qcm", q: "Quel footballeur argentin a remporté la Coupe du monde 2022 ?", o: ["Lionel Messi", "Sergio Agüero", "Ángel Di María", "Julián Álvarez"], a: "Lionel Messi" },
+  { th: "people", t: "qcm", q: "Quelle chanteuse britannique a interprété New Rules ?", o: ["Dua Lipa", "Adele", "Ellie Goulding", "Rita Ora"], a: "Dua Lipa" },
+  { th: "people", t: "qcm", q: "Quel acteur incarne le Joker dans le film de 2019 ?", o: ["Joaquin Phoenix", "Heath Ledger", "Jared Leto", "Jack Nicholson"], a: "Joaquin Phoenix" },
+  { th: "people", t: "qcm", q: "Quelle actrice a joué Mia dans La La Land ?", o: ["Emma Stone", "Emma Watson", "Jennifer Lawrence", "Natalie Portman"], a: "Emma Stone" },
+  { th: "people", t: "qcm", q: "Quel rappeur canadien a sorti God's Plan ?", o: ["Drake", "The Weeknd", "Nav", "Tory Lanez"], a: "Drake" },
+  { th: "people", t: "qcm", q: "Quel acteur français a joué dans Intouchables aux côtés d'Omar Sy ?", o: ["François Cluzet", "Jean Dujardin", "Gad Elmaleh", "Dany Boon"], a: "François Cluzet" },
+  { th: "people", t: "qcm", q: "Quelle chanteuse a interprété Rolling in the Deep et Easy on Me ?", o: ["Adele", "Amy Winehouse", "Lana Del Rey", "Florence Welch"], a: "Adele" },
+
+  /* Langue, anagrammes, charades et petit bac */
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'animal.", l: "T A H C", h: "Il miaule", a: "CHAT" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'animal.", l: "N I E H C", h: "Il aboie", a: "CHIEN" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le lieu.", l: "S O I A M N", h: "On y habite", a: "MAISON" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le lieu.", l: "D I N J A R", h: "On y plante des fleurs", a: "JARDIN" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "V I L E R", h: "On le lit", a: "LIVRE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "B A L E T", h: "On y mange", a: "TABLE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le fruit.", l: "G A N O R E", h: "Elle est orange", a: "ORANGE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le fruit.", l: "N A B A N E", h: "Elle est jaune", a: "BANANE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'astre.", l: "L I E O S L", h: "Il brille le jour", a: "SOLEIL" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'astre.", l: "N U L E", h: "Elle brille la nuit", a: "LUNE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'astre.", l: "T O I L E E", h: "Elle scintille", a: "ETOILE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le cours d'eau.", l: "R I E V I R E", h: "Elle finit dans un fleuve", a: "RIVIERE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le relief.", l: "N O M A G T E N", h: "Elle culmine", a: "MONTAGNE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le véhicule.", l: "T U R O V I E", h: "Elle a quatre roues", a: "VOITURE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le véhicule.", l: "C Y C L I T E B", h: "Elle a deux roues", a: "BICYCLETTE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "P H O N E T E L E", h: "On l'appelle", a: "TELEPHONE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "R O D I N A T E U R", h: "Il a un clavier", a: "ORDINATEUR" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'art.", l: "S I Q U E M U", h: "On l'écoute", a: "MUSIQUE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'art.", l: "S E D A N", h: "On la pratique en rythme", a: "DANSE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'art.", l: "T U R E N I P", h: "On la regarde au musée", a: "PEINTURE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'activité.", l: "S I N E C U", h: "On y prépare les repas", a: "CUISINE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le mot.", l: "G A V O Y E", h: "On le fait en vacances", a: "VOYAGE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le mot.", l: "C A N C E S A V", h: "On les attend avec impatience", a: "VACANCES" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le sentiment.", l: "T I M A I E", h: "Entre amis", a: "AMITIE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le mot.", l: "M I L L E F A", h: "On en fait partie", a: "FAMILLE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le lieu.", l: "C O L E E", h: "On y apprend", a: "ECOLE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le métier.", l: "P R O F E S S E U R", h: "Il enseigne", a: "PROFESSEUR" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "C A H I E R", h: "On écrit dedans", a: "CAHIER" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "Y O N C R A", h: "On dessine avec", a: "CRAYON" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "M E G O M", h: "Elle efface", a: "GOMME" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "S E T R O U S", h: "On y range ses crayons", a: "TROUSSE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver le lieu.", l: "S E L C A S", h: "On y fait cours", a: "CLASSE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "P I P E R A", h: "On écrit dessus", a: "PAPIER" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "T E N E F E R", h: "Elle laisse passer la lumière", a: "FENETRE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "R O P E T", h: "On l'ouvre", a: "PORTE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "S I A H C E", h: "On s'assied dessus", a: "CHAISE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "M A L P E", h: "Elle éclaire", a: "LAMPE" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "P I T A S", h: "On marche dessus", a: "TAPIS" },
+  { th: "langue", t: "ana", q: "Remets les lettres dans l'ordre pour trouver l'objet.", l: "R I D A E U", h: "Il cache la fenêtre", a: "RIDEAU" },
+  { th: "langue", t: "qcm", q: "Quel est le synonyme de « rapide » ?", o: ["Lent", "Vif", "Lourd", "Calme"], a: "Vif" },
+  { th: "langue", t: "qcm", q: "Quel est l'antonyme de « chaud » ?", o: ["Brûlant", "Froid", "Tiède", "Doux"], a: "Froid" },
+  { th: "langue", t: "qcm", q: "Quel est le pluriel de « genou » ?", o: ["Genous", "Genoux", "Genoues", "Genouxs"], a: "Genoux" },
+  { th: "langue", t: "qcm", q: "Quel est le féminin de « chanteur » ?", o: ["Chanteuse", "Chanteure", "Chantrice", "Chanteureuse"], a: "Chanteuse" },
+  { th: "langue", t: "qcm", q: "Combien de syllabes compte le mot « bibliothèque » ?", o: ["3", "4", "5", "6"], a: "4" },
+  { th: "langue", t: "qcm", q: "Quelle est la nature du mot « et » ?", o: ["Un adverbe", "Une conjonction", "Un pronom", "Un adjectif"], a: "Une conjonction" },
+  { th: "langue", t: "qcm", q: "Quel mot est un synonyme de « beau » ?", o: ["Joli", "Laid", "Sale", "Triste"], a: "Joli" },
+  { th: "langue", t: "qcm", q: "Quel est l'antonyme de « gagner » ?", o: ["Perdre", "Trouver", "Acheter", "Garder"], a: "Perdre" },
+  { th: "langue", t: "qcm", q: "Quel est le pluriel de « travail » ?", o: ["Travailles", "Travaux", "Travaix", "Travails"], a: "Travaux" },
+  { th: "langue", t: "qcm", q: "Quel est le féminin de « roi » ?", o: ["Reine", "Roisse", "Royale", "Roinne"], a: "Reine" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un oiseau noir.\nMon deuxième est une note de musique.\nMon tout est un dessert.", h: "Un gâteau", a: "CORNEILLE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est le contraire de haut.\nMon deuxième est une boisson chaude.\nMon tout est un vêtement.", h: "On le porte", a: "BAS-THE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est une lettre de l'alphabet.\nMon deuxième est un article.\nMon tout est un animal.", h: "Il vit dans l'eau", a: "CARPE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est une couleur.\nMon deuxième est le contraire de tard.\nMon tout est un légume.", h: "Il est orange", a: "CAROTTE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est un son.\nMon deuxième est une voyelle.\nMon tout est un instrument.", h: "À cordes", a: "GUITARE" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est le contraire de rapide.\nMon deuxième est une note.\nMon tout est un adjectif.", h: "Pas pressé", a: "LENT" },
+  { th: "langue", t: "rebus", q: "Charade : devine le mot caché.", puzzle: "Mon premier est une partie du corps.\nMon deuxième est une boisson.\nMon tout est un métier.", h: "Il soigne", a: "MEDECIN" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un fruit", l: "O", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un animal", l: "E", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Une couleur", l: "J", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un pays", l: "I", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un métier", l: "B", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un sport", l: "G", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un objet de la maison", l: "N", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Une ville", l: "M", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un aliment", l: "P", free: true, a: "" },
+  { th: "langue", t: "bac", q: "Petit bac : trouve un mot qui commence par cette lettre.", cat: "Un animal marin", l: "R", free: true, a: "" },
+  { th: "langue", t: "vf", q: "Le mot « autruche » commence par la lettre A.", a: true },
+  { th: "langue", t: "vf", q: "Le pluriel de « cheval » est « chevals ».", a: false },
+  { th: "langue", t: "vf", q: "Le mot « rapidement » est un adverbe.", a: true },
+  { th: "langue", t: "vf", q: "Un synonyme de « maison » est « demeure ».", a: true },
 ];
 
 /* -------------------------------- Aides ---------------------------------- */
@@ -492,11 +855,41 @@ const typeLabel = (t) =>
 const themeLabel = (id) => (THEMES.find((t) => t.id === id) || { label: id }).label;
 const themeEmoji = (id) => (THEMES.find((t) => t.id === id) || { emoji: "🎲" }).emoji;
 
-/** Sélectionne les questions selon les thèmes, avec un quota de réponses libres. */
+const RECENT_KEY = "soiree:cg_recent";
+const RECENT_MAX = 240;
+const qKey = (q) =>
+  [
+    q.t,
+    q.q,
+    q.a || q.puzzle || q.sum || q.cat || "",
+    // `l` n'est utile que pour distinguer les petits bac ; les anagrammes le
+    // voient muter au démarrage, ce qui casserait la mémoire des questions vues.
+    q.t === "bac" ? q.l || "" : "",
+  ].join("|");
+const loadRecent = () => {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    return Array.isArray(list) ? list.filter((x) => typeof x === "string") : [];
+  } catch (_) {
+    return [];
+  }
+};
+const saveRecent = (keys) => {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify([...new Set(keys)].slice(0, RECENT_MAX)));
+  } catch (_) {}
+};
+
+/** Sélectionne les questions selon les thèmes, avec un quota de réponses libres.
+    Les questions déjà vues récemment passent en dernier pour éviter les boucles. */
 function pickQuestions(themes, n) {
   const active = new Set(themes && themes.length ? themes : THEMES.map((t) => t.id));
-  let pool = shuffle(BANK.filter((q) => active.has(q.th)));
+  const recent = new Set(loadRecent());
+  const themed = BANK.filter((q) => active.has(q.th));
+  const fresh = themed.filter((q) => !recent.has(qKey(q)));
+  let pool = shuffle(fresh.length >= n ? fresh : themed);
   if (!pool.length) pool = shuffle(BANK.slice());
+  // Si le thème choisi est presque épuisé, on complète avec les autres thèmes.
   if (pool.length < n) pool = pool.concat(shuffle(BANK.filter((q) => !pool.includes(q))));
   const sub = shuffle(pool.filter((q) => SUBJECTIVE.has(q.t)));
   const obj = shuffle(pool.filter((q) => !SUBJECTIVE.has(q.t)));
@@ -506,7 +899,9 @@ function pickQuestions(themes, n) {
     const rest = shuffle(pool.filter((q) => !picked.includes(q)));
     picked.push(...rest.slice(0, n - picked.length));
   }
-  return shuffle(picked).slice(0, n);
+  const out = shuffle(picked).slice(0, n);
+  saveRecent(out.map(qKey).concat(loadRecent()));
+  return out;
 }
 
 /* -------------------------------- État ----------------------------------- */
@@ -673,6 +1068,11 @@ function startGame() {
     qs: selected.map((q) => {
       const c = { ...q };
       if (c.o) c.o = shuffle(c.o);
+      // Les banques peuvent contenir les lettres déjà ordonnées : on mélange
+      // toujours à partir de la réponse, jamais à partir du champ `l` fourni.
+      if (c.t === "ana" && typeof CG_LETTERS !== "undefined") {
+        c.l = CG_LETTERS.scrambleWord(c.a || c.l);
+      }
       return c;
     }),
     answers: {},
@@ -736,7 +1136,9 @@ function hostAnswer(pid, v) {
   S.ansN = S.answered.length;
   S.lastAnswerAt = Net.now();
   bc();
-  if (isHost) render();
+  // Pas de reconstruction complète à chaque réponse : cela faisait clignoter
+  // l'écran de l'hôte et pouvait vider le champ en cours de saisie.
+  if (isHost) updateStatus();
 }
 
 /** Passe en phase de validation par l'hôte (questions subjectives). */

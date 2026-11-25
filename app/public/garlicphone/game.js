@@ -14,8 +14,9 @@ const ROOM = (c) => "gp-" + c;
 const MIN = 2;
 const MAX = 8;
 const TEXT_MAX = 180;
-const CANVAS_W = 480;
-const CANVAS_H = 300;
+// Zone de dessin plus grande et plus confortable (ratio 16/10).
+const CANVAS_W = 960;
+const CANVAS_H = 600;
 
 const SUGGESTIONS = [
   "Un chat qui pilote un avion de chasse",
@@ -42,14 +43,23 @@ const SUGGESTIONS = [
 
 const COLORS = [
   ["#2a2118", "Noir"],
+  ["#5b4a3a", "Crayon"],
+  ["#8c7a63", "Terre"],
+  ["#ffffff", "Blanc"],
   ["#e2543e", "Tomate"],
+  ["#f06a3c", "Mandarine"],
   ["#f0a12c", "Moutarde"],
+  ["#f7d94c", "Soleil"],
   ["#8fbf5a", "Basilic"],
   ["#3f9b8f", "Menthe"],
+  ["#2aa8c9", "Océan"],
   ["#3f74c9", "Myrtille"],
+  ["#5b5bd6", "Indigo"],
   ["#7b4bb7", "Ail"],
   ["#d94f8a", "Framboise"],
+  ["#f2a7c3", "Rose"],
 ];
+const BRUSH_SIZES = [3, 6, 11, 18, 28];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const app = () => document.querySelector("#app");
@@ -89,6 +99,8 @@ const L = {
   suggestions: [],
   draw: null,
   prompt: null,
+  sentShot: {},
+  autoStep: -1,
 };
 
 function newState() {
@@ -129,13 +141,13 @@ function blankDrawing() {
     g.fillStyle = "#fffdf6";
     g.fillRect(0, 0, CANVAS_W, CANVAS_H);
     g.fillStyle = "#cbbfa6";
-    g.font = "700 24px system-ui, sans-serif";
+    g.font = "700 32px system-ui, sans-serif";
     g.textAlign = "center";
     g.fillText("(temps écoulé)", CANVAS_W / 2, CANVAS_H / 2);
-    blankCache = c.toDataURL("image/webp", 0.5);
+    blankCache = c.toDataURL("image/webp", 0.45);
   } catch (_) {
     blankCache = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300"><rect width="480" height="300" fill="#fffdf6"/><text x="240" y="155" text-anchor="middle" font-size="24" fill="#cbbfa6">(temps écoulé)</text></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600"><rect width="960" height="600" fill="#fffdf6"/><text x="480" y="310" text-anchor="middle" font-size="32" fill="#cbbfa6">(temps écoulé)</text></svg>',
     );
   }
   return blankCache;
@@ -153,9 +165,9 @@ function buildPrompts(step) {
   (S.pl || []).forEach((p) => {
     const ci = chainFor(p.id, step);
     const prev = ci >= 0 ? H.chains[ci]?.entries[step - 1] : null;
-    out[p.id] = prev
-      ? { kind: prev.kind, value: prev.value, by: prev.by }
-      : null;
+    // On ne transmet pas l'auteur pendant la partie : les noms ne sont
+    // révélés que dans l'album final.
+    out[p.id] = prev ? { kind: prev.kind, value: prev.value } : null;
   });
   return out;
 }
@@ -262,6 +274,8 @@ function startGame() {
   S.endedAt = 0;
   L.sent = {};
   L.draft = {};
+  L.sentShot = {};
+  L.autoStep = -1;
   L.albumView = 0;
   L.suggestions = shuffle(SUGGESTIONS).slice(0, 3);
   L.prompt = null;
@@ -311,7 +325,9 @@ function hostSubmit(d) {
   };
   S.submitted.push(pid);
   bc(false);
-  if (isHost) render();
+  // On ne reconstruit surtout pas l'écran de l'hôte ici : un autre joueur qui
+  // envoie sa copie effaçait le dessin en cours de l'hôte. Le statut est mis à
+  // jour par updateLive(), sans toucher au canvas.
 }
 
 function fillMissing() {
@@ -370,6 +386,8 @@ function resetToLobby() {
   H = { order: [], chains: [], stepEndAt: 0 };
   L.sent = {};
   L.draft = {};
+  L.sentShot = {};
+  L.autoStep = -1;
   L.albumView = 0;
   L.endKey = "";
   L.prompt = null;
@@ -585,12 +603,37 @@ function updateLive() {
       st.classList.toggle("late", timeUp() && !isLockedSafely());
     }
     if (timeUp()) {
+      // Au temps écoulé, on enregistre automatiquement la copie en cours
+      // (dessin compris) au lieu de la remplacer par une image « temps écoulé ».
+      autoSubmit();
       document.querySelectorAll("[data-time-lock]").forEach((el) => {
         el.disabled = true;
       });
-      document.querySelector("#gp-canvas")?.classList.add("timeup");
     }
   }
+}
+
+/** Envoie la copie en cours quand le temps est écoulé. */
+function autoSubmit() {
+  if (!S || S.ph !== "play" || isLockedSafely()) return;
+  if (L.autoStep === S.step) return;
+  L.autoStep = S.step;
+  const kind = stepKind(S.step);
+  if (kind === "draw") {
+    const url = exportDrawing();
+    if (!url) return;
+    L.sentShot[S.step] = url;
+    L.sent[S.step] = true;
+    send({ k: "sub", step: S.step, kind: "draw", value: url });
+  } else {
+    const el = document.querySelector("#gp-text");
+    const raw = el ? el.value : L.draft[S.step];
+    const value = String(raw || "").replace(/\s+/g, " ").trim().slice(0, TEXT_MAX);
+    if (!value) return;
+    L.sent[S.step] = true;
+    send({ k: "sub", step: S.step, kind: "text", value });
+  }
+  render();
 }
 function isLockedSafely() {
   return (S.submitted || []).includes(ME) || !!L.sent[S.step];
@@ -764,14 +807,12 @@ function renderPlay(root) {
   } else if (prompt && prompt.kind === "text") {
     promptHtml = `<div class="gp-prompt">
       <span class="gp-prompt-label">La phrase à dessiner</span>
-      <blockquote class="gp-bubble">“${esc(prompt.value)}”</blockquote>
-      <small class="gp-prompt-by">Proposée par ${esc(nameOf(prompt.by))}</small>
+      <blockquote class="gp-bubble">"${esc(prompt.value)}"</blockquote>
     </div>`;
   } else if (prompt && prompt.kind === "draw") {
     promptHtml = `<div class="gp-prompt">
       <span class="gp-prompt-label">Le dessin à décrire</span>
       <img class="gp-prompt-img" src="${escAttr(prompt.value)}" alt="Dessin à décrire">
-      <small class="gp-prompt-by">Dessiné par ${esc(nameOf(prompt.by))}</small>
     </div>`;
   } else {
     promptHtml = `<div class="gp-prompt"><span class="gp-prompt-label">Improvise !</span>
@@ -780,36 +821,39 @@ function renderPlay(root) {
 
   let action = "";
   if (locked) {
+    const shot = drawStep ? L.sentShot[S.step] : "";
     action = `<div class="gp-sent">
       <div class="gp-stamp">✓</div>
-      <h2>${timeUp() ? "Temps écoulé" : "Copie rendue !"}</h2>
-      <p class="hint">${timeUp() ? "L’hôte va passer à l’étape suivante." : "On attend les retardataires, puis l’histoire continue."}</p>
+      <h2>${drawStep ? (timeUp() ? "Temps écoulé" : "Dessin rendu !") : "Copie rendue !"}</h2>
+      ${shot ? `<img class="gp-sent-shot" src="${escAttr(shot)}" alt="Ton dessin envoyé">` : ""}
+      <p class="hint">${timeUp() ? "Ton dessin reste affiché et rejoint l’histoire. L’hôte passe à la suite." : "On attend les retardataires, puis l’histoire continue."}</p>
     </div>`;
   } else if (drawStep) {
     const colors = COLORS.map(
       ([c, label]) =>
         `<button class="gp-color ${L.draw?.color === c && !L.draw?.eraser ? "on" : ""}" data-a="color" data-v="${c}" type="button" style="--c:${c}" aria-label="${label}" title="${label}"></button>`,
     ).join("");
-    const sizes = [4, 9, 16]
-      .map(
-        (z) =>
-          `<button class="gp-size ${L.draw?.size === z && !L.draw?.eraser ? "on" : ""}" data-a="size" data-v="${z}" type="button" aria-label="Trait ${z}px"><i style="width:${z + 4}px;height:${z + 4}px"></i></button>`,
-      )
-      .join("");
+    const sizes = BRUSH_SIZES.map(
+      (z) =>
+        `<button class="gp-size ${L.draw?.size === z && !L.draw?.eraser ? "on" : ""}" data-a="size" data-v="${z}" type="button" aria-label="Trait ${z}px" title="Trait ${z}px"><i style="width:${Math.min(z + 4, 28)}px;height:${Math.min(z + 4, 28)}px"></i></button>`,
+    ).join("");
+    const tool = (a, label, icon, on) =>
+      `<button class="gp-tool ${on ? "on" : ""}" data-a="${a}" type="button" title="${label}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`;
     action = `<div class="gp-draw">
       <div class="gp-canvas-wrap">
         <canvas id="gp-canvas" width="${CANVAS_W}" height="${CANVAS_H}" aria-label="Zone de dessin"></canvas>
-        <span class="gp-tape t1" aria-hidden="true"></span>
-        <span class="gp-tape t2" aria-hidden="true"></span>
         <span class="gp-canvas-hint" aria-hidden="true">dessine ici</span>
       </div>
       <div class="gp-tools">
         <div class="gp-colors">${colors}</div>
-        <div class="gp-sizes">${sizes}</div>
+        <div class="gp-sizebar"><span class="gp-tool-label">Trait</span><div class="gp-sizes">${sizes}</div></div>
         <div class="gp-toolgroup">
-          <button class="gp-tool ${L.draw?.eraser ? "on" : ""}" data-a="eraser" type="button" title="Gomme">🧽</button>
-          <button class="gp-tool" data-a="undo" type="button" title="Annuler">↶</button>
-          <button class="gp-tool" data-a="clear" type="button" title="Tout effacer">🗑️</button>
+          ${tool("brush", "Crayon", "✏️", !L.draw?.eraser && !L.draw?.fill)}
+          ${tool("eraser", "Gomme", "🧽", L.draw?.eraser)}
+          ${tool("fill", "Remplir", "🪣", L.draw?.fill)}
+          ${tool("undo", "Annuler", "↶", false)}
+          ${tool("redo", "Refaire", "↷", false)}
+          ${tool("clear", "Effacer", "🗑️", false)}
         </div>
       </div>
       <button class="btn primary big" data-a="send-draw" data-time-lock type="button">🖍️ Envoyer mon dessin</button>
@@ -867,10 +911,12 @@ function setupCanvas() {
     canvas,
     ctx: canvas.getContext("2d"),
     strokes: [],
+    redo: [],
     current: null,
     color: L.draw?.color || COLORS[0][0],
-    size: L.draw?.size || 9,
+    size: L.draw?.size || BRUSH_SIZES[2],
     eraser: !!L.draw?.eraser,
+    fill: !!L.draw?.fill,
     key,
   };
   L.draw = d;
@@ -889,10 +935,16 @@ function setupCanvas() {
     if (isLocked() || !S || S.ph !== "play") return;
     e.preventDefault();
     canvas.parentElement?.querySelector(".gp-canvas-hint")?.classList.add("hide");
+    const [x, y] = pos(e);
+    if (d.fill) {
+      floodFill(d.ctx, x, y, d.color);
+      d.strokes.push({ kind: "fill", x, y, color: d.color });
+      d.redo = [];
+      return;
+    }
     try {
       canvas.setPointerCapture(e.pointerId);
     } catch (_) {}
-    const [x, y] = pos(e);
     d.current = {
       color: d.eraser ? "#fffdf6" : d.color,
       size: d.eraser ? 30 : d.size,
@@ -921,6 +973,7 @@ function setupCanvas() {
   const up = () => {
     if (!d.current) return;
     d.strokes.push(d.current);
+    d.redo = [];
     d.current = null;
   };
   canvas.addEventListener("pointerdown", down);
@@ -945,7 +998,16 @@ function drawAll() {
   g.lineCap = "round";
   g.lineJoin = "round";
   for (const s of d.strokes) {
-    if (!s.points.length) continue;
+    if (s.kind === "clear") {
+      g.fillStyle = "#fffdf6";
+      g.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      continue;
+    }
+    if (s.kind === "fill") {
+      floodFill(g, s.x, s.y, s.color);
+      continue;
+    }
+    if (!s.points || !s.points.length) continue;
     if (s.points.length === 1) {
       g.fillStyle = s.color;
       g.beginPath();
@@ -966,31 +1028,97 @@ function drawAll() {
 function refreshTools() {
   const d = L.draw;
   if (!d) return;
+  const plain = !d.eraser && !d.fill;
   document.querySelectorAll(".gp-color").forEach((b) => {
-    b.classList.toggle("on", !d.eraser && b.dataset.v === d.color);
+    b.classList.toggle("on", plain && b.dataset.v === d.color);
   });
   document.querySelectorAll(".gp-size").forEach((b) => {
-    b.classList.toggle("on", !d.eraser && +b.dataset.v === d.size);
+    b.classList.toggle("on", plain && +b.dataset.v === d.size);
   });
   document.querySelector('[data-a="eraser"]')?.classList.toggle("on", d.eraser);
+  document.querySelector('[data-a="fill"]')?.classList.toggle("on", d.fill);
+}
+
+/* Remplissage type pot de peinture (scanline). Les actions sont rejouées par
+   drawAll(), donc le remplissage reste annulable comme un trait. */
+function hexRgb(hex) {
+  const v = String(hex || "").replace("#", "");
+  const n = v.length === 3 ? v.split("").map((c) => c + c).join("") : v;
+  const num = parseInt(n, 16);
+  return Number.isFinite(num) ? [(num >> 16) & 255, (num >> 8) & 255, num & 255] : [0, 0, 0];
+}
+function floodFill(g, x, y, color) {
+  const w = g.canvas.width;
+  const h = g.canvas.height;
+  x = Math.floor(x);
+  y = Math.floor(y);
+  if (x < 0 || y < 0 || x >= w || y >= h) return;
+  const img = g.getImageData(0, 0, w, h);
+  const data = img.data;
+  const start = (y * w + x) * 4;
+  const tr = data[start], tg = data[start + 1], tb = data[start + 2], ta = data[start + 3];
+  const [fr, fg, fb] = hexRgb(color);
+  if (tr === fr && tg === fg && tb === fb && ta === 255) return;
+  const tol = 34;
+  const match = (i) =>
+    Math.abs(data[i] - tr) <= tol &&
+    Math.abs(data[i + 1] - tg) <= tol &&
+    Math.abs(data[i + 2] - tb) <= tol &&
+    Math.abs(data[i + 3] - ta) <= tol;
+  const paint = (i) => {
+    data[i] = fr;
+    data[i + 1] = fg;
+    data[i + 2] = fb;
+    data[i + 3] = 255;
+  };
+  const stack = [[x, y]];
+  while (stack.length) {
+    let [cx, cy] = stack.pop();
+    let i = (cy * w + cx) * 4;
+    while (cx >= 0 && match(i)) {
+      cx--;
+      i -= 4;
+    }
+    cx++;
+    i += 4;
+    let up = false, down = false;
+    while (cx < w && match(i)) {
+      paint(i);
+      if (cy > 0) {
+        const u = i - w * 4;
+        if (match(u)) {
+          if (!up) { stack.push([cx, cy - 1]); up = true; }
+        } else up = false;
+      }
+      if (cy < h - 1) {
+        const dn = i + w * 4;
+        if (match(dn)) {
+          if (!down) { stack.push([cx, cy + 1]); down = true; }
+        } else down = false;
+      }
+      cx++;
+      i += 4;
+    }
+  }
+  g.putImageData(img, 0, 0);
 }
 
 function exportDrawing() {
   const canvas = document.querySelector("#gp-canvas");
   if (!canvas) return "";
   let url = canvas.toDataURL("image/webp", 0.5);
-  if (url.length > 45000) url = canvas.toDataURL("image/webp", 0.34);
-  if (url.length > 90000) {
+  if (url.length > 60000) url = canvas.toDataURL("image/webp", 0.34);
+  if (url.length > 110000) {
     const c2 = document.createElement("canvas");
-    c2.width = 360;
-    c2.height = 225;
+    c2.width = 480;
+    c2.height = 300;
     const g2 = c2.getContext("2d");
     g2.fillStyle = "#fffdf6";
     g2.fillRect(0, 0, c2.width, c2.height);
     g2.drawImage(canvas, 0, 0, c2.width, c2.height);
     url = c2.toDataURL("image/webp", 0.4);
   }
-  if (url.length > 150000) return "";
+  if (url.length > 145000) return "";
   return url;
 }
 
@@ -1039,7 +1167,7 @@ async function renderAlbumImage(chain) {
     g.stroke();
   }
   g.fillStyle = "#7b4bb7";
-  g.font = "700 54px Caveat, cursive";
+  g.font = '800 52px "Bricolage Grotesque", system-ui, sans-serif';
   g.fillText("Garlic Phone", pad, 78);
   g.fillStyle = "#2a2118";
   g.font = "800 26px system-ui, sans-serif";
@@ -1224,28 +1352,49 @@ document.addEventListener("click", (e) => {
     if (!L.draw) return;
     L.draw.color = b.dataset.v;
     L.draw.eraser = false;
+    L.draw.fill = false;
     refreshTools();
   } else if (a === "size") {
     if (!L.draw) return;
     L.draw.size = +b.dataset.v;
     L.draw.eraser = false;
+    L.draw.fill = false;
+    refreshTools();
+  } else if (a === "brush") {
+    if (!L.draw) return;
+    L.draw.eraser = false;
+    L.draw.fill = false;
     refreshTools();
   } else if (a === "eraser") {
     if (!L.draw) return;
     L.draw.eraser = !L.draw.eraser;
+    if (L.draw.eraser) L.draw.fill = false;
+    refreshTools();
+  } else if (a === "fill") {
+    if (!L.draw) return;
+    L.draw.fill = !L.draw.fill;
+    if (L.draw.fill) L.draw.eraser = false;
     refreshTools();
   } else if (a === "undo") {
     if (!L.draw) return;
-    L.draw.strokes.pop();
+    const last = L.draw.strokes.pop();
+    if (last) L.draw.redo.push(last);
+    drawAll();
+  } else if (a === "redo") {
+    if (!L.draw) return;
+    const last = L.draw.redo.pop();
+    if (last) L.draw.strokes.push(last);
     drawAll();
   } else if (a === "clear") {
     if (!L.draw) return;
-    L.draw.strokes = [];
+    L.draw.strokes.push({ kind: "clear" });
+    L.draw.redo = [];
     drawAll();
   } else if (a === "send-draw") {
     if (isLocked() || !S || S.ph !== "play") return;
     const url = exportDrawing();
     if (!url) return toast("Dessin trop lourd : efface quelques traits et réessaie.");
+    L.sentShot[S.step] = url;
     L.sent[S.step] = true;
     send({ k: "sub", step: S.step, kind: "draw", value: url });
     render();
