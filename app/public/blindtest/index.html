@@ -43,7 +43,7 @@
  <div class="card"><h2>Rejoindre avec un code PIN</h2><div class="row"><input type="text" id="pcode" maxlength="4" placeholder="PIN" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn primary" data-a="join">Rejoindre</button></div></div>
  <div class="card bt-rules"><h2>Comment ça marche ?</h2>
   <p style="margin:0 0 8px">🎵 Chaque manche diffuse le même extrait sur tous les écrans. Tu tapes le <b>titre</b> et/ou l'<b>artiste</b> : plus tu réponds vite, plus tu marques de points.</p>
-  <p style="margin:0">🔒 <b>Réponses privées</b> : personne ne voit les propositions. Dès que tout le monde a tenté sa chance, la manche se verrouille et l'extrait va jusqu'au bout avant la révélation. 👀 <b>Réponses visibles</b> : le premier qui trouve le titre lance la révélation, mais l'extrait joue toujours les secondes choisies. Tant que la manche n'est pas verrouillée, une mauvaise réponse ne te bloque pas : tu peux réessayer.</p></div>
+  <p style="margin:0">🤫 <b>Réponses privées</b> : personne ne voit les propositions. Tu peux réessayer autant de fois que tu veux jusqu'à la fin du temps de réponse ; l'extrait va jusqu'au bout avant la révélation. 👀 <b>Réponses visibles</b> : le premier qui trouve le titre lance la révélation, mais l'extrait joue toujours les secondes choisies. Une mauvaise réponse ne te bloque pas : tu peux réessayer.</p></div>
  <p id="hmsg" class="hint center" role="status"></p>
 </section>
 
@@ -569,7 +569,7 @@ function handleBrokenSong(reason){
   if(spare){
     H.order[H.idx]=spare;
     H.song={...spare};S.song={id:spare.id};
-    H.res={};H.pts={};L.ok={};L.fb=null;S.feed=[];S.done=[];S.tried=[];
+    H.res={};H.pts={};L.ok={};L.fb=null;S.feed=[];S.done=[];
     const t=$("#bt-title"),a=$("#bt-artist");if(t)t.value="";if(a)a.value="";
     toast("Vidéo indisponible : on essaie une autre chanson");
     retryRound();
@@ -789,7 +789,7 @@ function hostAct(d){
   else if(d.k==="ans")answer(p,d);
   else if(d.k==="skip"&&p===ME&&S.ph==="round")endRound("skip");
   else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
-  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.tried=[];S.nextAt=0;S.song=null;S.loading=false;S.t0=0;S.ansUntil=0;S.extract=0;S.awaitEnd=0;L.starting=false;H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0}}
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;S.song=null;S.loading=false;S.t0=0;S.ansUntil=0;S.extract=0;S.awaitEnd=0;L.starting=false;H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0}}
   else if(d.k==="need"&&S.ph==="round"&&S.song&&S.song.id){R.emit("play",playPayload(S.song.id,700),p);return}
   else if(d.k==="broken"&&S.ph==="round"&&d.r===S.r&&H.song&&H.song.id===d.id&&S.pl.some(x=>x.id===p))handleBrokenSong(d.code);
   S.on=[...R.peers(),ME];bc();route();
@@ -847,7 +847,7 @@ function beginGame(list){
 function nextRound(){
   if(!isHost||!S||L.starting)return;
   if(H.idx+1>=S.total){finish();return}
-  H.idx++;S.r=H.idx;S.ph="round";S.feed=[];S.done=[];S.tried=[];S.rev=null;S.nextAt=0;S.awaitEnd=0;S.last=S.r+1>=S.total;
+  H.idx++;S.r=H.idx;S.ph="round";S.feed=[];S.done=[];S.rev=null;S.nextAt=0;S.awaitEnd=0;S.last=S.r+1>=S.total;
   H.res={};H.pts={};
   const song=H.order[H.idx]||{};
   H.song={...song};S.song=song.id?{id:song.id}:null;
@@ -871,7 +871,7 @@ function launchRound(){
   const start=Net.now()+2800;
   const extract=Math.max(1,S.cfg.extract||15);
   H.fails=0;L.starting=false;S.loading=false;
-  S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=extract;S.awaitEnd=0;S.tried=[];
+  S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=extract;S.awaitEnd=0;
   // On démarre l'extrait vers 40-52 % du morceau : ni l'intro, ni la fin.
   if(typeof H.song.pos!=="number")H.song.pos=BT.pickPos();
   const p={r:S.r,id:H.song.id,start,offset:0,pos:H.song.pos,elapsed:0,extract,end:start+extract*1000};
@@ -880,7 +880,7 @@ function launchRound(){
 }
 function answer(p,d){
   if(!isHost||S.ph!=="round"||d.r!==S.r||!H.song||!S.pl.some(x=>x.id===p))return;
-  if(S.awaitEnd)return; // la manche est jouée, on laisse l'extrait aller au bout
+  if(S.awaitEnd)return; // en mode visible, un titre trouvé termine la manche
   if(!S.t0||Net.now()<S.t0-300)return;
   H.res[p]=H.res[p]||{};
   const results=[];
@@ -903,18 +903,13 @@ function answer(p,d){
   };
   tryField("title",d.t);tryField("artist",d.a);
   if(!results.length)return;
-  // Chaque joueur ne dispose que d'une seule tentative par manche : dès que
-  // tout le monde a tenté sa chance, la manche est verrouillée. Sans cela,
-  // le dernier joueur pouvait continuer à deviner seul jusqu'à la fin de la
-  // musique pendant que les autres attendaient.
-  S.tried=Array.isArray(S.tried)?S.tried:[];
-  if(S.tried.indexOf(p)<0)S.tried.push(p);
   feedback(p,results,{t:d.t,a:d.a});
   if(S.cfg.mode==="live"){
     results.forEach(x=>{const t=x.f==="title"?d.t:d.a;if(t)S.feed=(S.feed||[]).concat([{n:nm(p),f:x.f,ok:x.ok,t:String(t).slice(0,60)}]).slice(-8)});
     if(titleOk)S.awaitEnd="live";
   }
-  if(!S.awaitEnd&&S.pl.length&&S.tried.length>=S.pl.length)S.awaitEnd="all";
+  // Aucun verrou lié aux tentatives : chacun peut réessayer jusqu'à la fin du
+  // temps de réponse, même si tous les joueurs ont déjà proposé quelque chose.
   // On ne coupe pas l'extrait : la révélation attend la fin des secondes choisies.
   bc();route();
 }
@@ -1070,7 +1065,7 @@ function updGame(){
   if(status){
     if(S.loading)status.textContent="Préparation de l'extrait…";
     else if(now<S.t0-300)status.textContent="🎧 Prépare-toi…";
-    else if(S.awaitEnd)status.innerHTML=(S.awaitEnd==="live"?"🎯 Titre trouvé !":"✅ Tout le monde a tenté sa chance.")+" L'extrait continue jusqu'au bout…";
+    else if(S.awaitEnd)status.innerHTML="🎯 Titre trouvé ! L'extrait continue jusqu'au bout…";
     else if(left>0)status.innerHTML="🎶 Écoute bien… <b>"+Math.ceil(left/1000)+" s</b>";
     else status.textContent="⏱ Temps écoulé — l'hôte révèle la réponse.";
     status.className="bt-status"+((S.cfg.mode==="live"||S.awaitEnd)&&left>0?" live":"");
@@ -1088,12 +1083,12 @@ function updGame(){
     else{
       const ok=f.res.some(x=>x.ok);
       fb.className="bt-feedback "+(ok?"ok":"bad");
-      fb.innerHTML=f.res.map(x=>x.ok?`${x.f==="title"?"✅ Titre":"✅ Artiste"} +${x.pts} pts`:`${x.f==="title"?"❌ Titre":"❌ Artiste"} : pas encore`).join(" · ")+"<small>"+(ok?"Bien joué, continue si l'autre champ est encore libre.":S.awaitEnd?"La manche est maintenant verrouillée.":"Ce n'est pas ça — tu peux réessayer !")+"</small>";
+      fb.innerHTML=f.res.map(x=>x.ok?`${x.f==="title"?"✅ Titre":"✅ Artiste"} +${x.pts} pts`:`${x.f==="title"?"❌ Titre":"❌ Artiste"} : pas encore`).join(" · ")+"<small>"+(ok?"Bien joué, continue si l'autre champ est encore libre.":"Ce n'est pas ça — tu peux réessayer !")+"</small>";
     }
   }
   const pr=$("#btProg");
   if(pr){
-    if(S.awaitEnd)pr.innerHTML=S.awaitEnd==="live"?"🎯 Titre trouvé — l'extrait va jusqu'au bout":"✅ Tout le monde a tenté sa chance — l'extrait va jusqu'au bout";
+    if(S.awaitEnd==="live")pr.innerHTML="🎯 Titre trouvé — l'extrait va jusqu'au bout";
     else if(S.cfg.mode==="live")pr.innerHTML="👀 Réponses visibles · le premier titre trouvé termine la manche";
     else pr.innerHTML="<span>"+(S.done?S.done.length:0)+"/"+S.pl.length+"</span> joueurs ont trouvé quelque chose";
   }
@@ -1110,7 +1105,7 @@ function updReveal(){
   if(!S||S.ph!=="reveal")return;
   const el=$("#btNext");if(!el)return;
   if(S.nextAt){const left=Math.max(0,Math.ceil((S.nextAt-Net.now())/1000));el.textContent=left>0?`Chanson suivante dans ${left} s…`:(isHost?"Tu peux enchaîner.":"En attente de l'hôte…")}
-  else el.textContent=S.reason==="all"?"Tout le monde a tenté sa chance !":S.reason==="live"?"Titre trouvé !":S.reason==="time"?"Temps écoulé.":"";
+  else el.textContent=S.reason==="live"?"Titre trouvé !":S.reason==="time"?"Temps écoulé.":"";
 }
 function ensurePlayback(){
   if(!S||S.ph!=="round"||S.loading)return;
