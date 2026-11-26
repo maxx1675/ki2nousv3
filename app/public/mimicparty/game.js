@@ -38,7 +38,8 @@
     hello: null, hl: null, sessT: null, live: false, micErr: "", micBusy: false,
     attempt: null, attemptDone: false, submitted: false, myClip: null, analyzing: false,
     subs: {}, clipBufs: {}, sched: {}, origFeat: null, origRid: "", wave: null, waveRid: "",
-    revealDone: {}, wheelShown: false, lastTick: 0, audioRid: "", modalOpen: false
+    revealDone: {}, wheelShown: false, lastTick: 0, audioRid: "", modalOpen: false,
+    ph: "", audioState: "", audioLoading: "", qrUrl: ""
   };
   var IMP = null; // état de la modale d'import
 
@@ -338,19 +339,34 @@
     return { id: m.id, name: m.name, emoji: "🎵", cat: m.cat || "absurde", diff: Number(m.diff) || 2, dur: Number(m.dur) || 5, desc: m.desc || "", img: m.img || "", custom: true };
   }
   function pickMeme() {
-    var src = S.cfg.src;
-    var pool = [];
-    if (src === "official") pool = officialPool();
-    else if (src === "custom") pool = customPool();
-    else pool = officialPool().concat(customPool());
-    return MimicBank.pick(pool, S.used.concat(S.round ? [S.round.meme.id] : []));
+    return MimicBank.pick(poolFor(S.cfg.src), S.used.concat(S.round ? [S.round.meme.id] : []));
+  }
+
+  /** Vivier de la partie, sans doublon d'identifiant. */
+  function poolFor(src) {
+    var off = src === "custom" ? [] : officialPool();
+    var cus = src === "official" ? [] : customPool();
+    var seen = {};
+    return off.concat(cus).filter(function (m) {
+      if (!m || seen[m.id]) return false;
+      seen[m.id] = 1;
+      return true;
+    });
   }
 
   function startGame() {
     if (!isHost) return;
     if (S.pl.length < 2) { toast("Il faut au moins 2 joueurs"); return; }
-    var pool = S.cfg.src === "custom" ? customPool() : officialPool().concat(S.cfg.src === "mix" ? customPool() : []);
+    var pool = poolFor(S.cfg.src);
     if (!pool.length) { toast("Aucun mème ne correspond aux filtres"); return; }
+    /* jamais deux fois le même son : on borne les manches à la taille du vivier */
+    var rounds = clamp(Math.round(Number(S.cfg.rounds) || 3), 1, 10);
+    if (rounds > pool.length) {
+      S.cfg.rounds = pool.length;
+      toast("Sélection de " + pool.length + " mème(s) : la partie fera " + pool.length + " manche(s).");
+    } else {
+      S.cfg.rounds = rounds;
+    }
     S.r = 0; S.used = []; S.scores = []; S.play = null; S.wheel = null; S.done = false;
     S.pl.forEach(function (p) { p.sc = 0; p.gain = 0; });
     nextRound();
@@ -393,7 +409,7 @@
   function resetRoundLocal() {
     L.sub = ""; L.autoTried = false; L.attemptDone = false; L.submitted = false;
     L.myClip = null; L.analyzing = false; L.micErr = ""; L.origFeat = null;
-    L.origRid = ""; L.audioRid = ""; L.wave = null; L.waveRid = "";
+    L.origRid = ""; L.audioRid = ""; L.audioLoading = ""; L.wave = null; L.waveRid = "";
     L.sched = {};
   }
 
@@ -549,6 +565,7 @@
     if (L.analyzing) return;
     var left = S.round.recEnd - now();
     if (left < 400) { if (manual) toast("Trop tard, la manche est finie"); return; }
+    MimicAudio.stopAll();
     L.micErr = "";
     L.micBusy = true;
     render();
@@ -661,7 +678,8 @@
   }
 
   function schedulePlayback() {
-    if (!S || !S.play) return;
+    if (!S || !S.play || S.ph !== "playback") return;
+    if (MimicAudio.state() !== "running") { MimicAudio.unlock(); return; }
     S.play.items.forEach(function (it) {
       if (it.forfait) return;
       var c = L.clipBufs[it.id];
@@ -670,30 +688,54 @@
       if (L.sched[key]) return;
       var delay = (it.at - now()) / 1000;
       if (delay < -c.buf.duration) { L.sched[key] = 1; return; }
-      MimicAudio.playBuffer(c.buf, { delay: Math.max(0, delay), gain: 1 });
-      L.sched[key] = 1;
+      var src = MimicAudio.playBuffer(c.buf, { delay: Math.max(0, delay), gain: 1 });
+      if (src) L.sched[key] = 1;
     });
   }
 
+  /** Joue le mème officiel uniquement pendant la phase d'écoute.
+   *  On réserve l'identifiant AVANT le chargement asynchrone pour éviter
+   *  toute planification multiple, et on attend que l'AudioContext tourne. */
   function scheduleRoundAudio() {
-    if (!S || !S.round) return;
+    if (!S || !S.round || S.ph !== "listen") return;
     var rid = S.round.rid;
-    if (L.audioRid === rid) return;
-    var r = S.round;
-    ensureBuffer(r.meme).then(function (buf) {
-      if (!S || !S.round || S.round.rid !== rid) return;
+    if (L.audioRid === rid || L.audioLoading === rid) return;
+    if (now() >= S.round.recStart) return;
+    L.audioLoading = rid;
+    MimicAudio.ensureRunning().then(function () {
+      return ensureBuffer(S.round.meme);
+    }).then(function (buf) {
+      if (!S || !S.round || S.round.rid !== rid || S.ph !== "listen") return;
+      L.audioLoading = "";
       L.audioRid = rid;
       if (!L.wave || L.waveRid !== rid) { L.wave = MimicAudio.waveform(buf, 56); L.waveRid = rid; }
-      var t = now(), dur = r.segDur;
+      var r = S.round, t = now(), dur = r.segDur;
       for (var i = 0; i < r.listens; i++) {
         var segStart = r.listenAt + i * (dur + r.gap);
         if (t >= segStart + dur) continue;
         var delay = Math.max(0, segStart - t) / 1000;
         var offset = Math.max(0, (t - segStart) / 1000);
-        MimicAudio.playBuffer(buf, { delay: delay, offset: offset, gain: 0.95 });
+        MimicAudio.playBuffer(buf, { delay: delay, offset: offset, gain: 1 });
       }
       drawWaveNow();
-    }).catch(function () { L.audioRid = ""; });
+    }).catch(function () {
+      if (L.audioLoading === rid) L.audioLoading = "";
+      if (!S || !S.round || S.round.rid !== rid) return;
+      L.audioRid = "";
+      /* le bouton « Activer le son » reste affiché : c'est lui qui relance */
+    });
+  }
+
+  function replayMeme() {
+    if (!S || !S.round) return;
+    var rid = S.round.rid;
+    MimicAudio.ensureRunning().then(function () {
+      return ensureBuffer(S.round.meme);
+    }).then(function (buf) {
+      if (!S || !S.round || S.round.rid !== rid) return;
+      MimicAudio.stopAll();
+      MimicAudio.playBuffer(buf, { gain: 1 });
+    }).catch(function () { toast("Son bloqué : appuie d’abord sur « Activer le son »."); });
   }
 
   /* ============================================================
@@ -719,6 +761,14 @@
       else renderHome();
       return;
     }
+    /* Coupe net tout son planifié dès qu'on change de phase : sans ça, un
+       mème programmé en avance peut se rejouer pendant l'imitation. */
+    if (L.ph !== S.ph) {
+      L.ph = S.ph;
+      MimicAudio.stopAll();
+      L.sched = {};
+      L.lastTick = 0;
+    }
     var sig = stateSig();
     if (sig !== L.sig) {
       L.sig = sig;
@@ -729,14 +779,8 @@
       };
       (map[S.ph] || renderLobby)();
     }
-    if (S.round) {
-      if (S.ph === "listen" || S.ph === "imitate") {
-        if (S.ph === "listen") scheduleRoundAudio();
-        if (S.ph === "imitate") scheduleRoundAudio();
-      }
-      if (S.ph === "playback") { schedulePlayback(); }
-    }
-    if (S.ph === "end" && isHost && S.scores && !S.done) { /* jamais atteint : done est posé */ }
+    if (S.round && S.ph === "listen") scheduleRoundAudio();
+    if (S.ph === "playback") schedulePlayback();
   }
 
   function updateWho() {
@@ -874,9 +918,10 @@
         (!poolSize ? '<p class="mp-error" style="text-align:center">Aucun mème ne correspond aux filtres.</p>' : "")
       : '<div class="mp-recorded">⏳ L’hôte prépare la partie…</div>';
     app().innerHTML = roomBar() +
-      '<div class="mp-grid2">' +
+      '<div class="mp-stack">' +
       '<section class="mp-card"><h2>👥 Joueurs</h2>' + playersHtml() +
       '<p class="hint">Partage le code <b>' + esc(code) + '</b>. 2 joueurs minimum, 8 maximum.</p>' +
+      qrHtml() +
       '<button type="button" class="btn" data-a="micTest">🎙️ Tester mon micro</button>' +
       '<div class="mp-small" style="margin-top:6px;color:var(--muted)">' + (L.micOk || MimicAudio.hasMic() ? "Micro prêt ✔" : "Micro non encore autorisé") + "</div>" +
       hostActions + "</section>" +
@@ -886,6 +931,35 @@
       '<section class="mp-card"><h2>📚 Bibliothèque de mèmes</h2>' + libHtml() + "</section>" +
       '<section class="mp-card"><h2>🎁 La roue des bonus</h2><p class="hint" style="margin-top:0">Après chaque classement, la roue tourne pour la meilleure imitation.</p><div class="pills">' +
       WHEEL.map(function (w) { return '<span class="pill">' + w.emoji + " " + w.label + "</span>"; }).join("") + "</div></section>";
+    paintQr();
+  }
+
+  /* QR de partage : même code que le salon, scannable depuis un téléphone. */
+  function qrHtml() {
+    return '<div class="mp-qr">' +
+      '<div class="mp-qr-img" id="mp-qr-img"><span class="mp-qr-load">⏳</span></div>' +
+      '<div class="mp-qr-txt"><b>Scanne pour rejoindre</b>' +
+      '<span class="mp-small mp-muted">Code <b style="letter-spacing:.16em">' + esc(code) + '</b></span>' +
+      '<button type="button" class="btn" data-a="shareRoom">🔗 Copier le lien</button></div>' +
+      "</div>";
+  }
+
+  function paintQr() {
+    var box = $id("mp-qr-img");
+    if (!box || !code || typeof Share === "undefined") return;
+    var url = Share.url(code, "/mimicparty/index.html");
+    if (box.dataset.qr === url) return;
+    box.dataset.qr = url;
+    Share.qrImg(url, 170).then(function (src) {
+      var el = $id("mp-qr-img");
+      if (!el || box.dataset.qr !== url) return;
+      el.innerHTML = src
+        ? '<img src="' + src + '" width="170" height="170" alt="QR code du salon ' + esc(code) + '">'
+        : '<span class="mp-qr-load">QR indisponible</span>';
+    }).catch(function () {
+      var el = $id("mp-qr-img");
+      if (el) el.innerHTML = '<span class="mp-qr-load">QR indisponible</span>';
+    });
   }
 
   /* ---------- écoute ---------- */
@@ -901,6 +975,9 @@
     var r = S.round, m = r.meme;
     var dots = "";
     for (var i = 0; i < r.listens; i++) dots += "<i></i>";
+    var soundAlert = MimicAudio.state() === "running" ? "" :
+      '<button type="button" class="btn primary mp-sound-btn" data-a="soundOn">🔊 Activer le son</button>' +
+      '<p class="hint" style="text-align:center">Ton téléphone bloque le son : appuie une fois pour l’entendre.</p>';
     app().innerHTML = roomBar() +
       '<div class="mp-stage">' +
       '<span class="mp-phase-tag">1 · On écoute le mème</span>' +
@@ -908,9 +985,11 @@
       '<canvas class="mp-wave" id="mp-wave" aria-label="Onde audio du mème"></canvas>' +
       '<div class="mp-progress"><i id="mp-listenbar"></i></div>' +
       '<p class="mp-listen-hint"><span class="dot">●</span> Écoute bien le son à imiter</p>' +
+      soundAlert +
       '<div class="mp-attempts" id="mp-attempts" title="Écoutes autorisées">' + dots + "</div>" +
       "</div>" +
       '<p class="hint" style="text-align:center">Manche ' + r.n + " / " + S.cfg.rounds + " · l’enregistrement démarre automatiquement après l’écoute.</p>" +
+      '<div class="mp-listen-actions"><button type="button" class="btn" data-a="replayMeme">🔁 Réécouter le mème</button></div>' +
       '<p class="hint" style="text-align:center">🎧 Mets des écouteurs : le micro ne doit pas réenregistrer le mème.</p>' +
       "</div>";
     if (!L.wave || L.waveRid !== r.rid) {
@@ -997,6 +1076,8 @@
   function renderPlayback() {
     var p = S.play;
     if (!p) { app().innerHTML = roomBar() + '<div class="mp-wait">Chargement…</div>'; return; }
+    var soundAlert = MimicAudio.state() === "running" ? "" :
+      '<button type="button" class="btn primary mp-sound-btn" data-a="soundOn">🔊 Activer le son</button>';
     var cards = p.items.map(function (it, i) {
       var bars = "";
       for (var b = 0; b < 22; b++) {
@@ -1012,6 +1093,7 @@
       '<div class="mp-stage">' +
       '<span class="mp-phase-tag">3 · On écoute les imitations</span>' +
       '<h2 style="text-align:center">Chaque voix passe à tour de rôle</h2>' +
+      soundAlert +
       '<div class="mp-progress slim"><i id="mp-playbar"></i></div>' +
       cards +
       '<p class="hint" style="text-align:center">🔇 Micro coupé · écoute bien, la note arrive juste après.</p>' +
@@ -1168,6 +1250,11 @@
   function ticker() {
     requestAnimationFrame(ticker);
     if (!S) return;
+    var aud = MimicAudio.state();
+    if (aud !== L.audioState) {
+      L.audioState = aud;
+      if (S.ph === "listen" || S.ph === "playback") { L.sig = ""; render(); }
+    }
     if (!S.round) return;
     var t = now();
 
@@ -1176,7 +1263,10 @@
         L.rid = S.round.rid;
         L.sub = ""; L.autoTried = false; L.attemptDone = false; L.submitted = false;
         L.myClip = null; L.analyzing = false; L.lastTick = 0; L.clipBufs = {};
-        L.wave = null; L.waveRid = ""; L.audioRid = ""; L.sched = {};
+        L.wave = null; L.waveRid = "";
+        /* Ne PAS vider audioRid/audioLoading ici : la planification du mème
+           peut être déjà en cours pour cette même manche (renderListen l'a
+           lancée), et la vider provoquerait un second envoi en parallèle. */
         L.origFeat = null; L.origRid = "";
       }
       /* après un rechargement en pleine manche, ne pas rejouer une tentative déjà envoyée */
@@ -1335,10 +1425,17 @@
 
   function playClip(id) {
     var c = L.clipBufs[id];
-    if (c && c.buf) { MimicAudio.stopAll(); MimicAudio.playBuffer(c.buf, { gain: 1 }); return; }
+    if (c && c.buf) {
+      MimicAudio.ensureRunning().then(function () {
+        MimicAudio.stopAll(); MimicAudio.playBuffer(c.buf, { gain: 1 });
+      }).catch(function () { toast("Son bloqué : appuie sur « Activer le son »."); });
+      return;
+    }
     if (isHost && L.subs[id] && L.subs[id].data) {
       MimicAudio.decodeBlob(MimicAudio.dataUrlToBlob(L.subs[id].data)).then(function (b) {
-        MimicAudio.stopAll(); MimicAudio.playBuffer(b, { gain: 1 });
+        return MimicAudio.ensureRunning().then(function () {
+          MimicAudio.stopAll(); MimicAudio.playBuffer(b, { gain: 1 });
+        });
       }).catch(function () { toast("Extrait indisponible"); });
       return;
     }
@@ -1346,7 +1443,10 @@
   }
 
   function playMine() {
-    if (L.myClip && L.myClip.buf) { MimicAudio.stopAll(); MimicAudio.playBuffer(L.myClip.buf, { gain: 1 }); }
+    if (!L.myClip || !L.myClip.buf) return;
+    MimicAudio.ensureRunning().then(function () {
+      MimicAudio.stopAll(); MimicAudio.playBuffer(L.myClip.buf, { gain: 1 });
+    }).catch(function () { toast("Son bloqué : appuie sur « Activer le son »."); });
   }
 
   /* ============================================================
@@ -1407,8 +1507,10 @@
     var item = findCustom(id);
     if (!item) return;
     ensureBuffer(metaOfCustom(item)).then(function (buf) {
-      MimicAudio.stopAll();
-      MimicAudio.playBuffer(buf, { gain: 0.95 });
+      return MimicAudio.ensureRunning().then(function () {
+        MimicAudio.stopAll();
+        MimicAudio.playBuffer(buf, { gain: 1 });
+      });
     }).catch(function () { toast("Audio indisponible"); });
   }
 
@@ -1618,6 +1720,11 @@
   /* ============================================================
      ÉVÉNEMENTS
      ============================================================ */
+  document.addEventListener("pointerdown", function () {
+    /* premier geste = déblocage audio (iOS/Android exigent un geste utilisateur) */
+    MimicAudio.unlock();
+  }, { passive: true });
+
   document.addEventListener("click", function (e) {
     var t = e.target.closest("[data-a]");
     if (!t || t.disabled) return;
@@ -1652,6 +1759,13 @@
       if (L.attempt) stopAttempt(); else beginAttempt(true);
       return;
     }
+    if (a === "soundOn") {
+      MimicAudio.ensureRunning().then(function () {
+        L.sig = ""; render();
+      }).catch(function () { toast("Autorise le son dans ton navigateur"); });
+      return;
+    }
+    if (a === "replayMeme") return replayMeme();
     if (a === "playMine") return playMine();
     if (a === "forceCollect") {
       if (!isHost || !S) return;

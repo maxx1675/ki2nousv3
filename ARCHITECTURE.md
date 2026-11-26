@@ -53,7 +53,7 @@ Chaque jeu est une page autonome sous `public/<jeu>/index.html` :
 - `public/uno/index.html`
 - `public/culturegame/index.html` (+ `game.js`, banque de questions, portraits `people/`)
 - `public/garlicphone/index.html` (+ `game.js`)
-- `public/mimicparty/index.html` (+ `game.js`, `audio.js`, `memes.js`, `score.js`, `sounds/` — 40 extraits MP3 réels)
+- `public/mimicparty/index.html` (+ `game.js`, `audio.js`, `memes.js`, `score.js`, `sounds/` — 56 extraits MP3 réels)
 
 Une partie du JavaScript et du CSS est intégrée directement aux pages. Il faut donc lire le fichier de la page avant de supposer qu'il existe un module JS séparé.
 
@@ -69,7 +69,7 @@ Code réutilisé :
 
 Ces fichiers partagés ont un impact transversal : avant de les modifier, rechercher leurs usages dans toutes les pages de jeux. Conserver les contrats globaux et l'ordre des scripts, sauf refonte explicitement demandée.
 
-Mimic Party charge ses extraits officiels depuis `public/mimicparty/sounds/` (MP3 réels, métadonnées `file`/`start`/`dur` dans `memes.js`). Ces fichiers ne sont jamais transmis par le relais ; chaque client télécharge et rogne le même passage. Le watcher Vite ignore ce dossier (`vite.config.ts`) pour éviter les verrous de fichier sous Windows.
+Mimic Party charge ses extraits officiels depuis `public/mimicparty/sounds/` (MP3 réels, métadonnées `file`/`start`/`dur` dans `memes.js`). Ces fichiers ne sont jamais transmis par le relais ; chaque client télécharge et rogne le même passage en mono 44 100 Hz. Le watcher Vite ignore ce dossier (`vite.config.ts`) pour éviter les verrous de fichier sous Windows. Le lobby empile Joueurs (avec QR `Share.qrImg`) → Réglages → Bibliothèque, et la lecture n'est planifiée qu'en phase `listen`, après `MimicAudio.ensureRunning()`.
 
 ## 5. Backend / temps réel
 - `api/boot.ts` : création de l'application Hono, montage des routes et démarrage du serveur.

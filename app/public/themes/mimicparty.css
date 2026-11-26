@@ -68,8 +68,27 @@ html[data-theme="dark"] { --mp-lime: #b6f52c; --mp-deep: #0d0a1a; }
 .mp-wait .spin { display: inline-block; font-size: 3rem; animation: mp-spin 3s linear infinite; }
 
 /* ---------- lobby ---------- */
+.mp-stack { display: grid; gap: 12px; }
 .mp-grid2 { display: grid; gap: 12px; }
 @media (min-width: 620px) { .mp-grid2 { grid-template-columns: 1.1fr .9fr; align-items: start; } }
+.mp-qr {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: 12px 0 8px; padding: 10px; border: 2px dashed var(--edge);
+  border-radius: 14px; background: var(--bg);
+}
+.mp-qr-img {
+  width: 170px; height: 170px; flex: 0 0 auto; display: grid; place-items: center;
+  padding: 6px; background: #fff; border-radius: 12px; border: 2px solid var(--edge);
+  overflow: hidden;
+}
+.mp-qr-img img { display: block; width: 100%; height: 100%; }
+.mp-qr-load { font-size: .8rem; font-weight: 800; color: var(--mp-deep); }
+.mp-qr-txt { display: flex; flex-direction: column; gap: 7px; min-width: 132px; }
+.mp-qr-txt .btn { align-self: flex-start; }
+.mp-sound-btn { display: block; margin: 10px auto 4px; animation: mp-pulse 1.4s ease-in-out infinite; }
+.mp-listen-actions { display: flex; justify-content: center; margin: 8px 0 2px; }
+@keyframes mp-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .mp-sound-btn { animation: none; } }
 .mp-players { display: flex; flex-wrap: wrap; gap: 7px; }
 .mp-player {
   display: inline-flex; align-items: center; gap: 6px; background: var(--bg);

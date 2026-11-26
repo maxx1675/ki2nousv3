@@ -8,8 +8,8 @@
  */
 "use strict";
 (function (root) {
-  var SR = 22050;
-  var TARGET_ENCODE_SR = 22050;
+  var SR = 44100;
+  var TARGET_ENCODE_SR = 44100;
   var _ctx = null, _mic = null, _sources = new Set(), _cache = new Map();
 
   function ctx() {
@@ -23,12 +23,22 @@
     return _ctx;
   }
   function unlock() { var c = ctx(); if (c && c.state === "suspended") c.resume().catch(function () {}); return c; }
+  function state() { return _ctx ? _ctx.state : "uninitialized"; }
+  /** Reprend le contexte si besoin, et ne résout que lorsqu'il tourne vraiment. */
+  function ensureRunning() {
+    var c = ctx();
+    if (!c) return Promise.reject(new Error("Audio indisponible"));
+    if (c.state === "running") return Promise.resolve(c);
+    return c.resume().then(function () {
+      return c.state === "running" ? c : Promise.reject(new Error("Son bloqué par le navigateur"));
+    });
+  }
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
   /**
    * Charge un extrait officiel depuis `file`, puis garde uniquement
-   * [start, start+dur] en mono 22 050 Hz : tous les joueurs entendent
+   * [start, start+dur] en mono 44 100 Hz : tous les joueurs entendent
    * exactement le même passage.
    */
   function loadMeme(meme) {
@@ -70,11 +80,14 @@
     _sources.clear();
   }
 
-  /** Joue un AudioBuffer. `atMs` = instant absolu (Net.now) optionnel. */
+  /** Joue un AudioBuffer. `atMs` = instant absolu (Net.now) optionnel.
+   *  Ne planifie rien tant que le contexte n'est pas réellement en marche :
+   *  sinon les sons s'empilent et repartent tous ensemble au premier déblocage. */
   function playBuffer(buffer, o) {
     o = o || {};
     var c = ctx();
     if (!c || !buffer) return null;
+    if (c.state !== "running") { c.resume().catch(function () {}); return null; }
     var src = c.createBufferSource();
     src.buffer = buffer;
     var g = c.createGain(); g.gain.value = o.gain == null ? 1 : o.gain;
@@ -128,7 +141,7 @@
     return out;
   }
 
-  /** Extrait [start, start+dur] en mono, rééchantillonné à 22 050 Hz. */
+  /** Extrait [start, start+dur] en mono, rééchantillonné à 44 100 Hz. */
   function sliceBuffer(buffer, start, dur) {
     start = clamp(Number(start) || 0, 0, Math.max(0, buffer.duration - 0.05));
     dur = clamp(Number(dur) || buffer.duration, 0.2, Math.max(0.2, buffer.duration - start));
@@ -150,7 +163,7 @@
   }
 
   function wavBlob(buffer) {
-    var sr = Math.min(32000, buffer.sampleRate);
+    var sr = Math.min(48000, buffer.sampleRate);
     var src = mixMono(buffer);
     var n = Math.floor(src.length * sr / buffer.sampleRate);
     var bytes = 44 + n * 2;
@@ -211,7 +224,7 @@
       var dest = c.createMediaStreamDestination();
       var src = c.createBufferSource(); src.buffer = buffer; src.connect(dest);
       var chunks = [], mr;
-      try { mr = new root.MediaRecorder(dest.stream, { mimeType: mime, audioBitsPerSecond: 32000 }); }
+      try { mr = new root.MediaRecorder(dest.stream, { mimeType: mime, audioBitsPerSecond: 96000 }); }
       catch (e) { var w = wavBlob(buffer); blobToDataUrl(w).then(function (d) { resolve({ blob: w, mime: "audio/wav", data: d, dur: buffer.duration }); }); return; }
       var started = Date.now();
       var timer = setInterval(function () {
@@ -241,7 +254,7 @@
     if (_mic && _mic.getAudioTracks().some(function (t) { return t.readyState === "live"; })) return Promise.resolve(_mic);
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.reject(new Error("Micro indisponible sur ce navigateur"));
     return navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: true }
     }).then(function (s) { _mic = s; return s; });
   }
   function releaseMic() {
@@ -295,7 +308,7 @@
       var mime = pickMime();
       var useMR = !!root.MediaRecorder;
       if (useMR) {
-        try { mr = new root.MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 28000 } : undefined); }
+        try { mr = new root.MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 96000 } : undefined); }
         catch (e) { mr = new root.MediaRecorder(stream); }
         mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
         mr.onstop = function () {
@@ -389,7 +402,7 @@
           if (settled) return; settled = true;
           cleanup(); reject(new Error(message || "Extraction impossible"));
         }
-        try { mr = new root.MediaRecorder(dest.stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined); }
+        try { mr = new root.MediaRecorder(dest.stream, mime ? { mimeType: mime, audioBitsPerSecond: 96000 } : undefined); }
         catch (e) { fail("Enregistrement non pris en charge"); return; }
         mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
         mr.onstop = function () {
@@ -463,7 +476,7 @@
   /* ---------- petits sons d'interface ---------- */
   function sfx(name) {
     var c = ctx();
-    if (!c) return;
+    if (!c || c.state !== "running") return;
     var t = c.currentTime + 0.01;
     var o = c.createOscillator(), g = c.createGain();
     o.connect(g); g.connect(c.destination);
@@ -494,7 +507,7 @@
   }
 
   root.MimicAudio = {
-    ctx: ctx, unlock: unlock, sfx: sfx,
+    ctx: ctx, unlock: unlock, state: state, ensureRunning: ensureRunning, sfx: sfx,
     loadMeme: loadMeme, preload: preload,
     playBuffer: playBuffer, playSnippet: playSnippet, stopAll: stopAll,
     decodeBlob: decodeBlob, decodeArrayBuffer: decodeArrayBuffer, loadAudioFile: loadAudioFile,
