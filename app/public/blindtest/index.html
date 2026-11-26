@@ -84,7 +84,7 @@
 const MIN=2,MAX=12;
 let R=null,S=null,isHost=false,code="";
 let H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0};
-const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,soundR:-1,unlocked:false,needT:0,starting:false,lastSend:0,token:0,stopT:0,loadSeq:0,expectedId:"",cueReady:false,probe:null,bad:{},playerResets:0,readySeen:false,playerGen:0,brokenKey:"",vol:90};
+const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,soundR:-1,unlocked:false,needT:0,starting:false,lastSend:0,token:0,stopT:0,loadSeq:0,expectedId:"",cueReady:false,probe:null,bad:{},playerResets:0,readySeen:false,playerGen:0,brokenKey:"",vol:90,maskIv:0,maskT:0};
 try{const v=Number(localStorage.getItem("soiree:bt_vol"));if(Number.isFinite(v))L.vol=Math.max(0,Math.min(100,v))}catch(e){}
 const volNow=()=>Math.max(0,Math.min(100,Number.isFinite(Number(L.vol))?Number(L.vol):90));
 function applyVolume(){
@@ -105,7 +105,7 @@ const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!=id);
    neutre pendant la manche (sans jamais révéler la réponse avant la fin). */
 function maskMedia(force){
  const now=Date.now();
- if(!force&&now-(L.maskT||0)<700)return;
+ if(!force&&now-(L.maskT||0)<350)return;
  L.maskT=now;
  const round=!!(S&&S.ph==="round");
  try{document.title=round?"Blind Test - écoute l'extrait":"Blind Test"}catch(e){}
@@ -121,6 +121,16 @@ function maskMedia(force){
    artwork:[],
   });
   if(round)navigator.mediaSession.playbackState="playing";
+  try{
+   if(navigator.mediaSession.setActionHandler){
+     navigator.mediaSession.setActionHandler("play",null);
+     navigator.mediaSession.setActionHandler("pause",null);
+     navigator.mediaSession.setActionHandler("seekbackward",null);
+     navigator.mediaSession.setActionHandler("seekforward",null);
+     navigator.mediaSession.setActionHandler("previoustrack",null);
+     navigator.mediaSession.setActionHandler("nexttrack",null);
+   }
+  }catch(e){}
  }catch(e){}
 }
 const bc=()=>{if(isHost&&R){R.emit("st",S).catch(()=>{});R.snap({S,H:snapH()})}};
@@ -702,6 +712,8 @@ async function enter(create,o){
   }
   startHello();
   view(S&&S.ph!=="lobby"?"game":"lobby");$("#lcode").textContent=code;
+  if(L.maskIv)clearInterval(L.maskIv);
+  L.maskIv=setInterval(()=>{try{maskMedia()}catch(e){}},500);
   Share.mount("#sw-share",{code,title:"Blind Test",text:"Rejoins-moi sur le Blind Test ! Code PIN : "+code});
   route();
 }

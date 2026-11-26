@@ -38,7 +38,8 @@
     hello: null, hl: null, sessT: null, live: false, micErr: "", micBusy: false,
     attempt: null, attemptDone: false, submitted: false, myClip: null, analyzing: false,
     subs: {}, clipBufs: {}, sched: {}, origFeat: null, origRid: "", wave: null, waveRid: "",
-    revealDone: {}, wheelShown: false, lastTick: 0, audioRid: "", modalOpen: false
+    revealDone: {}, wheelShown: false, lastTick: 0, audioRid: "", modalOpen: false,
+    vol: 80
   };
   var IMP = null; // état de la modale d'import
 
@@ -670,7 +671,7 @@
       if (L.sched[key]) return;
       var delay = (it.at - now()) / 1000;
       if (delay < -c.buf.duration) { L.sched[key] = 1; return; }
-      MimicAudio.playBuffer(c.buf, { delay: Math.max(0, delay), gain: 1 });
+      MimicAudio.playBuffer(c.buf, { delay: Math.max(0, delay), gain: (L.vol || 80) / 100 });
       L.sched[key] = 1;
     });
   }
@@ -690,7 +691,7 @@
         if (t >= segStart + dur) continue;
         var delay = Math.max(0, segStart - t) / 1000;
         var offset = Math.max(0, (t - segStart) / 1000);
-        MimicAudio.playBuffer(buf, { delay: delay, offset: offset, gain: 0.95 });
+        MimicAudio.playBuffer(buf, { delay: delay, offset: offset, gain: 0.95 * ((L.vol || 80) / 100) });
       }
       drawWaveNow();
     }).catch(function () { L.audioRid = ""; });
@@ -800,6 +801,7 @@
     return '<div class="mp-roombar"><span class="mp-small">Salon</span><b class="code">' + esc(code || "----") + "</b>" +
       '<span class="mp-small">' + S.pl.length + "/" + MAX_PLAYERS + " joueurs</span>" +
       '<span class="spacer"></span>' +
+      '<label class="mp-vol" title="Volume"><span aria-hidden="true">🔊</span><input id="mp-vol" type="range" min="0" max="100" step="5" aria-label="Volume" value="' + (L.vol || 80) + '"></label>' +
       '<button type="button" class="mp-iconbtn" data-a="shareRoom" aria-label="Partager le lien du salon">🔗</button>' +
       '<button type="button" class="mp-quitbtn" data-a="leaveRoom" aria-label="Quitter le salon" title="Quitter le salon">🚪 Quitter</button>' +
       (extra || "") + "</div>";
@@ -1727,6 +1729,16 @@
      DÉMARRAGE
      ============================================================ */
   function boot() {
+    try { var v = Number(localStorage.getItem("mp:vol")); if (Number.isFinite(v)) L.vol = Math.max(0, Math.min(100, v)); } catch (e) {}
+    document.addEventListener("input", function (e) {
+      var el = e.target;
+      if (el && el.id === "mp-vol") {
+        L.vol = Math.max(0, Math.min(100, Number(el.value) || 0));
+        try { localStorage.setItem("mp:vol", String(L.vol)); } catch (x) {}
+        try { MimicAudio.unlock(); } catch (x) {}
+      }
+    });
+    document.addEventListener("click", function () { try { MimicAudio.unlock(); } catch (e) {} }, { once: false });
     updateWho();
     var q = bootParams();
     var sess = Sess.load("mp");

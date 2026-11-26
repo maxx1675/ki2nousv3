@@ -654,7 +654,7 @@ export class MenteursEngine {
       room.autoChallenge = room.pile.length >= 12;
       room.deadline = this.now() + (room.autoChallenge ? 2200 : room.config.challenge * 1000);
       this.log(room, `ğŸƒ ${p.name} annonce ${cards.length} Ã— ${room.target}.`, "claim");
-      while (p.hand.length < this.handSize(room) && this.deckLength(room) > 0) p.hand.push(this.draw(room));
+      // Les cartes posées quittent la main sans repioche immédiate : la main\n      // diminue visuellement. Le repiochage se fait à la nouvelle manche\n      // (dealHands), ce qui correspond à « récupérer à la fin de la manche ».\n      // (aucun repiochage ici)
       if (room.autoChallenge) this.log(room, "âš ï¸ La table dÃ©borde : contestation forcÃ©e !", "warn");
     } else if (k === "challenge") {
       if (room.paused) return { ok: false, error: "Partie en pause", status: 409 };
@@ -1061,3 +1061,4 @@ export class MenteursEngine {
     this.rooms.delete(String(code).toUpperCase());
   }
 }
+

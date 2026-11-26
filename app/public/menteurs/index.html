@@ -107,7 +107,7 @@
           <h2>Panneau de l'hôte</h2>
           <div class="cfg-grid">
             <div><label for="cfgMax">Joueurs max</label><input id="cfgMax" type="number" min="2" max="8" inputmode="numeric"></div>
-            <div><label for="cfgLives">Vies</label><input id="cfgLives" type="number" min="1" max="1" inputmode="numeric" value="1"></div>
+            <div><label for="cfgLives">Vies</label><input id="cfgLives" type="number" min="1" max="5" inputmode="numeric" value="1"></div>
             <div><label for="cfgRounds">Manches max</label><input id="cfgRounds" type="number" min="1" max="20" inputmode="numeric"></div>
             <div><label for="cfgThink">Réflexion (s)</label><input id="cfgThink" type="number" min="5" max="60" inputmode="numeric"></div>
             <div><label for="cfgChallenge">Contestation (s)</label><input id="cfgChallenge" type="number" min="3" max="30" inputmode="numeric"></div>
@@ -1780,7 +1780,7 @@ function scheduleConfig() {
 function readConfig() {
   return {
     max: clamp($("#cfgMax").value, 2, 8, 6),
-    lives: clamp($("#cfgLives").value, 1, 1, 1),
+    lives: clamp($("#cfgLives").value, 1, 5, 1),
     rounds: clamp($("#cfgRounds").value, 1, 20, 10),
     think: clamp($("#cfgThink").value, 5, 60, 20),
     challenge: clamp($("#cfgChallenge").value, 3, 30, 12),
