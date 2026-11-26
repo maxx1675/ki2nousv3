@@ -127,11 +127,11 @@ describe("Mimic Party — banque de mèmes", () => {
     expect(bank.cat("inconnue")).toEqual({ id: "inconnue", label: "inconnue", emoji: "🎵" });
   });
 
-  it("tire un mème non joué, avec repli quand le vivier est épuisé", () => {
+  it("tire un mème non joué et renvoie null quand le vivier est épuisé", () => {
     const pool = bank.filter({ cats: ["gaming"] });
     expect(bank.pick(pool, [], () => 0)).toBe(pool[0]);
     expect(bank.pick(pool, [pool[0].id], () => 0)).toBe(pool[1]);
-    expect(bank.pick([pool[0]], [pool[0].id], () => 0)).toBe(pool[0]);
+    expect(bank.pick([pool[0]], [pool[0].id], () => 0)).toBeNull();
     expect(bank.pick([], [], () => 0)).toBeNull();
   });
 });

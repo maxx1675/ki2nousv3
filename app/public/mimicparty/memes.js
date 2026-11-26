@@ -173,8 +173,8 @@
       file: sound("atessouhaits")
     },
     {
-      id: "ohcigaret", name: "Oh cigaret !", emoji: "🚬", cat: "fr", dur: 3.0, diff: 2,
-      desc: "L'exclamation française devenue virale.",
+      id: "ohcigaret", name: "C'est carré !", emoji: "✅", cat: "fr", dur: 3.0, diff: 2,
+      desc: "La punchline « c'est carré » lâchée avec assurance.",
       file: sound("ohcigaret")
     },
     {
@@ -226,6 +226,86 @@
       id: "amongdrip", name: "Among Drip", emoji: "🕺", cat: "youtube", dur: 4.0, diff: 2, start: 0.2,
       desc: "Le groove des imposteurs.",
       file: sound("amongdrip")
+    },
+    {
+      id: "etcestok", name: "Et c'est ok !", emoji: "👌", cat: "fr", dur: 2.2, diff: 1,
+      desc: "Le « et c'est ok ! » qui valide absolument tout.",
+      file: sound("etcestok")
+    },
+    {
+      id: "cestvrai", name: "C'est vrai ?", emoji: "🤨", cat: "fr", dur: 0.9, diff: 1,
+      desc: "La petite question qui relance le débat.",
+      file: sound("cestvrai")
+    },
+    {
+      id: "toctoc", name: "Toc toc, on frappe", emoji: "🚪", cat: "fr", dur: 5.5, diff: 2, start: 0.1,
+      desc: "Toc toc : on frappe à ma porte.",
+      file: sound("toctoc")
+    },
+    {
+      id: "mickeyfr", name: "Mickey français", emoji: "🐭", cat: "fr", dur: 4.5, diff: 2, start: 0.4,
+      desc: "La voix de Mickey, version française.",
+      file: sound("mickeyfr")
+    },
+    {
+      id: "petitponey", name: "Petit Poney", emoji: "🐴", cat: "fr", dur: 5.0, diff: 1, start: 0.2,
+      desc: "La chanson qui reste dans la tête pendant trois jours.",
+      file: sound("petitponey")
+    },
+    {
+      id: "sncf", name: "Remix SNCF", emoji: "🚆", cat: "fr", dur: 5.0, diff: 2, start: 0.4,
+      desc: "Le remix SNCF qui annonce les galères du voyage.",
+      file: sound("sncf")
+    },
+    {
+      id: "gta", name: "Notification GTA V", emoji: "🚔", cat: "recent", dur: 1.6, diff: 1,
+      desc: "La notification de mission de GTA V.",
+      file: sound("gta")
+    },
+    {
+      id: "applepay", name: "Apple Pay", emoji: "💳", cat: "recent", dur: 1.5, diff: 1,
+      desc: "Le petit ding du paiement sans contact.",
+      file: sound("applepay")
+    },
+    {
+      id: "animewow", name: "Anime Wow", emoji: "😮", cat: "international", dur: 4.3, diff: 2,
+      desc: "Le « wow » des animes, parfait pour une révélation.",
+      file: sound("animewow")
+    },
+    {
+      id: "undertaker", name: "Cloche de l'Undertaker", emoji: "🔔", cat: "international", dur: 4.3, diff: 1,
+      desc: "La cloche qui annonce le tombé.",
+      file: sound("undertaker")
+    },
+    {
+      id: "bonecrack", name: "Craquement d'os", emoji: "🦴", cat: "absurde", dur: 1.1, diff: 1,
+      desc: "Un craquement d'os très satisfaisant.",
+      file: sound("bonecrack")
+    },
+    {
+      id: "capcut", name: "Explosion CapCut", emoji: "💣", cat: "recent", dur: 3.3, diff: 1,
+      desc: "L'explosion des edits CapCut.",
+      file: sound("capcut")
+    },
+    {
+      id: "spongebob", name: "Échec de SpongeBob", emoji: "🧽", cat: "international", dur: 3.5, diff: 1,
+      desc: "Le petit échec de SpongeBob, toujours au bon moment.",
+      file: sound("spongebob")
+    },
+    {
+      id: "huhcat", name: "Huh ? du chat", emoji: "🐱", cat: "animaux", dur: 0.5, diff: 1,
+      desc: "Le « huh ? » du chat qui n'a rien compris.",
+      file: sound("huhcat")
+    },
+    {
+      id: "mjhehee", name: "Michael Jackson : Hee hee", emoji: "🕴️", cat: "international", dur: 1.5, diff: 2,
+      desc: "Le « hee hee » le plus célèbre de la pop.",
+      file: sound("mjhehee")
+    },
+    {
+      id: "rizz", name: "Rizz", emoji: "😏", cat: "recent", dur: 1.9, diff: 2,
+      desc: "Le petit son qui accompagne un moment de charme.",
+      file: sound("rizz")
     }
   ];
 
@@ -251,11 +331,10 @@
         return true;
       });
     },
-    /** Choisit un mème non encore joué, avec repli si le vivier est vide. */
+    /** Choisit un mème non encore joué. Renvoie null si le vivier est épuisé. */
     pick: function (pool, used, rnd) {
       var r = typeof rnd === "function" ? rnd : Math.random;
       var list = (pool || []).filter(function (m) { return !used || used.indexOf(m.id) < 0; });
-      if (!list.length) list = (pool || []).slice();
       if (!list.length) return null;
       return list[Math.floor(r() * list.length)];
     }
