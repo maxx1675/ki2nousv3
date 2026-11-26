@@ -146,7 +146,7 @@
   function features(input, sampleRate) {
     var samples = resample(input, Number(sampleRate) || TARGET_SR, TARGET_SR);
     var sr = TARGET_SR;
-    if (!samples.length) return { sr: sr, dur: 0, mel: [], energy: [], onset: [], pitch: [] };
+    if (!samples.length) return { sr: sr, dur: 0, mel: [], energy: [], onset: [], pitch: [], level: 0 };
     var filters = melFilters(sr);
     var nFrames = Math.max(1, Math.floor((samples.length - FFT) / HOP) + 1);
     var mel = [], energy = [], onset = [], pitch = [];
@@ -185,7 +185,21 @@
     if (maxE > 0) {
       for (var k = 0; k < energy.length; k++) { energy[k] /= maxE; onset[k] /= maxE; }
     }
-    return { sr: sr, dur: samples.length / sr, mel: mel, energy: energy, onset: onset, pitch: pitch };
+    /* On ne compare que la partie « active » : sinon une imitation enregistrée
+       pendant 8 s (micro ouvert dès le début) est écrasée par la pénalité de
+       durée face à un mème de 1 s, même si le son est parfait. */
+    var lo = 0, hi = energy.length - 1;
+    if (maxE > 0 && energy.length > 6) {
+      while (lo < hi && energy[lo] < 0.08) lo++;
+      while (hi > lo && energy[hi] < 0.08) hi--;
+      lo = Math.max(0, lo - 2); hi = Math.min(energy.length - 1, hi + 2);
+      if (lo > 0 || hi < energy.length - 1) {
+        mel = mel.slice(lo, hi + 1); energy = energy.slice(lo, hi + 1);
+        onset = onset.slice(lo, hi + 1); pitch = pitch.slice(lo, hi + 1);
+      }
+    }
+    var dur = energy.length ? ((energy.length - 1) * HOP + FFT) / sr : 0;
+    return { sr: sr, dur: dur, mel: mel, energy: energy, onset: onset, pitch: pitch, level: maxE };
   }
 
   function cosine(a, b) {
@@ -267,6 +281,8 @@
   function compare(orig, rec) {
     var empty = { score: 0, parts: { timbre: 0, pitch: 0, rhythm: 0, energy: 0, pauses: 0, duration: 0 } };
     if (!orig || !rec || !orig.mel || !rec.mel || !orig.mel.length || !rec.mel.length) return empty;
+    /* enregistrement quasi muet (micro coupé, silence) : pas de note gratuite */
+    if (typeof rec.level === "number" && rec.level < 0.006) return empty;
 
     var dist = dtw(orig.mel, rec.mel, 0.28);
     var timbre = clamp(1 - dist / 0.75, 0, 1);

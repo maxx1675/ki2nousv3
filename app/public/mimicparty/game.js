@@ -39,7 +39,7 @@
     attempt: null, attemptDone: false, submitted: false, myClip: null, analyzing: false,
     subs: {}, clipBufs: {}, sched: {}, origFeat: null, origRid: "", wave: null, waveRid: "",
     revealDone: {}, wheelShown: false, lastTick: 0, audioRid: "", modalOpen: false,
-    vol: 80,
+    vol: 80, clipPending: {}, clipAsk: 0, starting: false,
     ph: "", audioState: "", audioLoading: "", qrUrl: ""
   };
   var IMP = null; // état de la modale d'import
@@ -53,6 +53,7 @@
   function avOf(id) { var p = S && S.pl.find(function (x) { return x.id === id; }); return (p && p.av) || AVATAR; }
   function catLabel(id) { return MimicBank.cat(id).label; }
   function diffLabel(d) { return d >= 3 ? "★★★" : d === 2 ? "★★☆" : "★☆☆"; }
+  function volGain() { return clamp(L.vol == null ? 80 : L.vol, 0, 100) / 100; }
   function secs(ms) { return Math.max(0, Math.ceil(ms / 1000)); }
   function noteTone(score) { return score >= 85 ? "lime" : score >= 60 ? "amber" : "pink"; }
 
@@ -164,7 +165,7 @@
       if (!S) R.emit("act", { k: "sync", p: ME }, "host").catch(function () {});
       /* un mème importé peut manquer après un rechargement en pleine manche */
       if (S && S.round && S.round.meme && S.round.meme.custom && !findCustom(S.round.meme.id)) {
-        R.emit("act", { k: "needMeme", id: S.round.meme.id }, "host").catch(function () {});
+        R.emit("act", { k: "needMeme", p: ME, id: S.round.meme.id }, "host").catch(function () {});
       }
     };
     hello(true);
@@ -179,6 +180,7 @@
     S.host = ME;
     addSelf();
     loadCustom().then(function () { render(); });
+    try { MimicAudio.preload(MimicBank.OFFICIAL); } catch (e) {}
     startHostLoop();
     Sess.save("mp", { code: code, name: L.name, host: true });
     toast("👑 Tu es maintenant l’hôte");
@@ -237,7 +239,7 @@
       return;
     }
     if (d.k === "needMeme") return sendMeme(d.id, d.p);
-    if (d.k === "needClips") return sendClips(d.p);
+    if (d.k === "needClips") return sendClips(d.p, d.ids);
     if (d.k === "leave") {
       S.pl = S.pl.filter(function (p) { return p.id !== d.p; });
       broadcast(true); render();
@@ -264,13 +266,17 @@
 
   function onSubmission(d) {
     if (!d.p) return;
+    if (d.rid && S.round && d.rid !== S.round.rid) return; /* retardataire d'une manche passée */
     var score = clamp(Math.round(Number(d.score) || 0), 0, 100);
+    var data = String(d.data || "");
+    if (data.length > 1500000) data = "";
     L.subs[d.p] = {
-      data: String(d.data || ""), mime: String(d.mime || ""),
+      data: data, mime: String(d.mime || ""), sr: Number(d.sr) || 0,
       dur: clamp(Number(d.dur) || 0, 0.2, 30), score: score,
       parts: d.parts && typeof d.parts === "object" ? d.parts : null
     };
     if (S.submitted.indexOf(d.p) < 0) S.submitted.push(d.p);
+    relayClip(d.p); /* chacun reçoit l'imitation dès qu'elle arrive : prête avant la phase 3 */
     if (S.ph === "collect" || S.ph === "imitate") { broadcast(false); render(); }
   }
 
@@ -285,15 +291,22 @@
     R.emit("meme", payload, to || "").catch(function () {});
   }
 
-  function sendClips(to) {
-    if (!S || !S.play) return;
+  /** Envoie UNE imitation (un message par clip : léger, pas de gros paquet unique). */
+  function relayClip(cid, to) {
+    if (!isHost || !R || !S || !S.round) return;
+    var s = L.subs[cid];
+    if (!s || !s.data) return;
     var clips = {};
+    clips[cid] = { data: s.data, mime: s.mime, sr: s.sr || 0, dur: s.dur };
+    R.emit("clips", { rid: S.round.rid, clips: clips }, to || "").catch(function () {});
+  }
+
+  function sendClips(to, ids) {
+    if (!isHost || !S || !S.round) return;
     Object.keys(L.subs).forEach(function (cid) {
-      var s = L.subs[cid];
-      if (!s || !s.data) return;
-      clips[cid] = { data: s.data, mime: s.mime, dur: s.dur };
+      if (ids && ids.length && ids.indexOf(cid) < 0) return;
+      relayClip(cid, to);
     });
-    R.emit("clips", { rid: S.round ? S.round.rid : "", clips: clips }, to || "").catch(function () {});
   }
 
   /* ---------- boucle de l'hôte ---------- */
@@ -314,7 +327,8 @@
       S.ph = "imitate"; S.since = t; broadcast(true); render();
     } else if (S.ph === "imitate" && S.round && (t >= S.round.recEnd + 900 || allSubmitted())) {
       S.ph = "collect"; S.since = t; broadcast(true); render();
-    } else if (S.ph === "collect" && t >= S.since + 1800) {
+    } else if (S.ph === "collect" && t >= S.since + (allSubmitted() ? 700 : 6500)) {
+      /* on attend les retardataires (analyse locale) au lieu de les déclarer forfait à 1,8 s */
       beginPlayback();
     } else if (S.ph === "playback" && S.play && t >= S.play.endAt) {
       beginScores();
@@ -347,30 +361,50 @@
   function poolFor(src) {
     var off = src === "custom" ? [] : officialPool();
     var cus = src === "official" ? [] : customPool();
-    var seen = {};
+    var seen = {}, names = {};
     return off.concat(cus).filter(function (m) {
       if (!m || seen[m.id]) return false;
+      if (!m.custom) {
+        if (MimicAudio.isBad(m.id)) return false;               /* fichier absent */
+        var nk = String(m.name || "").toLowerCase();
+        if (names[nk]) return false;                             /* même nom = même mème */
+        names[nk] = 1;
+      }
       seen[m.id] = 1;
       return true;
     });
   }
 
   function startGame() {
-    if (!isHost) return;
+    if (!isHost || L.starting) return;
     if (S.pl.length < 2) { toast("Il faut au moins 2 joueurs"); return; }
-    var pool = poolFor(S.cfg.src);
-    if (!pool.length) { toast("Aucun mème ne correspond aux filtres"); return; }
-    /* jamais deux fois le même son : on borne les manches à la taille du vivier */
-    var rounds = clamp(Math.round(Number(S.cfg.rounds) || 3), 1, 10);
-    if (rounds > pool.length) {
-      S.cfg.rounds = pool.length;
-      toast("Sélection de " + pool.length + " mème(s) : la partie fera " + pool.length + " manche(s).");
-    } else {
-      S.cfg.rounds = rounds;
-    }
-    S.r = 0; S.used = []; S.scores = []; S.play = null; S.wheel = null; S.done = false;
-    S.pl.forEach(function (p) { p.sc = 0; p.gain = 0; });
-    nextRound();
+    if (!poolFor(S.cfg.src).length) { toast("Aucun mème ne correspond aux filtres"); return; }
+    L.starting = true;
+    toast("Vérification des sons…");
+    /* charge chaque son officiel de la sélection : ceux dont le fichier manque sont écartés
+       (sinon la manche se jouerait en silence) et la durée des mèmes « auto » est mesurée. */
+    MimicAudio.preload(officialPool()).catch(function () {}).then(function () {
+      L.starting = false;
+      if (!isHost || !S || (S.ph !== "lobby" && S.ph !== "end")) return;
+      var pool = poolFor(S.cfg.src);
+      var missing = officialPool().filter(function (m) { return MimicAudio.isBad(m.id); });
+      if (missing.length) {
+        try { console.warn("[Mimic Party] sons introuvables, ignorés :", missing.map(function (m) { return m.file; })); } catch (e) {}
+        toast(missing.length + " son(s) introuvable(s) ignoré(s)");
+      }
+      if (!pool.length) { toast("Aucun son disponible dans la sélection"); return; }
+      /* jamais deux fois le même son : on borne les manches à la taille du vivier */
+      var rounds = clamp(Math.round(Number(S.cfg.rounds) || 3), 1, 10);
+      if (rounds > pool.length) {
+        S.cfg.rounds = pool.length;
+        toast("Sélection de " + pool.length + " mème(s) : la partie fera " + pool.length + " manche(s).");
+      } else {
+        S.cfg.rounds = rounds;
+      }
+      S.r = 0; S.used = []; S.scores = []; S.play = null; S.wheel = null; S.done = false;
+      S.pl.forEach(function (p) { p.sc = 0; p.gain = 0; });
+      nextRound();
+    });
   }
 
   function nextRound() {
@@ -434,7 +468,6 @@
     S.play = { at: at, items: items, endAt: cur + 300 };
     S.ph = "playback"; S.since = t; S.revealAt = 0;
     broadcast(true);
-    sendClips("");
     hostCacheClips();
     render();
   }
@@ -462,9 +495,13 @@
   }
 
   function beginWheel() {
-    if (!isHost || !S || !S.scores.length || S.ph !== "scores") return;
+    if (!isHost || !S || S.ph !== "scores") return;
     var t = now();
-    var winner = S.scores[0];
+    var winner = (S.scores || []).find(function (x) { return !x.forfait; });
+    if (!winner) { /* personne n'a imité : pas de roue */
+      S.ph = "roundEnd"; S.since = t; S.nextAt = t + 7000; broadcast(true); render();
+      return;
+    }
     var idx = Math.floor(Math.random() * WHEEL.length);
     var opt = WHEEL[idx];
     var bonus = Math.round(Number(opt.bonus) || 0);
@@ -516,14 +553,14 @@
       var item = findCustom(meta.id);
       if (!item || !item.data) {
         if (tries > 24) return Promise.reject(new Error("Audio du mème indisponible"));
-        if (!isHost) R.emit("act", { k: "needMeme", id: meta.id }, "host").catch(function () {});
+        if (!isHost) R.emit("act", { k: "needMeme", p: ME, id: meta.id }, "host").catch(function () {});
         return new Promise(function (res) { setTimeout(res, 350); }).then(function () { return ensureBuffer(meta, tries + 1); });
       }
       return MimicAudio.decodeBlob(MimicAudio.dataUrlToBlob(item.data)).then(function (b) {
         BUFS.set(meta.id, b); return b;
       });
     }
-    var m = MimicBank.byId(meta.id);
+    var m = MimicBank.byId(meta.id) || (meta.file ? meta : null);
     if (!m) return Promise.reject(new Error("Mème inconnu"));
     return MimicAudio.loadMeme(m).then(function (b) { BUFS.set(meta.id, b); return b; });
   }
@@ -610,7 +647,7 @@
     if (!r || !r.blob || r.dur < 0.25) {
       L.submitted = true;
       L.myClip = null;
-      submitPayload("", "", 0, 0, null);
+      submitPayload("", "", 0, 0, null, 0);
       return;
     }
     L.analyzing = true;
@@ -624,27 +661,28 @@
         return { buf: buf, res: { score: 0, parts: null } };
       });
     }).then(function (out) {
-      return MimicAudio.blobToDataUrl(r.blob).then(function (data) {
-        L.myClip = { buf: out.buf, score: out.res.score, parts: out.res.parts, dur: r.dur };
-        L.analyzing = false;
-        L.submitted = true;
-        submitPayload(data, r.mime || r.blob.type || "", r.dur, out.res.score, out.res.parts);
-      });
+      /* format universel (µ-law) : lisible sur tous les appareils, silences coupés */
+      var clip = MimicAudio.encodeClip(out.buf);
+      L.myClip = { buf: out.buf, score: out.res.score, parts: out.res.parts, dur: clip.dur };
+      L.analyzing = false;
+      L.submitted = true;
+      submitPayload(clip.data, clip.mime, clip.dur, out.res.score, out.res.parts, clip.sr);
     }).catch(function () {
       L.analyzing = false;
       L.submitted = true;
-      submitPayload("", "", r.dur, 0, null);
+      submitPayload("", "", r.dur, 0, null, 0);
     });
   }
 
-  function submitPayload(data, mime, dur, score, parts) {
+  function submitPayload(data, mime, dur, score, parts, sr) {
     score = clamp(Math.round(Number(score) || 0), 0, 100);
     if (isHost) {
-      L.subs[ME] = { data: data, mime: mime, dur: clamp(Number(dur) || 0.5, 0.2, 30), score: score, parts: parts };
+      L.subs[ME] = { data: data, mime: mime, sr: Number(sr) || 0, dur: clamp(Number(dur) || 0.5, 0.2, 30), score: score, parts: parts };
       if (S.submitted.indexOf(ME) < 0) S.submitted.push(ME);
       broadcast(false);
+      relayClip(ME);
     } else {
-      R.emit("act", { k: "submit", p: ME, data: data, mime: mime, dur: dur, score: score, parts: parts }, "host").catch(function () {});
+      R.emit("act", { k: "submit", p: ME, rid: S && S.round ? S.round.rid : "", data: data, mime: mime, sr: sr, dur: dur, score: score, parts: parts }, "host").catch(function () {});
     }
     render();
   }
@@ -653,13 +691,13 @@
   function cacheClip(cid, c, rid) {
     if (!c || !c.data) return;
     var key = cid + "|" + (rid || "");
-    if (L.clipBufs[cid] && L.clipBufs[cid].rid === key) return;
-    var blob = MimicAudio.dataUrlToBlob(c.data);
-    if (!blob) return;
-    MimicAudio.decodeBlob(blob).then(function (buf) {
-      L.clipBufs[cid] = { buf: buf, rid: key, dur: c.dur };
+    if ((L.clipBufs[cid] && L.clipBufs[cid].rid === key) || L.clipPending[key]) return;
+    L.clipPending[key] = 1;
+    MimicAudio.decodeClip(c).then(function (buf) {
+      delete L.clipPending[key];
+      L.clipBufs[cid] = { buf: buf, rid: key, round: rid || "", dur: c.dur };
       render();
-    }).catch(function () {});
+    }).catch(function () { delete L.clipPending[key]; });
   }
 
   function receiveClips(d) {
@@ -667,29 +705,52 @@
     Object.keys(d.clips).forEach(function (cid) { cacheClip(cid, d.clips[cid], d.rid); });
   }
 
-  /** L'hôte ne reçoit pas son propre broadcast `clips` : il décode ses copies locales. */
+  /** L'hôte ne reçoit pas ses propres envois : il décode ses copies locales. */
   function hostCacheClips() {
     if (!isHost || !S || !S.round) return;
     var rid = S.round.rid;
     Object.keys(L.subs).forEach(function (cid) {
       var s = L.subs[cid];
       if (!s || !s.data) return;
-      cacheClip(cid, { data: s.data, mime: s.mime, dur: s.dur }, rid);
+      cacheClip(cid, { data: s.data, mime: s.mime, sr: s.sr, dur: s.dur }, rid);
     });
   }
 
+  /** Buffer d'une imitation : copie reçue, ou la sienne (jamais renvoyée par le réseau). */
+  function clipFor(id) {
+    var c = L.clipBufs[id];
+    if (c && c.buf && (!c.round || !S || !S.round || c.round === S.round.rid)) return c.buf;
+    if (id === ME && L.myClip && L.myClip.buf) return L.myClip.buf;
+    return null;
+  }
+
+  /** Redemande à l'hôte les imitations manquantes (message perdu, arrivée tardive). */
+  function requestMissingClips() {
+    if (isHost || !R || !S || !S.play || !S.round) return;
+    if (S.ph !== "playback" && S.ph !== "scores") return;
+    var t = now();
+    if (t < S.play.at - 1500 || t - L.clipAsk < 1800) return;
+    var ids = S.play.items.filter(function (it) {
+      return !it.forfait && !clipFor(it.id) && !L.clipPending[it.id + "|" + S.round.rid];
+    }).map(function (it) { return it.id; });
+    if (!ids.length) return;
+    L.clipAsk = t;
+    R.emit("act", { k: "needClips", p: ME, ids: ids }, "host").catch(function () {});
+  }
+
   function schedulePlayback() {
-    if (!S || !S.play || S.ph !== "playback") return;
+    if (!S || !S.play || S.ph !== "playback" || !S.round) return;
     if (MimicAudio.state() !== "running") { MimicAudio.unlock(); return; }
     S.play.items.forEach(function (it) {
       if (it.forfait) return;
-      var c = L.clipBufs[it.id];
-      if (!c || !c.buf) return;
+      var buf = clipFor(it.id);
+      if (!buf) return;
       var key = it.id + "|" + S.round.rid;
       if (L.sched[key]) return;
       var delay = (it.at - now()) / 1000;
-      if (delay < -c.buf.duration) { L.sched[key] = 1; return; }
-      var src = MimicAudio.playBuffer(c.buf, { delay: Math.max(0, delay), gain: (L.vol || 80) / 100 });
+      var late = delay < 0 ? -delay : 0;               /* arrivé en retard : on reprend au bon endroit */
+      if (late >= buf.duration) { L.sched[key] = 1; return; }
+      var src = MimicAudio.playBuffer(buf, { delay: Math.max(0, delay), offset: late, gain: volGain() });
       if (src) L.sched[key] = 1;
     });
   }
@@ -716,7 +777,7 @@
         if (t >= segStart + dur) continue;
         var delay = Math.max(0, segStart - t) / 1000;
         var offset = Math.max(0, (t - segStart) / 1000);
-        MimicAudio.playBuffer(buf, { delay: delay, offset: offset, gain: (L.vol || 80) / 100 });
+        MimicAudio.playBuffer(buf, { delay: delay, offset: offset, gain: volGain() });
       }
       drawWaveNow();
     }).catch(function () {
@@ -735,7 +796,7 @@
     }).then(function (buf) {
       if (!S || !S.round || S.round.rid !== rid) return;
       MimicAudio.stopAll();
-      MimicAudio.playBuffer(buf, { gain: 1 });
+      MimicAudio.playBuffer(buf, { gain: volGain() });
     }).catch(function () { toast("Son bloqué : appuie d’abord sur « Activer le son »."); });
   }
 
@@ -769,6 +830,7 @@
       MimicAudio.stopAll();
       L.sched = {};
       L.lastTick = 0;
+      if ((S.ph === "collect" || S.ph === "playback") && !L.attempt) { try { MimicAudio.releaseMic(); } catch (e) {} }
     }
     var sig = stateSig();
     if (sig !== L.sig) {
@@ -845,7 +907,7 @@
     return '<div class="mp-roombar"><span class="mp-small">Salon</span><b class="code">' + esc(code || "----") + "</b>" +
       '<span class="mp-small">' + S.pl.length + "/" + MAX_PLAYERS + " joueurs</span>" +
       '<span class="spacer"></span>' +
-      '<label class="mp-vol" title="Volume"><span aria-hidden="true">🔊</span><input id="mp-vol" type="range" min="0" max="100" step="5" aria-label="Volume" value="' + (L.vol || 80) + '"></label>' +
+      '<label class="mp-vol" title="Volume"><span aria-hidden="true">🔊</span><input id="mp-vol" type="range" min="0" max="100" step="5" aria-label="Volume" value="' + (L.vol == null ? 80 : L.vol) + '"></label>' +
       '<button type="button" class="mp-iconbtn" data-a="shareRoom" aria-label="Partager le lien du salon">🔗</button>' +
       '<button type="button" class="mp-quitbtn" data-a="leaveRoom" aria-label="Quitter le salon" title="Quitter le salon">🚪 Quitter</button>' +
       (extra || "") + "</div>";
@@ -1220,7 +1282,7 @@
           '<span class="nm">' + esc(r.n) + '</span><span class="note" style="background:var(--mp-lime)">' + r.score + "</span></div>";
       }).join("") + "</div>" +
       "<h2>🏆 Classement général</h2>" + rows +
-      (isHost ? '<button type="button" class="btn primary big" data-a="next">' + (S.r >= S.cfg.rounds ? "Voir le podium" : "Manche suivante") + "</button>" : '<p class="hint" style="text-align:center">La suite démarre automatiquement…</p>') +
+      (isHost ? '<button type="button" class="btn primary big" data-a="next">' + (S.r >= S.cfg.rounds ? "Voir le podium" : "Manche suivante") + "</button>" : '<p class="hint" style="text-align:center" data-countdown>La suite démarre automatiquement…</p>') +
       "</div>";
   }
 
@@ -1264,7 +1326,8 @@
       if (L.rid !== S.round.rid) {
         L.rid = S.round.rid;
         L.sub = ""; L.autoTried = false; L.attemptDone = false; L.submitted = false;
-        L.myClip = null; L.analyzing = false; L.lastTick = 0; L.clipBufs = {};
+        L.myClip = null; L.analyzing = false; L.lastTick = 0;
+        Object.keys(L.clipBufs).forEach(function (k) { if (L.clipBufs[k].round !== S.round.rid) delete L.clipBufs[k]; });
         L.wave = null; L.waveRid = "";
         /* Ne PAS vider audioRid/audioLoading ici : la planification du mème
            peut être déjà en cours pour cette même manche (renderListen l'a
@@ -1285,13 +1348,19 @@
         }
         if (t >= S.round.recEnd && L.attempt) stopAttempt();
       }
+      /* micro refusé / indisponible : on envoie un forfait pour ne pas bloquer la manche */
+      if ((S.ph === "imitate" || S.ph === "collect") && !L.submitted && !L.attempt && !L.analyzing && !L.micBusy &&
+          t >= S.round.recEnd + 300) {
+        L.submitted = true; L.attemptDone = true; L.sig = "";
+        submitPayload("", "", 0, 0, null, 0);
+      }
       if (S.ph === "listen" || S.ph === "imitate") updateListenView(t);
       if (S.ph === "playback") updatePlayback(t);
-      if (S.ph === "scores") updateScores();
+      if (S.ph === "scores") { updateScores(); requestMissingClips(); }
       if (S.ph === "wheel") updateWheel();
       if (S.ph === "roundEnd" && S.nextAt) {
-        var el = document.querySelector("[data-a=next]");
-        if (el && !isHost) el.textContent = "Suite dans " + secs(S.nextAt - t) + "s";
+        var el = document.querySelector("[data-countdown]");
+        if (el) el.textContent = "La suite démarre dans " + secs(S.nextAt - t) + "s…";
       }
     }
     if (S.ph === "collect" && L.attempt) stopAttempt();
@@ -1340,6 +1409,7 @@
     var bar = $id("mp-playbar");
     if (bar) bar.style.width = pct((t - S.play.at) / Math.max(1, S.play.endAt - S.play.at));
     schedulePlayback();
+    requestMissingClips();
   }
 
   function drawMic(level, buf) {
@@ -1377,10 +1447,12 @@
      ============================================================ */
   function setCfg(k, v) {
     if (!isHost || !S) return;
-    if (k === "rounds") S.cfg.rounds = clamp(Math.round(Number(v) || 3), 1, 10);
-    else if (k === "listens") S.cfg.listens = clamp(Math.round(Number(v) || 2), 1, 2);
-    else if (k === "imit") S.cfg.imit = clamp(Math.round(Number(v) || 8), 4, 15);
-    else if (k === "diff") S.cfg.diff = clamp(Math.round(Number(v) || 0), 0, 3);
+    var n = Math.round(Number(v));
+    if (!isFinite(n)) return;
+    if (k === "rounds") S.cfg.rounds = clamp(n, 1, 10);
+    else if (k === "listens") S.cfg.listens = clamp(n, 1, 2);
+    else if (k === "imit") S.cfg.imit = clamp(n, 4, 15);
+    else if (k === "diff") S.cfg.diff = clamp(n, 0, 3);
     broadcast(true);
     render();
   }
@@ -1426,28 +1498,29 @@
   }
 
   function playClip(id) {
-    var c = L.clipBufs[id];
-    if (c && c.buf) {
+    var buf = clipFor(id);
+    if (buf) {
       MimicAudio.ensureRunning().then(function () {
-        MimicAudio.stopAll(); MimicAudio.playBuffer(c.buf, { gain: 1 });
+        MimicAudio.stopAll(); MimicAudio.playBuffer(buf, { gain: volGain() });
       }).catch(function () { toast("Son bloqué : appuie sur « Activer le son »."); });
       return;
     }
     if (isHost && L.subs[id] && L.subs[id].data) {
-      MimicAudio.decodeBlob(MimicAudio.dataUrlToBlob(L.subs[id].data)).then(function (b) {
+      MimicAudio.decodeClip(L.subs[id]).then(function (b) {
         return MimicAudio.ensureRunning().then(function () {
-          MimicAudio.stopAll(); MimicAudio.playBuffer(b, { gain: 1 });
+          MimicAudio.stopAll(); MimicAudio.playBuffer(b, { gain: volGain() });
         });
       }).catch(function () { toast("Extrait indisponible"); });
       return;
     }
-    toast("Extrait indisponible sur cet appareil");
+    requestMissingClips();
+    toast("Extrait en cours de réception…");
   }
 
   function playMine() {
     if (!L.myClip || !L.myClip.buf) return;
     MimicAudio.ensureRunning().then(function () {
-      MimicAudio.stopAll(); MimicAudio.playBuffer(L.myClip.buf, { gain: 1 });
+      MimicAudio.stopAll(); MimicAudio.playBuffer(L.myClip.buf, { gain: volGain() });
     }).catch(function () { toast("Son bloqué : appuie sur « Activer le son »."); });
   }
 
@@ -1511,7 +1584,7 @@
     ensureBuffer(metaOfCustom(item)).then(function (buf) {
       return MimicAudio.ensureRunning().then(function () {
         MimicAudio.stopAll();
-        MimicAudio.playBuffer(buf, { gain: 1 });
+        MimicAudio.playBuffer(buf, { gain: volGain() });
       });
     }).catch(function () { toast("Audio indisponible"); });
   }
@@ -1843,7 +1916,7 @@
      DÉMARRAGE
      ============================================================ */
   function boot() {
-    try { var v = Number(localStorage.getItem("mp:vol")); if (Number.isFinite(v)) L.vol = Math.max(0, Math.min(100, v)); } catch (e) {}
+    try { var raw = localStorage.getItem("mp:vol"); if (raw !== null && raw !== "" && Number.isFinite(Number(raw))) L.vol = Math.max(0, Math.min(100, Number(raw))); } catch (e) {}
     document.addEventListener("input", function (e) {
       var el = e.target;
       if (el && el.id === "mp-vol") {

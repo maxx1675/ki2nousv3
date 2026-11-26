@@ -10,7 +10,8 @@
 (function (root) {
   var SR = 44100;
   var TARGET_ENCODE_SR = 44100;
-  var _ctx = null, _mic = null, _sources = new Set(), _cache = new Map();
+  var CLIP_SR = 12000; /* fréquence des imitations échangées entre joueurs */
+  var _ctx = null, _mic = null, _sources = new Set(), _cache = new Map(), _bad = {};
 
   function ctx() {
     if (_ctx) {
@@ -50,24 +51,39 @@
         return res.arrayBuffer();
       })
       .then(decodeArrayBuffer)
-      .then(function (buffer) { return sliceBuffer(buffer, meme.start || 0, meme.dur || buffer.duration); })
-      .catch(function (e) { _cache.delete("m:" + meme.id); throw e; });
+      .then(function (buffer) {
+        var start = Number(meme.start) || 0;
+        /* sans `dur` (mèmes « auto ») : on garde le début du fichier, plafonné à `max` s */
+        var want = Number(meme.dur) || Math.min(Math.max(0.2, buffer.duration - start), Number(meme.max) || 5);
+        var out = sliceBuffer(buffer, start, want);
+        if (!meme.dur) meme.dur = Math.floor(out.duration * 100) / 100;
+        delete _bad[meme.id];
+        return out;
+      })
+      .catch(function (e) { _cache.delete("m:" + meme.id); _bad[meme.id] = true; throw e; });
     _cache.set("m:" + meme.id, p);
     return p;
   }
 
-  /** Précharge plusieurs mèmes officiels, avec progression (0..1). */
+  /** Vrai si le fichier de ce mème a déjà échoué au chargement (absent, illisible). */
+  function isBad(id) { return !!_bad[id]; }
+
+  /** Précharge plusieurs mèmes officiels (6 en parallèle), avec progression (0..1). */
   function preload(list, onProgress) {
     list = list || [];
-    var done = 0;
-    return list.reduce(function (chain, m) {
-      return chain.then(function () {
-        return loadMeme(m).catch(function () {}).then(function () {
-          done++;
-          if (onProgress) { try { onProgress(done / Math.max(1, list.length), done, list.length); } catch (e) {} }
-        });
+    var done = 0, i = 0, n = list.length;
+    function worker() {
+      if (i >= n) return Promise.resolve();
+      var m = list[i++];
+      return loadMeme(m).catch(function () {}).then(function () {
+        done++;
+        if (onProgress) { try { onProgress(done / Math.max(1, n), done, n); } catch (e) {} }
+        return worker();
       });
-    }, Promise.resolve());
+    }
+    var ws = [];
+    for (var k = 0; k < Math.min(6, n); k++) ws.push(worker());
+    return Promise.all(ws);
   }
 
   function track(src) {
@@ -247,6 +263,81 @@
         try { if (mr.state !== "inactive") mr.stop(); } catch (e) {}
       }, Math.ceil(buffer.duration * 1000) + 220);
     });
+  }
+
+  /* ---------- imitations échangées entre joueurs ----------
+   * Les imitations voyagent en PCM mono 12 kHz compressé en µ-law (8 bits),
+   * pas en Opus/WebM : chaque appareil peut les lire sans dépendre du codec du
+   * navigateur de l'émetteur (Safari ne décode pas toujours le WebM de Chrome,
+   * Chrome ne décode pas toujours le MP4 de Safari). Les silences de début et
+   * de fin sont coupés et le volume est normalisé pour qu'on entende tout le monde. */
+  function lin2ulaw(pcm) {
+    var sign = (pcm >> 8) & 0x80;
+    if (sign) pcm = -pcm;
+    if (pcm > 32635) pcm = 32635;
+    pcm += 0x84;
+    var exp = 7, mask = 0x4000;
+    for (; (pcm & mask) === 0 && exp > 0; exp--, mask >>= 1) {}
+    var mant = (pcm >> (exp + 3)) & 0x0F;
+    return (~(sign | (exp << 4) | mant)) & 0xFF;
+  }
+  function ulaw2lin(u) {
+    u = ~u & 0xFF;
+    var sign = u & 0x80, exp = (u >> 4) & 7, mant = u & 0x0F;
+    var s = (((mant << 3) + 0x84) << exp) - 0x84;
+    return sign ? -s : s;
+  }
+
+  /** Buffer -> { data(base64), mime, sr, dur }. */
+  function encodeClip(buffer) {
+    var src = mixMono(buffer), sr0 = buffer.sampleRate, sr = CLIP_SR, i;
+    /* 1. coupe le silence de début/fin (blocs de 20 ms) */
+    var blk = Math.max(1, Math.floor(sr0 * 0.02)), nb = Math.floor(src.length / blk), peaks = [], peak = 0;
+    for (var b = 0; b < nb; b++) {
+      var mx = 0;
+      for (i = b * blk; i < (b + 1) * blk; i++) { var v = Math.abs(src[i]); if (v > mx) mx = v; }
+      peaks.push(mx); if (mx > peak) peak = mx;
+    }
+    var from = 0, to = src.length;
+    if (nb > 8 && peak > 0.01) {
+      var th = Math.max(0.01, peak * 0.08), lo = 0, hi = nb - 1;
+      while (lo < hi && peaks[lo] < th) lo++;
+      while (hi > lo && peaks[hi] < th) hi--;
+      lo = Math.max(0, lo - 8); hi = Math.min(nb - 1, hi + 8);
+      if ((hi - lo + 1) * blk >= sr0 * 0.3) { from = lo * blk; to = Math.min(src.length, (hi + 1) * blk); }
+    }
+    /* 2. gain de normalisation (crête à ~0,85, gain max ×6) */
+    var gain = peak > 0.02 ? Math.min(6, 0.85 / peak) : 1;
+    /* 3. rééchantillonnage par moyenne (anti-repliement) puis µ-law */
+    var ratio = sr0 / sr;
+    var n = Math.max(1, Math.min(Math.floor((to - from) / ratio), sr * 15));
+    var bytes = new Uint8Array(n);
+    for (i = 0; i < n; i++) {
+      var a0 = from + Math.floor(i * ratio), a1 = Math.min(to, Math.max(a0 + 1, from + Math.floor((i + 1) * ratio)));
+      var sum = 0;
+      for (var k = a0; k < a1; k++) sum += src[k] || 0;
+      bytes[i] = lin2ulaw(Math.round(clamp(sum / Math.max(1, a1 - a0) * gain, -1, 1) * 32767));
+    }
+    var bin = "", CH = 0x8000;
+    for (i = 0; i < n; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    return { data: btoa(bin), mime: "audio/x-mulaw", sr: sr, dur: n / sr };
+  }
+
+  /** { data, mime, sr } -> Promise<AudioBuffer>. Gère aussi les anciens clips (data URL). */
+  function decodeClip(c) {
+    if (!c || !c.data) return Promise.reject(new Error("Clip vide"));
+    if (c.mime === "audio/x-mulaw") {
+      var cx = ctx();
+      if (!cx) return Promise.reject(new Error("Audio indisponible"));
+      try {
+        var bin = atob(c.data), n = bin.length, sr = Number(c.sr) || CLIP_SR;
+        var buf = cx.createBuffer(1, n, sr), d = buf.getChannelData(0);
+        for (var i = 0; i < n; i++) d[i] = ulaw2lin(bin.charCodeAt(i)) / 32768;
+        return Promise.resolve(buf);
+      } catch (e) { return Promise.reject(e); }
+    }
+    var blob = dataUrlToBlob(c.data);
+    return blob ? decodeBlob(blob) : Promise.reject(new Error("Clip illisible"));
   }
 
   /* ---------- micro ---------- */
@@ -508,7 +599,8 @@
 
   root.MimicAudio = {
     ctx: ctx, unlock: unlock, state: state, ensureRunning: ensureRunning, sfx: sfx,
-    loadMeme: loadMeme, preload: preload,
+    loadMeme: loadMeme, preload: preload, isBad: isBad,
+    encodeClip: encodeClip, decodeClip: decodeClip,
     playBuffer: playBuffer, playSnippet: playSnippet, stopAll: stopAll,
     decodeBlob: decodeBlob, decodeArrayBuffer: decodeArrayBuffer, loadAudioFile: loadAudioFile,
     sliceBuffer: sliceBuffer, encodeBuffer: encodeBuffer, wavBlob: wavBlob,

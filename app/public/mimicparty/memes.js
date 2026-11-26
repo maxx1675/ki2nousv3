@@ -7,6 +7,11 @@
  * entrée dans OFFICIAL : le jeu n'a pas besoin d'être modifié.
  *
  * Champs : id, name, emoji, cat, dur, diff, desc (facultatif), file, start.
+ *
+ * Mèmes « auto » (liste VIRAL plus bas) : pas de `dur` à renseigner. Le jeu mesure
+ * le fichier au chargement et garde ses `max` premières secondes (5 s par défaut).
+ * `q` = mots-clés de recherche utilisés par tools/fetch-sounds.js pour télécharger
+ * le MP3 dans sounds/. Un fichier absent n'est jamais joué : le mème est ignoré.
  */
 "use strict";
 (function (root) {
@@ -194,7 +199,7 @@
     },
     {
       id: "sax", name: "Saxophones qui montent", emoji: "🎷", cat: "tiktok", dur: 5.0, diff: 1,
-      desc: "Le meme où le saxophone devient de plus en plus fort.",
+      desc: "Le mème où le saxophone devient de plus en plus fort.",
       file: sound("sax")
     },
     {
@@ -234,7 +239,7 @@
     },
     {
       id: "emotionaldamage", name: "Emotional Damage", emoji: "💔", cat: "repliques", dur: 2.5, diff: 2, start: 0,
-      desc: "La replique culte.",
+      desc: "La réplique culte.",
       file: sound("emotional-damage")
     },
     {
@@ -244,17 +249,17 @@
     },
     {
       id: "skibidi", name: "Skibidi", emoji: "🚽", cat: "tiktok", dur: 2.0, diff: 2, start: 0,
-      desc: "Le meme Skibidi Toilet.",
+      desc: "Le mème Skibidi Toilet.",
       file: sound("skibidi")
     },
     {
       id: "spongebobfail", name: "SpongeBob Fail", emoji: "🧽", cat: "youtube", dur: 2.0, diff: 1, start: 0,
-      desc: "L echec de Bob l eponge.",
+      desc: "L’échec de Bob l’éponge.",
       file: sound("spongebob-fail")
     },
     {
       id: "bonecrack", name: "Bone Crack", emoji: "🦴", cat: "cris", dur: 1.0, diff: 1, start: 0,
-      desc: "Le craquement d os.",
+      desc: "Le craquement d’os.",
       file: sound("bone-crack")
     },
     {
@@ -264,10 +269,57 @@
     },
     {
       id: "mlgairhorn", name: "MLG Air Horn", emoji: "📢", cat: "gaming", dur: 1.5, diff: 1, start: 0,
-      desc: "Le airhorn MLG.",
+      desc: "L’air horn des montages MLG, version intense.",
       file: sound("mlg-airhorn")
     }
   ];
+
+  /* ---- Mèmes viraux « auto » : MP3 à déposer dans sounds/<id>.mp3 (voir tools/fetch-sounds.js) ---- */
+  var VIRAL = [
+    // [id, nom, emoji, catégorie, difficulté, recherche, description]
+    ["oof", "Oof (Roblox)", "😵", "gaming", 1, "roblox oof", "Le grognement de mort le plus célèbre de Roblox."],
+    ["hitmarker", "Hitmarker", "🎯", "gaming", 1, "hitmarker", "Le tic des montages de snipers."],
+    ["wasted", "Wasted (GTA)", "💀", "gaming", 2, "gta wasted", "Le jingle de défaite de GTA."],
+    ["missionfailed", "Mission failed", "❌", "gaming", 2, "mission failed we'll get em next time", "Raté, on fera mieux la prochaine fois."],
+    ["clashlaugh", "Rire du roi (Clash Royale)", "👑", "gaming", 2, "clash royale king laugh", "Le « hehehe » le plus agaçant du jeu."],
+    ["wilhelm", "Wilhelm Scream", "😱", "cris", 2, "wilhelm scream", "Le cri de film d’action utilisé depuis 1951."],
+    ["fnaf", "Jumpscare FNAF", "🐻", "cris", 2, "fnaf jumpscare", "Le cri qui vous fait lâcher la souris."],
+    ["sheesh", "Sheeesh", "🥶", "tiktok", 2, "sheesh", "L’admiration étirée à l’extrême."],
+    ["bingchilling", "Bing Chilling", "🍦", "tiktok", 2, "bing chilling john cena", "Le mème glacé de John Cena."],
+    ["wow", "Anime Wow", "😮", "tiktok", 2, "anime wow", "Le « waaow » d’anime des edits."],
+    ["chipi", "Chipi Chipi Chapa Chapa", "🐱", "tiktok", 3, "chipi chipi chapa chapa", "Le chat qui danse sur un air entêtant."],
+    ["pedro", "Pedro Pedro Pedro", "🦝", "tiktok", 3, "pedro pedro pedro", "Le raton laveur qui fait le tour du monde."],
+    ["tungtung", "Tung Tung Tung Sahur", "🪵", "tiktok", 3, "tung tung tung sahur", "Le brainrot italien à bâton."],
+    ["lirili", "Lirili Larila", "🐘", "tiktok", 3, "lirili larila", "L’éléphant-cactus du brainrot."],
+    ["sigmaboy", "Sigma Boy", "🎶", "tiktok", 3, "sigma boy", "La chanson qu’on entend partout en 2025."],
+    ["nootnoot", "Noot noot (Pingu)", "🐧", "animaux", 2, "noot noot pingu", "Le cri du manchot le plus célèbre."],
+    ["dramatic", "Dramatic Chipmunk", "🐿️", "youtube", 1, "dramatic chipmunk", "Le regard de l’écureuil qui change tout."],
+    ["whatdog", "What the dog doin ?", "🐕", "youtube", 2, "what the dog doin", "La question existentielle du chien."],
+    ["taco", "Taco Bell Bong", "🔔", "international", 1, "taco bell bong", "Le gong de Taco Bell."],
+    ["illuminati", "Illuminati confirmed", "🔺", "absurde", 2, "illuminati confirmed", "Le thème des triangles mystérieux."],
+    ["fartreverb", "Pet avec écho", "💨", "absurde", 1, "fart with reverb", "Subtil. Surtout avec de la réverb."],
+    ["uwu", "UwU", "🥺", "absurde", 2, "uwu", "La petite voix kawaii."],
+    ["goofy", "Goofy ahh", "🤪", "absurde", 2, "goofy ahh laugh", "Le rire débile des edits."],
+    ["yeet", "Yeet", "🏹", "absurde", 1, "yeet", "Le cri du lancer parfait."],
+    ["sadviolin", "Violon triste", "🎻", "repliques", 1, "sad violin", "Pour toutes les déceptions."],
+    ["badumtss", "Ba dum tss", "🥁", "repliques", 1, "ba dum tss", "La batterie qui souligne la blague."],
+    ["hellothere", "Hello there", "⚔️", "repliques", 2, "hello there obi wan", "La salutation la plus polie de la galaxie."],
+    ["noice", "Noice", "👌", "repliques", 2, "noice", "L’approbation parfaite."],
+    ["xpstartup", "Démarrage Windows XP", "🖥️", "ancien", 1, "windows xp startup", "La mélodie de l’écran bleu paradis."],
+    ["nokia", "Sonnerie Nokia", "📱", "ancien", 1, "nokia ringtone", "La sonnerie la plus jouée de l’histoire."],
+    ["msn", "Notification MSN", "💬", "ancien", 1, "msn messenger notification", "Quelqu’un se connecte sur MSN."],
+    ["modem56k", "Modem 56k", "📠", "ancien", 3, "dial up modem", "Le chant de la connexion à Internet."],
+    ["cpasfaux", "C’est pas faux", "🗡️", "fr", 2, "c'est pas faux kaamelott", "La réplique culte de Perceval."],
+    ["nonmaisallo", "Non mais allô quoi", "📞", "fr", 2, "non mais allo quoi", "La réplique culte de l’indignation."],
+    ["ohlavache", "Oh la vache !", "🐄", "fr", 1, "oh la vache", "La surprise à la française."],
+    ["trucdeouf", "Un truc de ouf", "🤯", "fr", 2, "un truc de ouf", "Quand c’est vraiment incroyable."]
+  ];
+  VIRAL.forEach(function (v) {
+    OFFICIAL.push({
+      id: v[0], name: v[1], emoji: v[2], cat: v[3], diff: v[4], q: v[5], desc: v[6],
+      auto: true, max: 5, start: 0, file: sound(v[0])
+    });
+  });
 
   var byId = {};
   OFFICIAL.forEach(function (m) { byId[m.id] = m; });
