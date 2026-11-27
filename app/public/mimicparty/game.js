@@ -7,7 +7,12 @@
  * transmettre : aucune règle de jeu n'est déplacée côté serveur.
  *
  * Le son officiel n'est jamais transféré : chaque appareil charge le même
- * extrait depuis `sounds/`. Seuls les mèmes importés et les imitations voyagent.
+ * extrait depuis `sounds/v2/`. Seuls les mèmes importés et les imitations voyagent.
+ *
+ * v2 : notation MFCC/DTW (score.js), verdict + conseil après chaque note, bonus « quasi
+ * parfait », vote « coup de cœur » du public (3 joueurs et plus), récap de fin de partie
+ * avec awards, écoute « original puis imitation », sélection d'enregistrements à garder
+ * (WAV, ZIP, best-of, partage), filtre « paroles et chants ».
  */
 (function () {
   "use strict";
@@ -24,10 +29,11 @@
     { k: "plus5", emoji: "🍀", label: "+5 PTS", bonus: 5 }
   ];
   var PARTS = [
-    { k: "timbre", label: "Timbre" }, { k: "pitch", label: "Hauteur" },
-    { k: "rhythm", label: "Rythme" }, { k: "energy", label: "Énergie" },
-    { k: "pauses", label: "Pauses" }, { k: "duration", label: "Durée" }
+    { k: "timbre", label: "Sons" }, { k: "pitch", label: "Mélodie" },
+    { k: "rhythm", label: "Rythme" }, { k: "energy", label: "Intensité" },
+    { k: "pauses", label: "Pauses" }, { k: "duration", label: "Tempo" }
   ];
+  var PERFECT = 90, PERFECT_BONUS = 5, FAV_BONUS = 8, MIN_VOTERS = 3;
 
   var R = null, S = null, isHost = false, code = "";
   var custom = [];          // bibliothèque locale de l'hôte (IndexedDB)
@@ -40,7 +46,8 @@
     subs: {}, clipBufs: {}, sched: {}, origFeat: null, origRid: "", wave: null, waveRid: "",
     revealDone: {}, wheelShown: false, lastTick: 0, audioRid: "", modalOpen: false,
     vol: 80, clipPending: {}, clipAsk: 0, starting: false,
-    ph: "", audioState: "", audioLoading: "", qrUrl: ""
+    ph: "", audioState: "", audioLoading: "", qrUrl: "",
+    recap: [], fav: {}, vote: "", voteRid: "", sndOk: 0, sndPreloaded: false, busy: ""
   };
   var IMP = null; // état de la modale d'import
 
@@ -206,9 +213,9 @@
   function newState() {
     return {
       host: ME, ph: "lobby", ver: 2, sid: "mp-" + code + "-" + Date.now().toString(36),
-      cfg: { src: "mix", cats: [], rounds: 3, listens: 2, imit: 8, diff: 0 },
+      cfg: { src: "mix", cats: [], rounds: 3, listens: 2, imit: 8, diff: 0, kind: 1 },
       pl: [], r: 0, used: [], round: null, submitted: [], scores: [], play: null,
-      wheel: null, done: false, since: now(), nextAt: 0
+      wheel: null, votes: {}, fav: null, gid: "", done: false, since: now(), nextAt: 0
     };
   }
   function addSelf() {
@@ -232,6 +239,7 @@
     if (!isHost || !d || !S) return;
     if (d.k === "join") return onJoin(d);
     if (d.k === "submit") return onSubmission(d);
+    if (d.k === "vote") return onVote(d);
     if (d.k === "sync") {
       var p = S.pl.find(function (x) { return x.id === d.p; });
       if (p && d.n) { p.n = String(d.n).slice(0, 16); p.av = d.av || p.av; }
@@ -273,11 +281,73 @@
     L.subs[d.p] = {
       data: data, mime: String(d.mime || ""), sr: Number(d.sr) || 0,
       dur: clamp(Number(d.dur) || 0, 0.2, 30), score: score,
-      parts: d.parts && typeof d.parts === "object" ? d.parts : null
+      parts: d.parts && typeof d.parts === "object" ? d.parts : null,
+      x: d.x && typeof d.x === "object" ? { tip: String(d.x.tip || "").slice(0, 12), fl: String(d.x.fl || "").slice(0, 24) } : null
     };
     if (S.submitted.indexOf(d.p) < 0) S.submitted.push(d.p);
     relayClip(d.p); /* chacun reçoit l'imitation dès qu'elle arrive : prête avant la phase 3 */
     if (S.ph === "collect" || S.ph === "imitate") { broadcast(false); render(); }
+  }
+
+  /* ---------- vote « coup de cœur » ---------- */
+  function canVote() { return !!S && S.pl.length >= MIN_VOTERS && (S.ph === "playback" || S.ph === "scores"); }
+  function votable(id) {
+    var items = S && S.play ? S.play.items : [];
+    return items.some(function (it) { return it.id === id && !it.forfait; });
+  }
+  function onVote(d) {
+    if (!isHost || !S || !d || !d.p || !canVote()) return;
+    if (d.rid && S.round && d.rid !== S.round.rid) return;
+    if (!S.pl.some(function (p) { return p.id === d.p; })) return;
+    if (!d.t || d.t === d.p || !votable(d.t)) return;
+    if (!S.votes) S.votes = {};
+    if (S.votes[d.p] === d.t) delete S.votes[d.p]; else S.votes[d.p] = d.t;
+    broadcast(false);
+    render();
+  }
+  function voteFor(id) {
+    if (!S || !S.round || !canVote() || id === ME || !votable(id)) return;
+    MimicAudio.sfx("tick");
+    var cur = (S.votes && S.votes[ME]) || (L.voteRid === S.round.rid ? L.vote : "");
+    L.voteRid = S.round.rid; L.vote = cur === id ? "" : id;
+    paintVotes();
+    if (isHost) onVote({ p: ME, t: id, rid: S.round.rid });
+    else R.emit("act", { k: "vote", p: ME, t: id, rid: S.round.rid }, "host").catch(function () {});
+  }
+  function myVote() {
+    if (!S || !S.round) return "";
+    if (L.voteRid === S.round.rid) return L.vote;
+    return (S.votes && S.votes[ME]) || "";
+  }
+  function paintVotes() {
+    var btns = document.querySelectorAll("[data-a='vote']");
+    if (!btns.length) return;
+    var mine = myVote(), counts = {};
+    Object.keys((S && S.votes) || {}).forEach(function (v) { var t = S.votes[v]; counts[t] = (counts[t] || 0) + 1; });
+    for (var i = 0; i < btns.length; i++) {
+      var b = btns[i], id = b.dataset.v, on = mine === id;
+      b.classList.toggle("on", on);
+      b.textContent = (on ? "❤️" : "🤍") + (counts[id] ? " " + counts[id] : "");
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+  }
+  function voteBtn(it) {
+    if (!canVote() || it.id === ME || it.forfait) return "";
+    return '<button type="button" class="mpx-vote" data-a="vote" data-v="' + esc(it.id) + '" aria-label="Voter pour ' + esc(it.n) + '">🤍</button>';
+  }
+  /** Compte les votes de la manche ; en cas d'égalité, la meilleure note départage. */
+  function tallyVotes() {
+    if (!S || S.pl.length < MIN_VOTERS) return null;
+    var counts = {}, best = 0;
+    Object.keys(S.votes || {}).forEach(function (v) {
+      var t = S.votes[v];
+      if (!votable(t) || t === v) return;
+      counts[t] = (counts[t] || 0) + 1;
+      if (counts[t] > best) best = counts[t];
+    });
+    if (!best) return null;
+    var top = (S.scores || []).filter(function (r) { return counts[r.id] === best; }).sort(function (a, b) { return b.score - a.score; })[0];
+    return top ? { id: top.id, n: top.n, av: top.av, v: best, bonus: FAV_BONUS } : null;
   }
 
   function sendMeme(id, to) {
@@ -342,7 +412,7 @@
   }
 
   /* ---------- manches ---------- */
-  function officialPool() { return MimicBank.filter({ cats: S.cfg.cats, diff: S.cfg.diff }); }
+  function officialPool() { return MimicBank.filter({ cats: S.cfg.cats, diff: S.cfg.diff, voc: S.cfg.kind == null ? true : !!S.cfg.kind }); }
   function customPool() {
     return custom.filter(function (m) {
       if (S.cfg.cats.length && S.cfg.cats.indexOf(m.cat) < 0) return false;
@@ -402,6 +472,8 @@
         S.cfg.rounds = rounds;
       }
       S.r = 0; S.used = []; S.scores = []; S.play = null; S.wheel = null; S.done = false;
+      S.votes = {}; S.fav = null; S.gid = "g" + Date.now().toString(36);
+      L.recap = []; L.fav = {};
       S.pl.forEach(function (p) { p.sc = 0; p.gain = 0; });
       nextRound();
     });
@@ -432,9 +504,9 @@
       segDur: Math.round(dur * 1000), gap: gap, listens: listens,
       recStart: recStart, recEnd: recEnd
     };
-    S.submitted = []; S.scores = []; S.play = null; S.wheel = null;
+    S.submitted = []; S.scores = []; S.play = null; S.wheel = null; S.votes = {}; S.fav = null;
     S.ph = "listen"; S.since = t;
-    L.subs = {}; L.revealDone = {}; L.wheelShown = false;
+    L.subs = {}; L.revealDone = {}; L.wheelShown = false; L.vote = ""; L.voteRid = "";
     resetRoundLocal();
     broadcast(true);
     if (meme.custom) sendMeme(meme.id);
@@ -455,7 +527,7 @@
       var s = L.subs[p.id];
       return {
         id: p.id, n: p.n, av: p.av,
-        score: s ? s.score : 0, parts: s ? s.parts : null,
+        score: s ? s.score : 0, parts: s ? s.parts : null, x: s ? s.x : null,
         forfait: !s || !s.data, dur: s && s.data ? clamp(s.dur, 0.5, 20) : 1.2
       };
     });
@@ -476,9 +548,10 @@
     if (!isHost || !S || !S.play || S.ph !== "playback") return;
     var t = now();
     var rows = S.play.items.map(function (it) {
+      var bonus = !it.forfait && it.score >= PERFECT ? PERFECT_BONUS : 0;
       return {
-        id: it.id, n: it.n, av: it.av, score: it.score, parts: it.parts,
-        forfait: it.forfait, gain: it.score
+        id: it.id, n: it.n, av: it.av, score: it.score, parts: it.parts, x: it.x,
+        forfait: it.forfait, bonus: bonus, gain: it.score + bonus
       };
     });
     rows.sort(function (a, b) { return b.score - a.score || String(a.n).localeCompare(String(b.n)); });
@@ -499,8 +572,15 @@
     var t = now();
     var winner = (S.scores || []).find(function (x) { return !x.forfait; });
     if (!winner) { /* personne n'a imité : pas de roue */
+      S.fav = null;
       S.ph = "roundEnd"; S.since = t; S.nextAt = t + 7000; broadcast(true); render();
       return;
+    }
+    /* coup de cœur du public : calculé avant la roue, bonus ajouté tout de suite */
+    S.fav = tallyVotes();
+    if (S.fav) {
+      var fp = S.pl.find(function (x) { return x.id === S.fav.id; });
+      if (fp) { fp.sc += S.fav.bonus; fp.gain = (fp.gain || 0) + S.fav.bonus; }
     }
     var idx = Math.floor(Math.random() * WHEEL.length);
     var opt = WHEEL[idx];
@@ -663,10 +743,11 @@
     }).then(function (out) {
       /* format universel (µ-law) : lisible sur tous les appareils, silences coupés */
       var clip = MimicAudio.encodeClip(out.buf);
-      L.myClip = { buf: out.buf, score: out.res.score, parts: out.res.parts, dur: clip.dur };
+      var x = { tip: out.res.tip || "", fl: Object.keys(out.res.flags || {}).join(",") };
+      L.myClip = { buf: out.buf, score: out.res.score, parts: out.res.parts, dur: clip.dur, tip: x.tip };
       L.analyzing = false;
       L.submitted = true;
-      submitPayload(clip.data, clip.mime, clip.dur, out.res.score, out.res.parts, clip.sr);
+      submitPayload(clip.data, clip.mime, clip.dur, out.res.score, out.res.parts, clip.sr, x);
     }).catch(function () {
       L.analyzing = false;
       L.submitted = true;
@@ -674,15 +755,15 @@
     });
   }
 
-  function submitPayload(data, mime, dur, score, parts, sr) {
+  function submitPayload(data, mime, dur, score, parts, sr, x) {
     score = clamp(Math.round(Number(score) || 0), 0, 100);
     if (isHost) {
-      L.subs[ME] = { data: data, mime: mime, sr: Number(sr) || 0, dur: clamp(Number(dur) || 0.5, 0.2, 30), score: score, parts: parts };
+      L.subs[ME] = { data: data, mime: mime, sr: Number(sr) || 0, dur: clamp(Number(dur) || 0.5, 0.2, 30), score: score, parts: parts, x: x || null };
       if (S.submitted.indexOf(ME) < 0) S.submitted.push(ME);
       broadcast(false);
       relayClip(ME);
     } else {
-      R.emit("act", { k: "submit", p: ME, rid: S && S.round ? S.round.rid : "", data: data, mime: mime, sr: sr, dur: dur, score: score, parts: parts }, "host").catch(function () {});
+      R.emit("act", { k: "submit", p: ME, rid: S && S.round ? S.round.rid : "", data: data, mime: mime, sr: sr, dur: dur, score: score, parts: parts, x: x || null }, "host").catch(function () {});
     }
     render();
   }
@@ -844,6 +925,7 @@
     }
     if (S.round && S.ph === "listen") scheduleRoundAudio();
     if (S.ph === "playback") schedulePlayback();
+    if (S.ph === "playback" || S.ph === "scores") paintVotes();
   }
 
   function updateWho() {
@@ -854,7 +936,7 @@
   function stateSig() {
     if (!S) return "none";
     var base = [
-      S.ph, S.r, S.cfg.src, S.cfg.rounds, S.cfg.listens, S.cfg.imit, S.cfg.diff,
+      S.ph, S.r, S.cfg.src, S.cfg.rounds, S.cfg.listens, S.cfg.imit, S.cfg.diff, S.cfg.kind, L.sndOk,
       (S.cfg.cats || []).join(","), S.host || "",
       S.pl.length, S.pl.map(function (p) { return p.id + ":" + p.n + ":" + (p.av || "") + ":" + p.sc + ":" + (p.gain || 0); }).join("|"),
       (S.submitted || []).join(","),
@@ -865,9 +947,11 @@
     ].join("/");
     if (!S.round) return base;
     if (S.ph === "listen" || S.ph === "imitate" || S.ph === "collect") return base + "/" + S.round.rid + "/" + S.ph;
-    if (S.ph === "playback") return base + "/" + (S.play ? S.play.at : "") + "/" + Object.keys(L.clipBufs).length;
+    if (S.ph === "playback") return base + "/" + (S.play ? S.play.at : "") + "/" + Object.keys(L.clipBufs).length + "/" + (S.pl.length >= MIN_VOTERS ? 1 : 0);
     if (S.ph === "scores") return base + "/scores/" + (S.scores || []).map(function (x) { return x.id + x.score; }).join(",");
     if (S.ph === "wheel") return base + "/wheel/" + (S.wheel ? S.wheel.k + ":" + S.wheel.at : "");
+    if (S.ph === "roundEnd") return base + "/re/" + (S.fav ? S.fav.id + S.fav.v : "");
+    if (S.ph === "end") return base + "/end/" + L.recap.length + ":" + L.recap.reduce(function (n, e) { return n + e.rows.filter(function (r) { return r.buf; }).length; }, 0);
     return base;
   }
 
@@ -897,7 +981,8 @@
       '<li><b>On écoute le mème</b> — tous les joueurs entendent exactement le même extrait, en même temps.</li>' +
       '<li><b>On imite</b> — le micro s’ouvre après la lecture, une seule tentative, chrono limité.</li>' +
       '<li><b>On écoute les imitations</b> — chaque voix passe à tour de rôle avec le pseudo.</li>' +
-      '<li><b>On découvre les notes</b> — une IA locale compare timbre, hauteur, rythme et énergie sur 100, puis la roue des bonus distribue des points.</li>' +
+      '<li><b>On découvre les notes</b> — une IA locale compare les sons, la mélodie, le rythme, l’intensité, les pauses et le tempo sur 100, avec un verdict et un conseil. Le public vote son coup de cœur, puis la roue des bonus distribue des points.</li>' +
+      '<li><b>On garde les meilleurs moments</b> — à la fin, un récap avec awards : réécoute les imitations, garde celles que tu veux et télécharge-les ou partage-les.</li>' +
       '</ol><p class="hint">Astuce : mets des écouteurs pour éviter que le micro réenregistre le mème.</p></section>' +
       '<p class="mp-error" id="mp-msg"></p>';
   }
@@ -936,6 +1021,10 @@
     var diffBtns = [[0, "Toutes"], [1, "Facile ★"], [2, "Moyen ★★"], [3, "Difficile ★★★"]].map(function (d) {
       return '<button type="button" class="pill ' + (Number(cfg.diff) === d[0] ? "on" : "") + '" data-a="cfg" data-k="diff" data-v="' + d[0] + '"' + dis + ">" + d[1] + "</button>";
     }).join("");
+    var kindBtns = [[1, "🗣️ Paroles & chants"], [0, "🔊 Tous les sons"]].map(function (k) {
+      var on = (cfg.kind == null ? 1 : Number(cfg.kind)) === k[0];
+      return '<button type="button" class="pill ' + (on ? "on" : "") + '" data-a="cfg" data-k="kind" data-v="' + k[0] + '"' + dis + ">" + k[1] + "</button>";
+    }).join("");
     function step(k, v, min, max, label, unit) {
       return '<div class="mp-cfg-row"><span>' + label + "<small>" + min + " à " + max + " " + unit + "</small></span>" +
         '<div class="stepper"><button type="button" data-a="cfg" data-k="' + k + '" data-v="' + (v - 1) + '"' + dis + " aria-label=\"Moins\">−</button>" +
@@ -947,6 +1036,8 @@
       step("rounds", cfg.rounds, 1, 10, "Manches", "manches") +
       step("listens", cfg.listens, 1, 2, "Écoutes du mème", "écoute(s)") +
       step("imit", cfg.imit, 4, 15, "Temps pour imiter", "secondes") +
+      '<div class="mp-cfg-row"><span>Type de sons<small>vraies voix et chansons, ou aussi les effets</small></span></div>' +
+      '<div class="pills">' + kindBtns + "</div>" +
       '<div class="mp-cfg-row"><span>Difficulté<small>filtre la banque de mèmes</small></span></div>' +
       '<div class="pills">' + diffBtns + "</div>" +
       '<div class="mp-cfg-row"><span>Catégories<small>aucune sélection = toutes</small></span></div>' +
@@ -974,8 +1065,18 @@
       '<p class="hint">MP3, WAV, OGG, M4A ou vidéo (MP4, WebM, MOV) : choisis le passage exact de 2 à 10 secondes. Les imports restent sur ton appareil, et sont partagés au salon seulement si tu le demandes.</p>';
   }
 
+  /** État des fichiers audio (visible par l'hôte) : dit tout de suite si sounds/v2/ est vide. */
+  function sndBanner() {
+    if (!isHost || !L.sndPreloaded) return "";
+    var st = MimicAudio.status(MimicBank.OFFICIAL);
+    if (!st.ok) {
+      return '<p class="mpx-warn">⚠️ Aucun son trouvé dans <b>sounds/v2/</b>. Dans le dossier du jeu, lance <code>node tools/fetch-sounds.js</code> (voir LISEZ-MOI.md).</p>';
+    }
+    return '<p class="mp-small mp-muted">🔊 ' + st.ok + " son(s) prêt(s)" + (st.bad ? " · " + st.bad + " manquant(s), ignoré(s)" : "") + ".</p>";
+  }
+
   function renderLobby() {
-    var poolSize = officialPool().length + customPool().length;
+    var poolSize = poolFor(S.cfg.src).length;
     var hostActions = isHost
       ? '<button type="button" class="btn primary big" data-a="start"' + (S.pl.length < 2 || !poolSize ? " disabled" : "") + ">▶ Lancer la partie</button>" +
         (S.pl.length < 2 ? '<p class="hint" style="text-align:center">En attente d’au moins un autre joueur…</p>' : "") +
@@ -990,7 +1091,7 @@
       '<div class="mp-small" style="margin-top:6px;color:var(--muted)">' + (L.micOk || MimicAudio.hasMic() ? "Micro prêt ✔" : "Micro non encore autorisé") + "</div>" +
       hostActions + "</section>" +
       '<section class="mp-card"><h2>🎛️ Réglages ' + (isHost ? "" : '<span class="mp-small mp-muted">(par l’hôte)</span>') + "</h2>" +
-      cfgHtml() + '<p class="mp-count">' + poolSize + " mème(s) dans la sélection</p></section>" +
+      cfgHtml() + '<p class="mp-count">' + poolSize + " mème(s) dans la sélection</p>" + sndBanner() + "</section>" +
       "</div>" +
       '<section class="mp-card"><h2>📚 Bibliothèque de mèmes</h2>' + libHtml() + "</section>" +
       '<section class="mp-card"><h2>🎁 La roue des bonus</h2><p class="hint" style="margin-top:0">Après chaque classement, la roue tourne pour la meilleure imitation.</p><div class="pills">' +
@@ -1031,7 +1132,8 @@
     var thumb = m.img ? '<img src="' + esc(m.img) + '" alt="">' : esc(m.emoji || "🎵");
     return '<div class="mp-meme-thumb">' + thumb + "</div>" +
       '<h2 class="mp-meme-name">' + esc(m.name) + "</h2>" +
-      '<div class="mp-meme-meta">' + esc(catLabel(m.cat)) + " · " + (Number(m.dur) || 0).toFixed(1) + "s · " + diffLabel(Number(m.diff) || 1) + "</div>" +
+      '<div class="mp-meme-meta">' + (m.kind ? MimicBank.kind(m.kind).emoji + " " + esc(MimicBank.kind(m.kind).label) + " · " : "") + esc(catLabel(m.cat)) + " · " + (Number(m.dur) || 0).toFixed(1) + "s · " + diffLabel(Number(m.diff) || 1) + "</div>" +
+      (m.say ? '<p class="mpx-say">🗣️ « ' + esc(m.say) + " »</p>" : "") +
       (m.desc ? '<p class="mp-meme-desc">' + esc(m.desc) + "</p>" : "");
   }
 
@@ -1116,7 +1218,7 @@
     app().innerHTML = roomBar() +
       '<div class="mp-stage mp-imit">' +
       '<span class="mp-phase-tag">2 · On imite le mème</span>' +
-      '<div class="mp-meme" style="padding:10px 12px;margin-bottom:10px"><div class="mp-small mp-muted">' + esc(r.meme.emoji || "🎵") + " " + esc(r.meme.name) + " · " + (r.meme.dur || 0).toFixed(1) + "s</div></div>" +
+      '<div class="mp-meme" style="padding:10px 12px;margin-bottom:10px"><div class="mp-small mp-muted">' + esc(r.meme.emoji || "🎵") + " " + esc(r.meme.name) + " · " + (r.meme.dur || 0).toFixed(1) + "s" + (r.meme.say ? " · 🗣️ « " + esc(r.meme.say) + " »" : "") + "</div></div>" +
       body +
       '<p class="hint">' + S.submitted.length + " / " + S.pl.length + " imitation(s) envoyée(s)</p>" +
       (isHost ? '<button type="button" class="link" data-a="forceCollect">Passer à l’écoute des imitations →</button>' : "") +
@@ -1150,7 +1252,7 @@
       }
       return '<div class="mp-clip" data-clip="' + esc(it.id) + '">' +
         '<div class="mp-clip-head"><span class="av">' + esc(it.av || AVATAR) + "</span><b>" + esc(it.n) + "</b>" +
-        '<span class="tag">' + (it.forfait ? "😶 forfait" : "🎙️ imitation") + "</span></div>" +
+        '<span class="tag">' + (it.forfait ? "😶 forfait" : "🎙️ imitation") + "</span>" + voteBtn(it) + "</div>" +
         '<div class="mp-bars">' + bars + "</div></div>";
     }).join("");
     app().innerHTML = roomBar() +
@@ -1159,9 +1261,11 @@
       '<h2 style="text-align:center">Chaque voix passe à tour de rôle</h2>' +
       soundAlert +
       '<div class="mp-progress slim"><i id="mp-playbar"></i></div>' +
+      (canVote() ? '<p class="hint" style="text-align:center;margin:4px 0">❤️ Touche le cœur de ton imitateur préféré (pas toi !) : +' + FAV_BONUS + " pts pour le coup de cœur.</p>" : "") +
       cards +
       '<p class="hint" style="text-align:center">🔇 Micro coupé · écoute bien, la note arrive juste après.</p>' +
       "</div>";
+    paintVotes();
     schedulePlayback();
   }
 
@@ -1169,13 +1273,25 @@
   function renderScores() {
     var rows = S.scores || [];
     var lines = rows.map(function (r, i) {
-      var parts = r.parts ? '<div class="mp-parts">' + PARTS.map(function (p) {
-        return "<span>" + p.label + " " + (Number(r.parts[p.k]) || 0) + "</span>";
+      var v = MimicScore.verdict(r.score);
+      var parts = r.parts && !r.forfait ? '<div class="mpx-parts">' + PARTS.map(function (p) {
+        var val = clamp(Number(r.parts[p.k]) || 0, 0, 100);
+        var c = val >= 75 ? "#1fb856" : val >= 45 ? "#f0a000" : "#ee2f5e";
+        return '<span class="mpx-p"><em>' + p.label + " <b>" + val + '</b></em><i style="--v:' + val + "%;--c:" + c + '"></i></span>';
       }).join("") + "</div>" : "";
+      var fl = r.x && r.x.fl ? r.x.fl : "";
+      var chips = "";
+      if (r.bonus) chips += '<span class="mpx-chip">🎯 Quasi parfait +' + r.bonus + "</span>";
+      if (/copy/.test(fl)) chips += '<span class="mpx-chip warn">🎧 Original rejoué ?</span>';
+      if (/noisy/.test(fl)) chips += '<span class="mpx-chip warn">💨 Du souffle, pas une voix</span>';
+      var tip = r.id === ME && r.x && r.x.tip && !r.forfait ? '<p class="mpx-tip">💡 ' + esc(MimicScore.tipText(r.x.tip)) + "</p>" : "";
+      var verdict = r.forfait ? "" : '<div class="mpx-verdict ' + v.tone + '">' + v.emoji + " " + esc(v.label) + "</div>";
       return '<div class="mp-score-line' + (i === 0 ? " best" : "") + '" data-line="' + i + '">' +
         '<span class="rk">' + (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1) + ".") + "</span>" +
         '<span class="av">' + esc(r.av || AVATAR) + "</span>" +
-        '<div class="body"><span class="nm">' + esc(r.n) + (r.forfait ? ' <span class="mp-small mp-muted">(forfait)</span>' : "") + "</span>" + parts + "</div>" +
+        '<div class="body"><span class="nm">' + esc(r.n) + (r.forfait ? ' <span class="mp-small mp-muted">(forfait)</span>' : "") + "</span>" +
+        verdict + (chips ? '<div class="mpx-chips">' + chips + "</div>" : "") + parts + tip + "</div>" +
+        voteBtn(r) +
         '<button type="button" class="mp-iconbtn" data-a="playClip" data-v="' + esc(r.id) + '" aria-label="Réécouter">▶</button>' +
         '<span class="note" data-target="' + r.score + '">0</span>' +
         '<span class="pt">/100</span></div>';
@@ -1184,10 +1300,12 @@
       '<div class="mp-stage">' +
       '<span class="mp-phase-tag">4 · On découvre les notes</span>' +
       '<h2 style="text-align:center">Ressemblance avec l’original</h2>' +
-      '<p class="hint" style="text-align:center;margin-top:0">Timbre, hauteur, rythme, énergie, pauses et durée — pas la beauté de la voix.</p>' +
+      '<p class="hint" style="text-align:center;margin-top:0">Sons, mélodie, rythme, intensité, pauses et tempo — pas la beauté de la voix.</p>' +
+      (canVote() ? '<p class="hint" style="text-align:center;margin:4px 0">❤️ Dernière chance de voter pour ton coup de cœur (+' + FAV_BONUS + " pts).</p>" : "") +
       lines +
       '<p class="hint" style="text-align:center">La roue des bonus va départager le meilleur imitateur…</p>' +
       "</div>";
+    paintVotes();
     updateScores();
   }
 
@@ -1273,13 +1391,14 @@
         '<span class="pts">' + p.sc + "</span></div>";
     }).join("");
     var last = S.scores || [];
+    var favHtml = S.fav ? '<div class="mpx-fav">❤️ Coup de cœur du public : <b>' + esc(S.fav.av || AVATAR) + " " + esc(S.fav.n) + "</b> · +" + S.fav.bonus + " pts (" + S.fav.v + " vote" + (S.fav.v > 1 ? "s" : "") + ")</div>" : "";
     app().innerHTML = roomBar() +
       '<div class="mp-stage">' +
       '<span class="mp-phase-tag">Manche ' + S.r + " / " + S.cfg.rounds + "</span>" +
-      '<h2 style="text-align:center">Récap de la manche</h2>' +
+      '<h2 style="text-align:center">Récap de la manche</h2>' + favHtml +
       '<div class="mp-card" style="box-shadow:none">' + last.map(function (r, i) {
         return '<div class="mp-score-line"><span class="rk">' + (i + 1) + '.</span><span class="av">' + esc(r.av || AVATAR) + "</span>" +
-          '<span class="nm">' + esc(r.n) + '</span><span class="note" style="background:var(--mp-lime)">' + r.score + "</span></div>";
+          '<span class="nm">' + esc(r.n) + (r.bonus ? ' <span class="mp-small mp-muted">+' + r.bonus + "</span>" : "") + '</span><span class="note" style="background:var(--mp-lime)">' + r.score + "</span></div>";
       }).join("") + "</div>" +
       "<h2>🏆 Classement général</h2>" + rows +
       (isHost ? '<button type="button" class="btn primary big" data-a="next">' + (S.r >= S.cfg.rounds ? "Voir le podium" : "Manche suivante") + "</button>" : '<p class="hint" style="text-align:center" data-countdown>La suite démarre automatiquement…</p>') +
@@ -1302,10 +1421,12 @@
       '<span class="mp-phase-tag">Fin de partie</span>' +
       '<h1 style="font-size:clamp(1.7rem,7vw,2.4rem)">Le meilleur imitateur est…</h1>' +
       '<div class="mp-podium">' + podium + "</div>" + rest +
+      recapHtml() +
       '<div id="mp-end"></div>' +
       '<p class="hint" style="text-align:center">Les points de la soirée sont envoyés au classement du salon.</p>' +
       "</div>";
     Party.endCard("#mp-end", { code: code, isHost: isHost, R: R });
+    refreshRecapUI();
   }
 
   /* ============================================================
@@ -1358,6 +1479,9 @@
       if (S.ph === "playback") updatePlayback(t);
       if (S.ph === "scores") { updateScores(); requestMissingClips(); }
       if (S.ph === "wheel") updateWheel();
+      if ((S.ph === "scores" || S.ph === "wheel" || S.ph === "roundEnd" || S.ph === "end") && t - (L.recapT || 0) > 300) {
+        L.recapT = t; captureRecap(); fillRecap();
+      }
       if (S.ph === "roundEnd" && S.nextAt) {
         var el = document.querySelector("[data-countdown]");
         if (el) el.textContent = "La suite démarre dans " + secs(S.nextAt - t) + "s…";
@@ -1453,6 +1577,7 @@
     else if (k === "listens") S.cfg.listens = clamp(n, 1, 2);
     else if (k === "imit") S.cfg.imit = clamp(n, 4, 15);
     else if (k === "diff") S.cfg.diff = clamp(n, 0, 3);
+    else if (k === "kind") S.cfg.kind = n ? 1 : 0;
     broadcast(true);
     render();
   }
@@ -1522,6 +1647,273 @@
     MimicAudio.ensureRunning().then(function () {
       MimicAudio.stopAll(); MimicAudio.playBuffer(L.myClip.buf, { gain: volGain() });
     }).catch(function () { toast("Son bloqué : appuie sur « Activer le son »."); });
+  }
+
+  /* ============================================================
+     RÉCAP DE LA SOIRÉE
+     ============================================================ */
+  function captureRecap() {
+    if (!S || !S.round || !S.scores || !S.scores.length) return;
+    if (L.recap.length && L.recap[0].gid !== S.gid) { L.recap = []; L.fav = {}; }
+    if (L.recap.some(function (e) { return e.rid === S.round.rid; })) return;
+    var m = S.round.meme;
+    L.recap.push({
+      rid: S.round.rid, gid: S.gid, n: S.r,
+      meme: { id: m.id, name: m.name, emoji: m.emoji || "🎵", say: m.say || "", custom: !!m.custom, kind: m.kind || "" },
+      rows: S.scores.map(function (r) {
+        return { id: r.id, n: r.n, av: r.av, score: r.score, parts: r.parts, forfait: !!r.forfait, x: r.x || null, bonus: r.bonus || 0, buf: null };
+      }),
+      votes: {}, fav: ""
+    });
+  }
+
+  /** Garde une copie des imitations de la manche en cours (elles sont effacées à la manche suivante). */
+  function fillRecap() {
+    if (!S || !S.round || !L.recap.length) return;
+    var e = L.recap.find(function (x) { return x.rid === S.round.rid; });
+    if (!e) return;
+    e.rows.forEach(function (r) {
+      if (r.buf || r.forfait) return;
+      var b = r.id === ME && L.myClip && L.myClip.buf ? L.myClip.buf : clipFor(r.id);
+      if (b) r.buf = b;
+    });
+    if (S.ph === "wheel" || S.ph === "roundEnd" || S.ph === "end") {
+      var counts = {};
+      Object.keys(S.votes || {}).forEach(function (v) { var t = S.votes[v]; counts[t] = (counts[t] || 0) + 1; });
+      e.votes = counts; e.fav = S.fav ? S.fav.id : "";
+    }
+  }
+
+  function slug(t) {
+    return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "x";
+  }
+  function recRow(key) {
+    var p = String(key).split(":"), e = L.recap[Number(p[0])];
+    var r = e && e.rows[Number(p[1])];
+    return e && r ? { e: e, r: r } : null;
+  }
+  function recName(o) { return "manche" + o.e.n + "_" + slug(o.e.meme.name) + "_" + slug(o.r.n) + "_" + o.r.score + ".wav"; }
+  function allKeys() {
+    var out = [];
+    L.recap.forEach(function (e, ei) { e.rows.forEach(function (r, ri) { if (!r.forfait && r.buf) out.push(ei + ":" + ri); }); });
+    return out;
+  }
+  function autoKeys() {
+    var out = [];
+    L.recap.forEach(function (e, ei) {
+      var best = -1, sc = -1;
+      e.rows.forEach(function (r, ri) { if (!r.forfait && r.buf && r.score > sc) { sc = r.score; best = ri; } });
+      if (best >= 0) out.push(ei + ":" + best);
+    });
+    return out;
+  }
+  function selectedKeys() {
+    var sel = Object.keys(L.fav).filter(function (k) { return L.fav[k] && recRow(k) && recRow(k).r.buf; });
+    if (sel.length) return sel;
+    var auto = autoKeys();
+    if (auto.length) toast("Aucun ⭐ : je prends la meilleure imitation de chaque manche");
+    return auto;
+  }
+
+  function recapHtml() {
+    var rec = L.recap || [];
+    if (!rec.length) return "";
+    var rounds = rec.map(function (e, ei) {
+      var rows = e.rows.map(function (r, ri) {
+        var key = ei + ":" + ri, v = MimicScore.verdict(r.score);
+        if (r.forfait) {
+          return '<div class="mpx-rec"><span class="av">' + esc(r.av || AVATAR) + '</span><span class="nm">' + esc(r.n) + '</span><span class="mp-small mp-muted">forfait</span></div>';
+        }
+        var dis = r.buf ? "" : " disabled";
+        return '<div class="mpx-rec" data-key="' + key + '"><span class="av">' + esc(r.av || AVATAR) + "</span>" +
+          '<span class="nm">' + esc(r.n) + '<small class="' + v.tone + '">' + v.emoji + " " + esc(v.label) + "</small></span>" +
+          '<span class="mpx-sc ' + v.tone + '">' + r.score + "</span>" +
+          '<span class="mpx-btns">' +
+          '<button type="button" class="mp-iconbtn" data-a="recPlay" data-v="' + key + '" aria-label="Écouter l’imitation"' + dis + ">▶</button>" +
+          '<button type="button" class="mp-iconbtn" data-a="recDuel" data-v="' + key + '" title="Original puis imitation" aria-label="Original puis imitation"' + dis + ">🔁</button>" +
+          '<button type="button" class="mp-iconbtn mpx-star" data-a="recFav" data-v="' + key + '" aria-label="Garder" aria-pressed="false"' + dis + ">☆</button>" +
+          '<button type="button" class="mp-iconbtn" data-a="recOne" data-v="' + key + '" aria-label="Télécharger"' + dis + ">⬇</button>" +
+          "</span></div>";
+      }).join("");
+      return '<div class="mpx-round"><div class="mpx-round-head"><span class="mpx-rn">Manche ' + e.n + "</span><b>" + esc(e.meme.emoji) + " " + esc(e.meme.name) + "</b>" +
+        (e.meme.say ? "<small>« " + esc(e.meme.say) + " »</small>" : "") + "</div>" + rows + "</div>";
+    }).join("");
+    return '<section class="mpx-recap"><h2>🎬 Le récap de la soirée</h2>' + awardsHtml() +
+      '<p class="hint" style="margin:8px 0">▶ écouter · 🔁 original puis imitation · ☆ garder · ⬇ télécharger</p>' +
+      '<div class="mpx-toolbar">' +
+      '<button type="button" class="btn" data-a="recAuto">✨ Garder les meilleures</button>' +
+      '<button type="button" class="btn primary" data-a="recZip">⬇ Télécharger (ZIP)</button>' +
+      '<button type="button" class="btn" data-a="recBest">🎞️ Best-of en 1 fichier</button>' +
+      '<button type="button" class="btn" data-a="recShare">📤 Partager</button>' +
+      '<span class="mp-small mp-muted" id="mpx-count"></span></div>' + rounds + "</section>";
+  }
+
+  function awardsHtml() {
+    var stats = {}, best = null, flop = null, total = 0, votes = {};
+    L.recap.forEach(function (e) {
+      e.rows.forEach(function (r) {
+        if (r.forfait) return;
+        total++;
+        var st = stats[r.id] || (stats[r.id] = { id: r.id, n: r.n, av: r.av, sc: [], timbre: [], pitch: [], rhythm: [] });
+        st.sc.push(r.score);
+        if (r.parts) ["timbre", "pitch", "rhythm"].forEach(function (k) { st[k].push(Number(r.parts[k]) || 0); });
+        if (!best || r.score > best.r.score) best = { r: r, e: e };
+        if (!flop || r.score < flop.r.score) flop = { r: r, e: e };
+      });
+      Object.keys(e.votes || {}).forEach(function (id) { votes[id] = (votes[id] || 0) + e.votes[id]; });
+    });
+    var list = Object.keys(stats).map(function (k) { return stats[k]; });
+    if (!list.length) return "";
+    function avg(a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; }
+    function top(key, min) {
+      var c = list.filter(function (p) { return p[key].length; }).sort(function (a, b) { return avg(b[key]) - avg(a[key]); })[0];
+      return c && avg(c[key]) >= min ? c : null;
+    }
+    var out = [];
+    out.push(["🏆", "Meilleure imitation", best.r.av + " " + best.r.n, best.r.score + "/100 sur « " + best.e.meme.name + " »"]);
+    if (list.length >= 2) {
+      var t = top("timbre", 35), p = top("pitch", 40), r = top("rhythm", 40);
+      if (t) out.push(["🗣️", "Bouche à sons", t.av + " " + t.n, "sons fidèles à " + Math.round(avg(t.timbre)) + " %"]);
+      if (p) out.push(["🎼", "Oreille d’or", p.av + " " + p.n, "mélodie à " + Math.round(avg(p.pitch)) + " %"]);
+      if (r) out.push(["🥁", "Métronome", r.av + " " + r.n, "rythme à " + Math.round(avg(r.rhythm)) + " %"]);
+      var reg = list.filter(function (q) { return q.sc.length >= 3 && avg(q.sc) >= 40; }).map(function (q) {
+        var m = avg(q.sc), sd = Math.sqrt(avg(q.sc.map(function (x) { return (x - m) * (x - m); })));
+        return { q: q, sd: sd };
+      }).sort(function (a, b) { return a.sd - b.sd; })[0];
+      if (reg) out.push(["🎯", "Mister Régulier", reg.q.av + " " + reg.q.n, "toujours autour de " + Math.round(avg(reg.q.sc)) + " pts"]);
+    }
+    if (total >= 3 && flop && flop.r.score < 30) out.push(["💔", "Plus gros flop", flop.r.av + " " + flop.r.n, flop.r.score + "/100 sur « " + flop.e.meme.name + " »"]);
+    var vid = Object.keys(votes).sort(function (a, b) { return votes[b] - votes[a]; })[0];
+    if (vid && stats[vid]) out.push(["❤️", "Chouchou du public", stats[vid].av + " " + stats[vid].n, votes[vid] + " vote" + (votes[vid] > 1 ? "s" : "")]);
+    return '<div class="mpx-awards">' + out.map(function (a) {
+      return '<div class="mpx-award"><span class="ic">' + a[0] + "</span><div><b>" + esc(a[1]) + "</b><span>" + esc(a[2]) + " · " + esc(a[3]) + "</span></div></div>";
+    }).join("") + "</div>";
+  }
+
+  function refreshRecapUI() {
+    var stars = document.querySelectorAll(".mpx-star");
+    var n = 0;
+    for (var i = 0; i < stars.length; i++) {
+      var on = !!L.fav[stars[i].dataset.v];
+      if (on) n++;
+      stars[i].textContent = on ? "⭐" : "☆";
+      stars[i].setAttribute("aria-pressed", on ? "true" : "false");
+      stars[i].classList.toggle("on", on);
+    }
+    var c = $id("mpx-count");
+    if (c) c.textContent = n ? n + " gardé(s)" : "";
+  }
+
+  function recPlay(key) {
+    var o = recRow(key);
+    if (!o || !o.r.buf) return;
+    MimicAudio.ensureRunning().then(function () {
+      MimicAudio.stopAll(); MimicAudio.playBuffer(o.r.buf, { gain: volGain() });
+    }).catch(function () { toast("Son bloqué : touche l’écran puis réessaie."); });
+  }
+
+  function recDuel(key) {
+    var o = recRow(key);
+    if (!o || !o.r.buf) return;
+    ensureBuffer(o.e.meme).then(function (orig) {
+      return MimicAudio.ensureRunning().then(function () {
+        MimicAudio.stopAll();
+        MimicAudio.playBuffer(orig, { gain: volGain() });
+        MimicAudio.playBuffer(o.r.buf, { gain: volGain(), delay: orig.duration + 0.45 });
+      });
+    }).catch(function () { toast("Original indisponible, j’écoute juste l’imitation."); recPlay(key); });
+  }
+
+  function recFav(key) {
+    L.fav[key] = !L.fav[key];
+    refreshRecapUI();
+  }
+
+  function recAuto() {
+    L.fav = {};
+    autoKeys().forEach(function (k) { L.fav[k] = true; });
+    refreshRecapUI();
+    toast("⭐ Meilleure imitation de chaque manche gardée");
+  }
+
+  function recOne(key) {
+    var o = recRow(key);
+    if (!o || !o.r.buf) return;
+    MimicAudio.saveBlob(MimicAudio.wavBlob(o.r.buf), recName(o));
+  }
+
+  function filesFor(keys) {
+    return keys.map(function (k) { var o = recRow(k); return o && o.r.buf ? { name: recName(o), blob: MimicAudio.wavBlob(o.r.buf) } : null; }).filter(Boolean);
+  }
+
+  function recZip() {
+    if (L.busy) return;
+    var files = filesFor(selectedKeys());
+    if (!files.length) { toast("Rien à télécharger pour l’instant"); return; }
+    L.busy = "zip";
+    MimicAudio.zip(files).then(function (blob) {
+      MimicAudio.saveBlob(blob, "mimic-party-" + (code || "soiree") + ".zip");
+      toast("⬇ " + files.length + " enregistrement(s) téléchargé(s)");
+    }).catch(function () { toast("ZIP impossible sur ce navigateur"); }).then(function () { L.busy = ""; });
+  }
+
+  function recBest() {
+    if (L.busy) return;
+    var keys = selectedKeys(), bufs = [];
+    keys.forEach(function (k) { var o = recRow(k); if (o) { bufs.push(BUFS.get(o.e.meme.id) || null); bufs.push(o.r.buf); } });
+    var out = MimicAudio.concat(bufs.filter(Boolean), 0.5);
+    if (!out) { toast("Rien à assembler pour l’instant"); return; }
+    MimicAudio.saveBlob(MimicAudio.wavBlob(out), "mimic-party-best-of.wav");
+    toast("🎞️ Best-of téléchargé (original puis imitation)");
+  }
+
+  function recShare() {
+    if (L.busy) return;
+    var files = filesFor(selectedKeys()).slice(0, 6);
+    if (!files.length) { toast("Rien à partager pour l’instant"); return; }
+    L.busy = "share";
+    MimicAudio.shareFiles(files, "Mimic Party").then(function (ok) {
+      if (ok) return;
+      return MimicAudio.zip(files).then(function (blob) {
+        MimicAudio.saveBlob(blob, "mimic-party-" + (code || "soiree") + ".zip");
+        toast("Partage indisponible ici : ZIP téléchargé à la place");
+      });
+    }).catch(function () { toast("Partage impossible"); }).then(function () { L.busy = ""; });
+  }
+
+  /* ---------- styles des éléments ajoutés (le thème du hub n'est pas modifié) ---------- */
+  function injectCss() {
+    if ($id("mpx-css")) return;
+    var st = document.createElement("style");
+    st.id = "mpx-css";
+    st.textContent =
+      ".mpx-say{margin:6px 0 2px;font-weight:700;font-size:.98rem}" +
+      ".mpx-warn{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:rgba(255,160,0,.16);font-size:.85rem}" +
+      ".mpx-warn code{font-size:.8rem}" +
+      ".mpx-verdict{font-size:.84rem;font-weight:800;margin-top:2px}" +
+      ".mpx-verdict.lime,.mpx-rec small.lime{color:#168a3a}.mpx-verdict.amber,.mpx-rec small.amber{color:#b36b00}.mpx-verdict.pink,.mpx-rec small.pink{color:#d6204f}" +
+      ".mpx-parts{display:grid;grid-template-columns:repeat(3,1fr);gap:5px 10px;margin-top:6px}" +
+      ".mpx-p{display:flex;flex-direction:column;gap:2px;font-size:.66rem;opacity:.9}.mpx-p em{font-style:normal}" +
+      ".mpx-p i{display:block;height:5px;border-radius:3px;background:rgba(127,127,127,.22);position:relative;overflow:hidden}" +
+      ".mpx-p i::after{content:'';position:absolute;left:0;top:0;bottom:0;width:var(--v);background:var(--c);border-radius:3px}" +
+      ".mpx-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}" +
+      ".mpx-chip{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(40,190,90,.18)}.mpx-chip.warn{background:rgba(255,160,0,.22)}" +
+      ".mpx-tip{margin:6px 0 0;font-size:.78rem;opacity:.85}" +
+      ".mpx-vote{border:0;background:rgba(127,127,127,.16);border-radius:99px;min-width:44px;height:36px;padding:0 10px;font-size:1rem;cursor:pointer;flex:none}.mpx-vote.on{background:rgba(238,47,94,.22)}" +
+      ".mpx-fav{margin:8px 0;padding:8px 12px;border-radius:12px;text-align:center;background:rgba(238,47,94,.14);font-weight:700}" +
+      ".mpx-recap{margin-top:18px}" +
+      ".mpx-awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:8px 0}" +
+      ".mpx-award{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(127,127,127,.12)}" +
+      ".mpx-award .ic{font-size:1.5rem}.mpx-award b{display:block;font-size:.85rem}.mpx-award span{font-size:.76rem;opacity:.8}" +
+      ".mpx-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 12px}" +
+      ".mpx-round{margin:10px 0;padding:8px 10px;border-radius:14px;background:rgba(127,127,127,.1)}" +
+      ".mpx-round-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;margin-bottom:6px}.mpx-rn{font-size:.7rem;font-weight:800;text-transform:uppercase;opacity:.65}.mpx-round-head small{opacity:.7}" +
+      ".mpx-rec{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(127,127,127,.18)}.mpx-rec:first-of-type{border-top:0}" +
+      ".mpx-rec .nm{flex:1;min-width:0;font-weight:700;display:flex;flex-direction:column}.mpx-rec .nm small{font-size:.7rem;font-weight:700}" +
+      ".mpx-sc{font-weight:800;min-width:34px;text-align:center}.mpx-btns{display:flex;gap:4px}" +
+      ".mpx-star.on{background:rgba(255,200,0,.3)}.mpx-btns button:disabled{opacity:.35}" +
+      "@media(max-width:420px){.mpx-parts{grid-template-columns:repeat(2,1fr)}}";
+    document.head.appendChild(st);
   }
 
   /* ============================================================
@@ -1849,6 +2241,15 @@
       return;
     }
     if (a === "playClip") return playClip(v);
+    if (a === "vote") return voteFor(v);
+    if (a === "recPlay") return recPlay(v);
+    if (a === "recDuel") return recDuel(v);
+    if (a === "recFav") return recFav(v);
+    if (a === "recOne") return recOne(v);
+    if (a === "recAuto") return recAuto();
+    if (a === "recZip") return recZip();
+    if (a === "recBest") return recBest();
+    if (a === "recShare") return recShare();
     if (a === "next") { if (isHost) nextRound(); return; }
     if (a === "addMeme") return openImport();
     if (a === "closeImport") return closeImport();
@@ -1915,7 +2316,16 @@
   /* ============================================================
      DÉMARRAGE
      ============================================================ */
+  function preloadSounds() {
+    MimicAudio.preload(MimicBank.OFFICIAL).catch(function () {}).then(function () {
+      L.sndPreloaded = true;
+      L.sndOk = MimicAudio.status(MimicBank.OFFICIAL).ok;
+      if (S && S.ph === "lobby") { L.sig = ""; render(); }
+    });
+  }
+
   function boot() {
+    injectCss();
     try { var raw = localStorage.getItem("mp:vol"); if (raw !== null && raw !== "" && Number.isFinite(Number(raw))) L.vol = Math.max(0, Math.min(100, Number(raw))); } catch (e) {}
     document.addEventListener("input", function (e) {
       var el = e.target;
@@ -1931,6 +2341,7 @@
     var sess = Sess.load("mp");
     if (sess && sess.code && (!q.code || q.code === sess.code)) {
       startOnline(!!sess.host, sess.code, { name: sess.name, resume: true, wasHost: !!sess.host, code: sess.code });
+      setTimeout(preloadSounds, 600);
       return;
     }
     renderHome();
@@ -1941,9 +2352,7 @@
       else if (q.go) startOnline(false, q.code);
     }
     /* préchargement discret des sons officiels */
-    setTimeout(function () {
-      MimicAudio.preload(MimicBank.OFFICIAL).catch(function () {});
-    }, 350);
+    setTimeout(preloadSounds, 350);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

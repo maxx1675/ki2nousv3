@@ -4,14 +4,17 @@
  * - décode les fichiers importés (MP3, WAV, OGG, M4A, vidéos MP4/WebM/MOV) ;
  * - extrait un passage d'un fichier audio ou vidéo et le compresse en Opus ;
  * - enregistre une tentative au micro, une seule fois, avec niveau en direct ;
- * - fournit les petits effets sonores de l'interface.
+ * - fournit les petits effets sonores de l'interface ;
+ * - v2 : normalise le volume des extraits officiels, coupe leur silence de début/fin,
+ *   essaie plusieurs emplacements de fichier, et fournit les outils du récap
+ *   (concaténation, ZIP, téléchargement, partage).
  */
 "use strict";
 (function (root) {
   var SR = 44100;
   var TARGET_ENCODE_SR = 44100;
   var CLIP_SR = 12000; /* fréquence des imitations échangées entre joueurs */
-  var _ctx = null, _mic = null, _sources = new Set(), _cache = new Map(), _bad = {};
+  var _ctx = null, _mic = null, _sources = new Set(), _cache = new Map(), _bad = {}, _ok = {};
 
   function ctx() {
     if (_ctx) {
@@ -43,26 +46,79 @@
    * exactement le même passage.
    */
   function loadMeme(meme) {
-    if (!meme || !meme.file) return Promise.reject(new Error("Extrait inconnu"));
+    if (!meme || !(meme.file || meme.files)) return Promise.reject(new Error("Extrait inconnu"));
     if (_cache.has("m:" + meme.id)) return _cache.get("m:" + meme.id);
-    var p = fetch(meme.file, { cache: "force-cache" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("Extrait introuvable");
-        return res.arrayBuffer();
-      })
-      .then(decodeArrayBuffer)
+    var urls = Array.isArray(meme.files) && meme.files.length ? meme.files : [meme.file];
+    var p = fetchDecode(urls, 0)
       .then(function (buffer) {
         var start = Number(meme.start) || 0;
+        var auto = !meme.dur;
+        /* mèmes « auto » : on saute le silence du début avant de découper */
+        if (auto) start += leadSilence(buffer, start);
         /* sans `dur` (mèmes « auto ») : on garde le début du fichier, plafonné à `max` s */
         var want = Number(meme.dur) || Math.min(Math.max(0.2, buffer.duration - start), Number(meme.max) || 5);
         var out = sliceBuffer(buffer, start, want);
-        if (!meme.dur) meme.dur = Math.floor(out.duration * 100) / 100;
+        out = tidy(out, auto);
+        if (auto) meme.dur = Math.floor(out.duration * 100) / 100;
         delete _bad[meme.id];
+        _ok[meme.id] = true;
         return out;
       })
       .catch(function (e) { _cache.delete("m:" + meme.id); _bad[meme.id] = true; throw e; });
     _cache.set("m:" + meme.id, p);
     return p;
+  }
+
+  /** Essaie chaque URL à tour de rôle (les pages d'erreur « 200 » d'un site à page unique sont rejetées). */
+  function fetchDecode(urls, i) {
+    if (i >= urls.length) return Promise.reject(new Error("Extrait introuvable"));
+    return fetch(urls[i], { cache: "force-cache" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Extrait introuvable");
+        var ct = (res.headers && res.headers.get && res.headers.get("content-type")) || "";
+        if (/text\/html/i.test(ct)) throw new Error("Pas un fichier audio");
+        return res.arrayBuffer();
+      })
+      .then(decodeArrayBuffer)
+      .catch(function () { return fetchDecode(urls, i + 1); });
+  }
+
+  /** Durée de silence à sauter au début (garde 40 ms d'attaque). */
+  function leadSilence(buffer, from) {
+    var d = mixMono(buffer), sr = buffer.sampleRate, peak = 0, i;
+    for (i = 0; i < d.length; i += 4) { var v = Math.abs(d[i]); if (v > peak) peak = v; }
+    if (peak < 0.01) return 0;
+    var th = peak * 0.05, blk = Math.max(1, Math.floor(sr * 0.01));
+    for (i = Math.floor(from * sr); i < d.length - blk; i += blk) {
+      var s = 0;
+      for (var k = 0; k < blk; k++) s += Math.abs(d[i + k]);
+      if (s / blk > th) return Math.max(0, i / sr - from - 0.04);
+    }
+    return 0;
+  }
+
+  /** Normalise le volume (crête ≈ 0,9) et, si demandé, coupe le silence de fin. */
+  function tidy(buf, trimTail) {
+    var d = buf.getChannelData(0), n = d.length, peak = 0, i;
+    for (i = 0; i < n; i++) { var v = Math.abs(d[i]); if (v > peak) peak = v; }
+    if (peak < 0.005) return buf;
+    var gain = Math.min(6, 0.9 / peak);
+    var end = n;
+    if (trimTail) {
+      var th = peak * 0.04, last = n - 1;
+      while (last > 0 && Math.abs(d[last]) < th) last--;
+      end = Math.min(n, Math.max(Math.floor(0.3 * buf.sampleRate), last + Math.floor(0.12 * buf.sampleRate)));
+    }
+    var out = ctx().createBuffer(1, end, buf.sampleRate), o = out.getChannelData(0);
+    for (i = 0; i < end; i++) o[i] = clamp(d[i] * gain, -1, 1);
+    return out;
+  }
+
+  /** Mèmes dont le fichier a bien été chargé / qui ont échoué (pour l'affichage). */
+  function status(list) {
+    var ok = 0, bad = 0, total = (list || []).length;
+    (list || []).forEach(function (m) { if (_ok[m.id]) ok++; else if (_bad[m.id]) bad++; });
+    return { ok: ok, bad: bad, total: total };
   }
 
   /** Vrai si le fichier de ce mème a déjà échoué au chargement (absent, illisible). */
@@ -564,6 +620,93 @@
     return out;
   }
 
+  /* ---------- récap : concaténation, ZIP, téléchargement, partage ---------- */
+  /** Met plusieurs AudioBuffer bout à bout (mono 44,1 kHz), avec `gap` secondes de silence entre chaque. */
+  function concat(buffers, gap) {
+    var c = ctx(), sr = SR, g = Math.floor((gap == null ? 0.45 : gap) * sr);
+    var list = (buffers || []).filter(Boolean), total = 0, i;
+    var mono = list.map(function (b) { return { d: mixMono(b), sr: b.sampleRate }; });
+    mono.forEach(function (m) { m.n = Math.max(1, Math.floor(m.d.length * sr / m.sr)); total += m.n + g; });
+    if (!c || !total) return null;
+    var out = c.createBuffer(1, total, sr), o = out.getChannelData(0), pos = 0, peak = 0;
+    mono.forEach(function (m) {
+      var ratio = m.sr / sr;
+      for (i = 0; i < m.n; i++) {
+        var p = i * ratio, i0 = Math.floor(p), i1 = Math.min(m.d.length - 1, i0 + 1), f = p - i0;
+        o[pos + i] = (m.d[i0] || 0) * (1 - f) + (m.d[i1] || 0) * f;
+      }
+      pos += m.n + g;
+    });
+    for (i = 0; i < o.length; i++) { var v = Math.abs(o[i]); if (v > peak) peak = v; }
+    if (peak > 0.01 && peak < 0.8) { var k = 0.9 / peak; for (i = 0; i < o.length; i++) o[i] *= k; }
+    return out;
+  }
+
+  var _crcT = null;
+  function crc32(u8) {
+    if (!_crcT) {
+      _crcT = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) { var c0 = n; for (var k = 0; k < 8; k++) c0 = c0 & 1 ? 0xEDB88320 ^ (c0 >>> 1) : c0 >>> 1; _crcT[n] = c0 >>> 0; }
+    }
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < u8.length; i++) c = _crcT[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  /** ZIP « stocké » (sans compression : les WAV ne se compressent presque pas). files = [{ name, blob }]. */
+  function zip(files) {
+    var enc = new TextEncoder();
+    return Promise.all((files || []).map(function (f) {
+      return f.blob.arrayBuffer().then(function (ab) { return { name: f.name, data: new Uint8Array(ab) }; });
+    })).then(function (items) {
+      var parts = [], central = [], offset = 0, d = new Date();
+      var time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+      var date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+      items.forEach(function (it) {
+        var nm = enc.encode(it.name), crc = crc32(it.data), size = it.data.length;
+        var lh = new DataView(new ArrayBuffer(30));
+        lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+        lh.setUint16(8, 0, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true);
+        lh.setUint32(14, crc, true); lh.setUint32(18, size, true); lh.setUint32(22, size, true);
+        lh.setUint16(26, nm.length, true); lh.setUint16(28, 0, true);
+        parts.push(lh.buffer, nm, it.data);
+        var ch = new DataView(new ArrayBuffer(46));
+        ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+        ch.setUint16(10, 0, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true);
+        ch.setUint32(16, crc, true); ch.setUint32(20, size, true); ch.setUint32(24, size, true);
+        ch.setUint16(28, nm.length, true); ch.setUint32(42, offset, true);
+        central.push(ch.buffer, nm);
+        offset += 30 + nm.length + size;
+      });
+      var cdSize = 0;
+      central.forEach(function (p) { cdSize += p.byteLength != null ? p.byteLength : p.length; });
+      var end = new DataView(new ArrayBuffer(22));
+      end.setUint32(0, 0x06054b50, true); end.setUint16(8, items.length, true); end.setUint16(10, items.length, true);
+      end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+      return new Blob(parts.concat(central, [end.buffer]), { type: "application/zip" });
+    });
+  }
+
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name; a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { try { document.body.removeChild(a); } catch (e) {} URL.revokeObjectURL(url); }, 5000);
+  }
+
+  /** Feuille de partage native (mobile) avec fichiers. Résout true si partagé, false si indisponible. */
+  function shareFiles(items, title) {
+    try {
+      var files = (items || []).map(function (f) { return new File([f.blob], f.name, { type: f.blob.type }); });
+      if (!navigator.canShare || !navigator.share || !navigator.canShare({ files: files })) return Promise.resolve(false);
+      return navigator.share({ files: files, title: title || "Mimic Party" }).then(function () { return true; }, function (e) {
+        return e && e.name === "AbortError" ? true : false;
+      });
+    } catch (e) { return Promise.resolve(false); }
+  }
+
   /* ---------- petits sons d'interface ---------- */
   function sfx(name) {
     var c = ctx();
@@ -599,7 +742,8 @@
 
   root.MimicAudio = {
     ctx: ctx, unlock: unlock, state: state, ensureRunning: ensureRunning, sfx: sfx,
-    loadMeme: loadMeme, preload: preload, isBad: isBad,
+    loadMeme: loadMeme, preload: preload, isBad: isBad, status: status,
+    concat: concat, zip: zip, saveBlob: saveBlob, shareFiles: shareFiles,
     encodeClip: encodeClip, decodeClip: decodeClip,
     playBuffer: playBuffer, playSnippet: playSnippet, stopAll: stopAll,
     decodeBlob: decodeBlob, decodeArrayBuffer: decodeArrayBuffer, loadAudioFile: loadAudioFile,
