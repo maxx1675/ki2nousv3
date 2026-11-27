@@ -24,6 +24,13 @@
 .bt-players .chip{font-size:.8rem;padding:3px 9px}
 .bt-players .chip.ok{border-color:#18a05a;color:#18a05a}
 .bt-source-info{font-size:.82rem;color:var(--muted);margin:6px 0 0}
+.bt-reveal-img{display:block;width:100%;max-width:320px;margin:8px auto 4px;border-radius:12px;border:2.5px solid var(--edge);box-shadow:4px 4px 0 var(--sh)}
+.bt-recap{display:grid;gap:6px;margin-top:10px;max-height:320px;overflow:auto}
+.bt-recap-item{display:flex;align-items:center;gap:8px;padding:5px;border:2px solid var(--edge);border-radius:10px;background:var(--surface)}
+.bt-recap-item img{width:64px;height:36px;object-fit:cover;border-radius:6px;flex:0 0 auto}
+.bt-recap-item span{display:grid;min-width:0}
+.bt-recap-item b{font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-recap-item small{color:var(--muted);font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .snd-gate{display:flex;flex-direction:column;align-items:center;gap:6px;margin:10px auto;padding:10px 14px;max-width:360px;background:var(--surface);border:2.5px solid var(--edge);border-radius:14px;box-shadow:4px 4px 0 var(--sh);text-align:center}
 .snd-gate small{color:var(--muted);font-size:.8rem}
 .bt-vol{display:flex;align-items:center;gap:6px;font-size:.9rem}
@@ -53,7 +60,7 @@
  <div class="card"><h2>⚙️ Réglages de la partie</h2><div id="cfgsum" class="bt-cfg-summary"></div></div>
  <div id="hostcfg" hidden class="card"><h2>La partie</h2>
   <div class="srow"><span><b>Source</b><small>Banque intégrée ou ta playlist YouTube</small></span><div class="pills" id="srcp"></div></div>
-  <div class="srow" id="themerow"><span><b>Thème</b><small>Banque intégrée + sélections YouTube</small></span><select id="theme" style="max-width:210px"></select></div>
+  <div class="srow" id="themerow"><span><b>Thème</b><small>Banque locale + sélections YouTube</small></span><div style="display:grid;gap:4px;justify-items:end;max-width:250px"><select id="theme" style="max-width:210px"></select><div class="bt-source-info" id="themeinfo" style="margin:0;text-align:right"></div></div></div>
   <div class="srow"><span><b>Manches</b><small>Nombre de chansons</small></span><div class="stepper"><button data-a="r-">−</button><output id="rn">10</output><button data-a="r+">+</button></div></div>
   <div class="srow"><span><b>Durée de l'extrait</b><small>La musique s'arrête après</small></span><div class="pills" id="extractp"></div></div>
   <div class="srow"><span><b>Mode</b><small>Réponses cachées ou visibles</small></span><div class="pills" id="modep"></div></div>
@@ -84,7 +91,7 @@
 const MIN=2,MAX=12;
 let R=null,S=null,isHost=false,code="";
 let H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0};
-const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,soundR:-1,unlocked:false,needT:0,starting:false,lastSend:0,token:0,stopT:0,loadSeq:0,expectedId:"",cueReady:false,probe:null,bad:{},playerResets:0,readySeen:false,playerGen:0,brokenKey:"",vol:90,maskIv:0,maskT:0};
+const L={name:"",key:"",cur:null,playingR:0,fb:null,ok:{},sound:false,soundR:-1,unlocked:false,needT:0,starting:false,lastSend:0,token:0,stopT:0,loadSeq:0,expectedId:"",cueReady:false,probe:null,bad:{},playerResets:0,readySeen:false,playerGen:0,brokenKey:"",brokenVotes:{},vol:90,maskIv:0,maskT:0,lateNotice:false,wasLobby:false};
 try{const v=Number(localStorage.getItem("soiree:bt_vol"));if(Number.isFinite(v))L.vol=Math.max(0,Math.min(100,v))}catch(e){}
 const volNow=()=>Math.max(0,Math.min(100,Number.isFinite(Number(L.vol))?Number(L.vol):90));
 function applyVolume(){
@@ -105,7 +112,7 @@ const view=id=>["home","lobby","game"].forEach(x=>$("#s-"+x).hidden=x!=id);
    neutre pendant la manche (sans jamais révéler la réponse avant la fin). */
 function maskMedia(force){
  const now=Date.now();
- if(!force&&now-(L.maskT||0)<350)return;
+ if(!force&&now-(L.maskT||0)<150)return;
  L.maskT=now;
  const round=!!(S&&S.ph==="round");
  try{document.title=round?"Blind Test - écoute l'extrait":"Blind Test"}catch(e){}
@@ -120,7 +127,9 @@ function maskMedia(force){
    album:"Hub de Soirée",
    artwork:[],
   });
-  if(round)navigator.mediaSession.playbackState="playing";
+  // « none » retire la manche des commandes média du système : le panneau
+  // de volume Windows ne peut plus afficher le titre de la vidéo YouTube.
+  try{navigator.mediaSession.playbackState=round?"none":"paused"}catch(e){}
   try{
    if(navigator.mediaSession.setActionHandler){
      navigator.mediaSession.setActionHandler("play",null);
@@ -478,7 +487,8 @@ function parseYT(text){
 function normalizeSong(it){
   if(!it||!it.id)return null;
   const meta=BT.songMeta(it.title,it.artist);
-  return{id:it.id,title:meta.title,artist:meta.artist,year:it.year,tags:it.tags};
+  const cleanList=v=>Array.isArray(v)?v.filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim()).slice(0,8):[];
+  return{id:it.id,title:meta.title,artist:meta.artist,year:it.year,tags:it.tags,alt:cleanList(it.alt),artistAlt:cleanList(it.artistAlt)};
 }
 /* Mémorise localement les vidéos qui refusent la lecture intégrée, pour ne
    pas les retirer à chaque nouvelle partie. Purge automatique après 7 jours. */
@@ -579,7 +589,7 @@ function handleBrokenSong(reason){
   if(spare){
     H.order[H.idx]=spare;
     H.song={...spare};S.song={id:spare.id};
-    H.res={};H.pts={};L.ok={};L.fb=null;S.feed=[];S.done=[];
+    H.res={};H.pts={};H.tries={};L.ok={};L.fb=null;L.brokenVotes={};S.feed=[];S.done=[];
     const t=$("#bt-title"),a=$("#bt-artist");if(t)t.value="";if(a)a.value="";
     toast("Vidéo indisponible : on essaie une autre chanson");
     retryRound();
@@ -671,7 +681,7 @@ function loadThemeTracks(theme,done){
     done(merged);
   };
   const ctrl=typeof AbortController!=="undefined"?new AbortController():null;
-  timer=setTimeout(()=>{try{ctrl&&ctrl.abort()}catch(e){}finish([])},6000);
+  timer=setTimeout(()=>{try{ctrl&&ctrl.abort()}catch(e){}finish([])},9000);
   fetch("/api/youtube/theme?theme="+encodeURIComponent(theme),{cache:"no-store",signal:ctrl?ctrl.signal:undefined})
     .then(r=>r.json())
     .then(j=>finish(j&&j.ok&&Array.isArray(j.items)?j.items:[]))
@@ -694,8 +704,8 @@ async function enter(create,o){
   Party.listen(R,code,()=>Sess.clear("bt"));
   R.on("st",d=>{if(isHost||!d)return;S=d;route()});
   R.on("play",p=>{if(isHost||!p)return;if(!L.cur||L.cur.r!==p.r){L.ok={};L.fb=null}L.cur=p;if(S&&S.ph==="round"&&p.r===S.r){L.playingR=p.r;playTrack(p);updGame()}else route()});
-  R.on("fb",d=>{if(d&&d.r===S.r&&d.res){L.fb={r:d.r,res:d.res,at:Date.now()};d.res.forEach(x=>{if(x.ok)L.ok[x.f]=true});updGame()}});
-  R.on("act",d=>{if(isHost)hostAct(d)});
+  R.on("fb",d=>{if(d&&d.r===S.r&&d.res){L.fb={r:d.r,res:d.res,at:Date.now(),try:d.try};d.res.forEach(x=>{if(x.ok)L.ok[x.f]=true});updGame()}});
+  R.on("act",(d,meta)=>{if(isHost)hostAct(d,meta&&meta.from)});
   R.on("rs",()=>{if(isHost)needResend()});
   R.onPromote(onPromoted);
   R.onDemote(()=>{isHost=false;toast("Un autre joueur est devenu l'hôte");route()});
@@ -713,7 +723,7 @@ async function enter(create,o){
   startHello();
   view(S&&S.ph!=="lobby"?"game":"lobby");$("#lcode").textContent=code;
   if(L.maskIv)clearInterval(L.maskIv);
-  L.maskIv=setInterval(()=>{try{maskMedia()}catch(e){}},500);
+  L.maskIv=setInterval(()=>{try{maskMedia()}catch(e){}},250);
   Share.mount("#sw-share",{code,title:"Blind Test",text:"Rejoins-moi sur le Blind Test ! Code PIN : "+code});
   route();
 }
@@ -763,13 +773,14 @@ function resumeHostRound(){
   if(!S||S.ph!=="round")return false;
   S.loading=false;L.starting=false;
   if(!H.song||!H.song.id)return false;
-  if(S.cfg.source==="youtube"&&!H.song.title){
+  if(!H.song.title){
     const r=S.r;S.loading=true;
     probeMeta(H.song.id,(meta,err)=>{
       if(!isHost||!S||S.ph!=="round"||S.r!==r)return;
       if(!meta||!meta.title){roundPrepFailed(err);return}
       L.starting=false;S.loading=false;
       H.song.title=meta.title;H.song.artist=meta.artist||H.song.artist||"";
+      if(S.song)S.song.hasArtist=!!H.song.artist;
       resumePlayback();
     },H.song.artist);
     return true;
@@ -792,18 +803,36 @@ function onPromoted(snap){
 }
 
 /* ---------- logique hôte ---------- */
-function hostAct(d){
+function hostAct(d,from){
   if(!isHost||!S)return;
-  const p=d.p;
-  if(d.k==="join"){const ex=S.pl.find(x=>x.id===p);if(ex)ex.n=d.n||ex.n;else if(S.ph==="lobby"&&S.pl.length<MAX)S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0})}
+  // Pour les messages venus du réseau, `from` est l'identité vérifiée par le
+  // relais. On ne fait jamais confiance au `p` fourni par le client : sinon un
+  // joueur pourrait répondre ou agir à la place d'un autre.
+  const p=from||d.p;
+  if(d.k==="join"){
+    const ex=S.pl.find(x=>x.id===p);
+    if(ex)ex.n=d.n||ex.n;
+    else if(S.pl.length<MAX){
+      S.pl.push({id:p,n:(d.n||"?").slice(0,22),sc:0});
+      // Une arrivée en cours de partie est acceptée avec 0 point : le joueur
+      // pourra répondre dès la manche suivante (ou la manche en cours).
+    }
+  }
   else if(d.k==="cfg"&&p===ME&&S.ph==="lobby")applyCfg(d.cfg||{});
   else if(d.k==="start"&&p===ME&&S.ph==="lobby")hostStart();
   else if(d.k==="ans")answer(p,d);
   else if(d.k==="skip"&&p===ME&&S.ph==="round")endRound("skip");
   else if(d.k==="next"&&p===ME&&S.ph==="reveal")nextRound();
-  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;S.song=null;S.loading=false;S.t0=0;S.ansUntil=0;S.extract=0;S.awaitEnd=0;L.starting=false;H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0}}
+  else if(d.k==="again"&&p===ME&&S.ph==="end"){S.sid=null;S.pl.forEach(x=>x.sc=0);S.ph="lobby";S.r=-1;S.total=0;S.stats=null;S.rev=null;S.recap=[];S.feed=[];S.done=[];S.nextAt=0;S.song=null;S.loading=false;S.t0=0;S.ansUntil=0;S.extract=0;S.awaitEnd=0;L.starting=false;L.brokenVotes={};H={song:null,res:{},pts:{},order:[],spare:[],idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0}}
   else if(d.k==="need"&&S.ph==="round"&&S.song&&S.song.id){R.emit("play",playPayload(S.song.id,700),p);return}
-  else if(d.k==="broken"&&S.ph==="round"&&d.r===S.r&&H.song&&H.song.id===d.id&&S.pl.some(x=>x.id===p))handleBrokenSong(d.code);
+  else if(d.k==="broken"&&S.ph==="round"&&d.r===S.r&&H.song&&H.song.id===d.id&&S.pl.some(x=>x.id===p)){
+    // Un seul téléphone peut avoir un souci passager : on attend un second
+    // signal (ou l'hôte lui-même) avant de changer la chanson pour tout le monde.
+    const key=S.r+":"+d.id;
+    const votes=L.brokenVotes[key]||(L.brokenVotes[key]=new Set());
+    votes.add(p);
+    if(p===ME||votes.size>=2)handleBrokenSong(d.code);
+  }
   S.on=[...R.peers(),ME];bc();route();
 }
 function applyCfg(cfg){
@@ -845,13 +874,15 @@ function beginGame(list){
   const clean=list.filter(x=>!(L.bad&&L.bad[x.id]));
   const usable=clean.length?clean:list;
   const rounds=Math.max(1,Math.min(S.cfg.rounds||10,usable.length));
+  if(rounds<(S.cfg.rounds||10))toast(`Seules ${usable.length} chansons disponibles : la partie fera ${rounds} manche(s).`);
   // Mélange toute la source avant de choisir les manches : une playlist n'est
   // jamais jouée dans l'ordre d'origine.
   const pool=shuffle(usable);
   const order=pool.slice(0,rounds);
   const spare=pool.slice(rounds,rounds+30);
-  H={song:null,res:{},pts:{},order,spare,idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0};
-  S.total=order.length;S.r=-1;S.sid=null;S.stats=null;S.rev=null;S.feed=[];S.done=[];S.nextAt=0;S.song=null;
+  H={song:null,res:{},pts:{},order,spare,idx:-1,stat:{fast:null,titles:{}},fails:0,skipFails:0,tries:{}};
+  S.total=order.length;S.r=-1;S.sid=null;S.stats=null;S.rev=null;S.recap=[];S.feed=[];S.done=[];S.nextAt=0;S.song=null;
+  L.brokenVotes={};
   S.pl.forEach(p=>p.sc=0);
   if(!S.total){toast("Aucune musique disponible");S.ph="lobby";bc();route();return}
   nextRound();
@@ -860,13 +891,13 @@ function nextRound(){
   if(!isHost||!S||L.starting)return;
   if(H.idx+1>=S.total){finish();return}
   H.idx++;S.r=H.idx;S.ph="round";S.feed=[];S.done=[];S.rev=null;S.nextAt=0;S.awaitEnd=0;S.last=S.r+1>=S.total;
-  H.res={};H.pts={};
+  H.res={};H.pts={};H.tries={};
   const song=H.order[H.idx]||{};
-  H.song={...song};S.song=song.id?{id:song.id}:null;
-  L.ok={};L.fb=null;L.brokenKey="";
+  H.song={...song};S.song=song.id?{id:song.id,hasArtist:!!song.artist}:null;
+  L.ok={};L.fb=null;L.brokenKey="";L.brokenVotes={};
   if(!song.id){handleBrokenSong("empty");return}
   if(L.bad&&L.bad[song.id]){handleBrokenSong("bad");return}
-  if(S.cfg.source==="youtube"&&!H.song.title){
+  if(!H.song.title){
     L.starting=true;S.loading=true;bc();route();
     const r=S.r;
     probeMeta(song.id,(meta,err)=>{
@@ -874,6 +905,7 @@ function nextRound(){
       if(!meta||!meta.title){roundPrepFailed(err);return}
       L.starting=false;S.loading=false;
       H.fails=0;H.song.title=meta.title;H.song.artist=meta.artist||song.artist||"";
+      if(S.song)S.song.hasArtist=!!H.song.artist;
       launchRound();
     },song.artist);
   } else launchRound();
@@ -883,6 +915,7 @@ function launchRound(){
   const start=Net.now()+2800;
   const extract=Math.max(1,S.cfg.extract||15);
   H.fails=0;L.starting=false;S.loading=false;
+  if(S.song)S.song.hasArtist=!!H.song.artist;
   S.t0=start;S.ansUntil=start+(S.cfg.answer*1000);S.extract=extract;S.awaitEnd=0;
   // On démarre l'extrait vers 40-52 % du morceau : ni l'intro, ni la fin.
   if(typeof H.song.pos!=="number")H.song.pos=BT.pickPos();
@@ -898,11 +931,17 @@ function answer(p,d){
   const results=[];
   let titleOk=false;
   const now=Net.now();
-  const ms=Math.max(0,Math.min(S.cfg.answer*1000,now-S.t0));
+  // Le chrono part de l'instant où le joueur a validé, pas de l'arrivée du
+  // message chez l'hôte. On borne l'avance à 2,5 s pour qu'une horloge
+  // déréglée ne permette pas de gagner du temps artificiellement.
+  const rawAt=Number(d.at);
+  const sentAt=Number.isFinite(rawAt)?Math.max(S.t0-300,now-2500,Math.min(now,rawAt)):now;
+  const ms=Math.max(0,Math.min(S.cfg.answer*1000,sentAt-S.t0));
   const tryField=(f,raw)=>{
     const expected=H.song[f];const txt=String(raw||"").trim().slice(0,90);
     if(!expected||!txt||H.res[p][f])return;
-    if(BT.match(txt,expected)){
+    const aliases=f==="title"?H.song.alt:H.song.artistAlt;
+    if(BT.matchAny(txt,[expected].concat(Array.isArray(aliases)?aliases:[]))){
       const base=f==="title"?700:400,bonus=f==="title"?300:200;
       const pts=Math.round(base+bonus*(1-ms/(S.cfg.answer*1000)));
       H.res[p][f]=true;H.pts[p]=(H.pts[p]||0)+pts;
@@ -926,21 +965,28 @@ function answer(p,d){
   bc();route();
 }
 function feedback(p,results,raw){
+  H.tries=H.tries||{};
+  H.tries[p]=(H.tries[p]||0)+1;
+  const attempt=H.tries[p];
   if(p===ME){
-    L.fb={r:S.r,res:results,at:Date.now()};
+    L.fb={r:S.r,res:results,at:Date.now(),try:attempt};
     results.forEach(x=>{if(x.ok)L.ok[x.f]=true});
     try{navigator.vibrate&&navigator.vibrate(results.some(x=>x.ok)?45:20)}catch(e){}
     updGame();
-  }else if(R)R.emit("fb",{r:S.r,res:results,raw:raw||{}},p);
+  }else if(R)R.emit("fb",{r:S.r,res:results,raw:raw||{},try:attempt},p);
 }
 function endRound(reason){
   if(!isHost||!S||S.ph!=="round")return;
   stopYT();
   S.awaitEnd=0;
   S.ph="reveal";
-  S.rev={title:(H.song&&H.song.title)||"",artist:(H.song&&H.song.artist)||""};
+  const song=H.song||{};
+  S.rev={id:song.id||"",title:song.title||"",artist:song.artist||"",year:song.year||null};
   S.rev.per=S.pl.map(p=>{const r=H.res[p.id]||{};return{id:p.id,t:!!r.title,a:!!r.artist,pts:H.pts[p.id]||0}});
-  S.nextAt=S.cfg.mode==="live"?Net.now()+5000:0;
+  S.recap=(S.recap||[]).concat([{id:song.id||"",title:song.title||"",artist:song.artist||"",year:song.year||null}]).slice(-40);
+  // Les réponses privées avancent aussi toutes seules : l'hôte peut toujours
+  // enchaîner plus tôt, mais la partie ne reste plus bloquée sur la révélation.
+  S.nextAt=Net.now()+(S.cfg.mode==="live"?5000:10000);
   S.reason=reason||"";
   bc();route();
 }
@@ -972,10 +1018,11 @@ function finish(){
 function setHTML(el,h){if(el&&el._h!==h){el._h=h;el.innerHTML=h}}
 function route(){
   if(!S)return;
-  if(S.ph==="lobby"){L.key="";view("lobby");renderLobby();return}
+  if(S.ph==="lobby"){L.wasLobby=true;L.key="";view("lobby");renderLobby();return}
+  if(!isHost&&!L.wasLobby&&!L.lateNotice){L.lateNotice=true;toast("Partie déjà commencée : tu rejoins avec 0 point.")}
   view("game");
   maskMedia();
-  const key=S.ph+":"+(S.ph==="end"?0:S.r);
+  const key=S.ph+":"+(S.ph==="end"?0:S.r)+":"+(S.song&&S.song.hasArtist===false?"n":"a");
   if(key!==L.key){L.key=key;renderGame(true)}
   else{ if(S.ph==="round")updGame(); else if(S.ph==="reveal")updReveal() }
   if(S.ph==="round")ensurePlayback(); else {stopYT();syncSnd()}
@@ -993,6 +1040,15 @@ function renderLobby(){
     if(sel)sel.value=S.cfg.theme;
     $("#themerow").hidden=S.cfg.source!=="theme";
     $("#ytrow").hidden=S.cfg.source!=="youtube";
+    const ti=$("#themeinfo");
+    if(ti){
+      const local=BT.pick(S.cfg.theme,999).length;
+      const rounds=S.cfg.rounds||10;
+      let txt=`${local} chanson${local>1?"s":""} dans la banque locale`;
+      if(local<rounds)txt+=` — ${local<2?"la partie sera très courte":"la partie sera limitée à "+local+" manches"} si YouTube ne répond pas.`;
+      else txt+=" — des sélections YouTube seront ajoutées au lancement.";
+      ti.textContent=txt;
+    }
     const lt=$("#linktext");if(lt&&document.activeElement!==lt)lt.value=S.cfg.linkText||"";
     const ls=$("#linksrc");if(ls){const p=parseYT(S.cfg.linkText);ls.textContent=p.listId?`Playlist détectée : ${p.listId}${p.ids.length?` (${p.ids.length} lien(s) aussi présents)`:" — elle sera jouée en entier"}`:(p.ids.length?`${p.ids.length} lien(s) vidéo détecté(s)`:"Aucun lien détecté pour le moment.")}
     $("#rn").textContent=S.cfg.rounds;
@@ -1014,6 +1070,7 @@ function vinylHtml(){return `<div class="vinyl-wrap"><div class="vinyl" id="viny
 function renderGame(fade){
   const st=$("#stage");if(!st)return;st.className="";if(fade){void st.offsetWidth;st.className="fade"}
   if(S.ph==="round"){
+    const hasArtist=!S.song||S.song.hasArtist!==false;
     st.innerHTML=`<div class="bt-head"><span class="round">Manche ${S.r+1}/${S.total}</span><span class="score" id="btScore">0 pts</span></div>
       <div class="bt-timer"><i id="tb" style="width:100%"></i></div>
       ${vinylHtml()}
@@ -1022,7 +1079,7 @@ function renderGame(fade){
       <div class="card">
         <div class="bt-fields">
           <label>Titre de la chanson<input type="text" id="bt-title" maxlength="90" placeholder="Ex. Get Lucky" autocomplete="off" autocapitalize="sentences"></label>
-          <label>Artiste<input type="text" id="bt-artist" maxlength="90" placeholder="Ex. Daft Punk" autocomplete="off" autocapitalize="words"></label>
+          ${hasArtist?'<label>Artiste<input type="text" id="bt-artist" maxlength="90" placeholder="Ex. Daft Punk" autocomplete="off" autocapitalize="words"></label>':""}
         </div>
         <button class="btn primary big" data-a="btans" id="btSend">Tenter ma chance 🎯</button>
         <p class="bt-feedback" id="btFb" role="status"></p>
@@ -1034,11 +1091,13 @@ function renderGame(fade){
     if(isHost){const t=$("#bt-title");if(t)setTimeout(()=>{try{t.focus({preventScroll:true})}catch(e){}},80)}
   }else if(S.ph==="reveal"){
     const r=S.rev||{},per=r.per||[],rank=[...S.pl].sort((a,b)=>b.sc-a.sc);
+    const thumb=r.id?`https://i.ytimg.com/vi/${encodeURIComponent(r.id)}/hqdefault.jpg`:"";
     st.innerHTML=`${vinylHtml()}
       <div class="card bt-reveal">
         <p class="hint" style="margin:0">La réponse était</p>
+        ${thumb?`<img class="bt-reveal-img" src="${thumb}" alt="" loading="lazy" referrerpolicy="no-referrer">`:""}
         <div class="answer big">${esc(r.title||"Titre inconnu")}</div>
-        <div class="artist">${esc(r.artist||"")}</div>
+        <div class="artist">${esc(r.artist||"")}${r.year?" · "+esc(String(r.year)):""}</div>
       </div>
       <div class="card"><h2>Points de la manche</h2><div class="bt-score-row">
         ${per.map(x=>`<div class="prow ${x.id===ME?"me":""}"><span>${esc(nm(x.id))}</span><small>${x.t?"✔ Titre":"—"} · ${x.a?"✔ Artiste":"—"}</small><span class="pts">${x.pts?"+"+x.pts:"0"}</span></div>`).join("")}
@@ -1060,6 +1119,7 @@ function renderGame(fade){
         <div class="title">🎵 Chansons jouées<small>${s.played||0}</small></div>
       </div>
       <div class="card"><h2>Classement final</h2><div class="bt-score-row">${rank.map((p,i)=>`<div class="prow ${p.id===ME?"me":""}"><span>${i+1}. ${esc(p.n)}</span><span class="pts">${p.sc}</span></div>`).join("")}</div></div>
+      ${(S.recap&&S.recap.length)?`<div class="card"><h2>🎵 Chansons jouées</h2><div class="bt-recap">${S.recap.map(x=>`<div class="bt-recap-item">${x.id?`<img src="https://i.ytimg.com/vi/${encodeURIComponent(x.id)}/default.jpg" alt="" loading="lazy" referrerpolicy="no-referrer">`:""}<span><b>${esc(x.title||"Titre inconnu")}</b><small>${esc(x.artist||"")}${x.year?" · "+esc(String(x.year)):""}</small></span></div>`).join("")}</div></div>`:""}
       <div id="btgage"></div><div id="btendcard"></div>
       ${isHost?'<button class="btn primary big" data-a="again">Rejouer 🔁</button>':'<p class="hint center">L\'hôte peut relancer une partie.</p>'}
       <button class="link" data-a="leave">Quitter</button>`;
@@ -1095,7 +1155,8 @@ function updGame(){
     else{
       const ok=f.res.some(x=>x.ok);
       fb.className="bt-feedback "+(ok?"ok":"bad");
-      fb.innerHTML=f.res.map(x=>x.ok?`${x.f==="title"?"✅ Titre":"✅ Artiste"} +${x.pts} pts`:`${x.f==="title"?"❌ Titre":"❌ Artiste"} : pas encore`).join(" · ")+"<small>"+(ok?"Bien joué, continue si l'autre champ est encore libre.":"Ce n'est pas ça — tu peux réessayer !")+"</small>";
+      const attempt=f.try||1;
+      fb.innerHTML=f.res.map(x=>x.ok?`${x.f==="title"?"✅ Titre":"✅ Artiste"} +${x.pts} pts`:`${x.f==="title"?"❌ Titre":"❌ Artiste"} : pas encore`).join(" · ")+"<small>Tentative "+attempt+" · "+(ok?"Bien joué, continue si l'autre champ est encore libre.":"Ce n'est pas ça — tu peux réessayer !")+"</small>";
     }
   }
   const pr=$("#btProg");
@@ -1155,7 +1216,7 @@ function submitAnswer(){
   const t=$("#bt-title"),a=$("#bt-artist");
   const tv=t?t.value.trim():"",av=a?a.value.trim():"";
   if(!tv&&!av)return toast("Écris le titre ou l'artiste");
-  send({k:"ans",r:S.r,t:tv,a:av});
+  send({k:"ans",r:S.r,t:tv,a:av,at:Net.now()});
 }
 document.addEventListener("keydown",e=>{
   if(e.key!=="Enter")return;
@@ -1177,4 +1238,8 @@ ensurePlayer();
   if(BP.host)enter(true,{name:n0,code:BP.code,retry:5});else enter(false,{name:n0,joinCode:BP.code,retry:20})}
  else if(sv&&(!BP.code||BP.code===sv.code)){msg("🔁 Retour dans le salon "+sv.code+"…");enter(false,{name:sv.name,joinCode:sv.code,resume:true,wasHost:sv.host})}}
 addEventListener("beforeunload",()=>R&&R.leave());
+// Le panneau média de Windows se rafraîchit quand la fenêtre reprend le focus
+// ou redevient visible : on réaffirme immédiatement un titre neutre.
+addEventListener("focus",()=>{try{maskMedia(true)}catch(e){}});
+document.addEventListener("visibilitychange",()=>{try{maskMedia(true)}catch(e){}});
 </script></body></html>

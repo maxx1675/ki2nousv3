@@ -7,9 +7,11 @@ type SongMeta = { title: string; artist: string };
 type BT = {
   norm: (value: unknown) => string;
   match: (guess: unknown, answer: unknown) => boolean;
+  matchAny: (guess: unknown, answers: unknown[]) => boolean;
   cleanTitle: (value: unknown) => string;
   cleanArtist: (value: unknown) => string;
   isGenericArtist: (value: unknown) => boolean;
+  isKnownArtist: (value: unknown) => boolean;
   songMeta: (title: unknown, artist: unknown) => SongMeta;
   extractBase: (pos: number, duration: number, extract: number, elapsed?: number) => number;
   pickPos: () => number;
@@ -36,6 +38,27 @@ describe("Blind Test — réponses", () => {
     expect(BT.match("the", "The Power of Love")).toBe(false);
     expect(BT.match("love", "Glove")).toBe(false);
     expect(BT.match("station", "Nation")).toBe(false);
+  });
+
+  it("n'accepte pas un mot isolé ou un radical proche", () => {
+    expect(BT.match("queen", "Dancing Queen")).toBe(false);
+    expect(BT.match("stop", "Don't Stop Me Now")).toBe(false);
+    expect(BT.match("sweet", "Sweet Dreams (Are Made of This)")).toBe(false);
+    expect(BT.match("believe", "Believer")).toBe(false);
+    expect(BT.match("love night", "Dancing Queen")).toBe(false);
+  });
+
+  it("accepte les titres entre parenthèses, les nombres et les alias", () => {
+    expect(BT.match("blue", "Blue (Da Ba Dee)")).toBe(true);
+    expect(BT.match("da ba dee", "Blue (Da Ba Dee)")).toBe(true);
+    expect(BT.match("song two", "Song 2")).toBe(true);
+    expect(BT.match("aha", "a-ha")).toBe(true);
+    expect(BT.match("backstreets back", "Everybody (Backstreet's Back)")).toBe(true);
+    expect(BT.match("sweet child of mine", "Sweet Child O' Mine")).toBe(true);
+    expect(BT.match("born to be alive", "Born To Be Alive (From 'Minions: The Rise of Gru' Soundtrack)")).toBe(true);
+    expect(BT.match("this wish", 'This Wish (From "Wish") (Official Video)')).toBe(true);
+    expect(BT.match("Daft Punk - Get Lucky", "Get Lucky")).toBe(true);
+    expect(BT.matchAny("Aha", ["a-ha", "Take On Me"])).toBe(true);
   });
 
   it("accepte le titre seul quand le titre YouTube contient aussi l'artiste", () => {
@@ -93,6 +116,22 @@ describe("Blind Test — titres YouTube", () => {
   it("déduit l'artiste d'un titre sans chaîne fiable", () => {
     expect(BT.songMeta("Daft Punk - Get Lucky - Daft Punk", "")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
     expect(BT.songMeta("Artist1 & Artist2 - Title - Artist1", "Artist1")).toEqual({ title: "Title", artist: "Artist1 & Artist2" });
+  });
+
+  it("corrige les métadonnées inversées et les titres sans séparateur", () => {
+    expect(BT.songMeta("Daft Punk - Get Lucky", "Get Lucky")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.songMeta("Daft Punk Get Lucky", "Daft Punk")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.songMeta("Album fr - Daft Punk - Get Lucky", "Album fr")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.songMeta("Born To Be Alive (From 'Minions: The Rise of Gru' Soundtrack)", "Jackson Wang")).toEqual({
+      title: "Born To Be Alive",
+      artist: "Jackson Wang",
+    });
+    expect(BT.songMeta('This Wish (From "Wish") (Official Video)', "Ariana DeBose")).toEqual({
+      title: "This Wish",
+      artist: "Ariana DeBose",
+    });
+    expect(BT.isKnownArtist("Daft Punk")).toBe(true);
+    expect(BT.isKnownArtist("Get Lucky")).toBe(false);
   });
 });
 

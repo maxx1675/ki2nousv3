@@ -52,14 +52,14 @@
     { id: "sOnqjkJTMaA", title: "Thriller", artist: "Michael Jackson", year: 1983, tags: ["80s", "pop"] },
     { id: "oRdxUFDoQe0", title: "Beat It", artist: "Michael Jackson", year: 1982, tags: ["80s", "pop", "rock"] },
     { id: "79fzeNUqQbQ", title: "Like a Prayer", artist: "Madonna", year: 1989, tags: ["80s", "pop"] },
-    { id: "djV11Xbc914", title: "Take On Me", artist: "a-ha", year: 1985, tags: ["80s", "pop"] },
+    { id: "djV11Xbc914", title: "Take On Me", artist: "a-ha", artistAlt: ["Aha"], year: 1985, tags: ["80s", "pop"] },
     { id: "pIgZ7gMze7A", title: "Wake Me Up Before You Go-Go", artist: "Wham!", year: 1984, tags: ["80s", "pop"] },
     { id: "dQw4w9WgXcQ", title: "Never Gonna Give You Up", artist: "Rick Astley", year: 1987, tags: ["80s", "pop"] },
     { id: "qeMFqkcPYcg", title: "Sweet Dreams (Are Made of This)", artist: "Eurythmics", year: 1983, tags: ["80s", "pop", "electro"] },
     { id: "eH3giaIzONA", title: "I Wanna Dance with Somebody", artist: "Whitney Houston", year: 1987, tags: ["80s", "pop", "disco"] },
     { id: "PIb6AZdTr-A", title: "Girls Just Want to Have Fun", artist: "Cyndi Lauper", year: 1983, tags: ["80s", "pop", "disco"] },
     { id: "pAgnJDJN4VA", title: "Back in Black", artist: "AC/DC", year: 1980, tags: ["80s", "rock"] },
-    { id: "1w7OgIMMRc4", title: "Sweet Child O' Mine", artist: "Guns N' Roses", year: 1987, tags: ["80s", "rock"] },
+    { id: "1w7OgIMMRc4", title: "Sweet Child O' Mine", artist: "Guns N' Roses", alt: ["Sweet Child of Mine"], year: 1987, tags: ["80s", "rock"] },
     { id: "btPJPFnesV4", title: "Eye of the Tiger", artist: "Survivor", year: 1982, tags: ["80s", "rock"] },
     { id: "9jK-NcRmVcw", title: "The Final Countdown", artist: "Europe", year: 1986, tags: ["80s", "rock"] },
     { id: "lDK9QqIzhwk", title: "Livin' on a Prayer", artist: "Bon Jovi", year: 1986, tags: ["80s", "rock"] },
@@ -70,16 +70,16 @@
     // ---------- Années 90 ----------
     { id: "hTWKbfoikeg", title: "Smells Like Teen Spirit", artist: "Nirvana", year: 1991, tags: ["90s", "rock"] },
     { id: "bx1Bh8ZvH84", title: "Wonderwall", artist: "Oasis", year: 1995, tags: ["90s", "rock"] },
-    { id: "SSbBvKaM6sk", title: "Song 2", artist: "Blur", year: 1997, tags: ["90s", "rock"] },
+    { id: "SSbBvKaM6sk", title: "Song 2", artist: "Blur", alt: ["Song Two"], year: 1997, tags: ["90s", "rock"] },
     { id: "XFkzRNyygfk", title: "Creep", artist: "Radiohead", year: 1992, tags: ["90s", "rock"] },
     { id: "6Ejga4kJUts", title: "Zombie", artist: "The Cranberries", year: 1994, tags: ["90s", "rock"] },
     { id: "GLvohMXgcBo", title: "Under the Bridge", artist: "Red Hot Chili Peppers", year: 1991, tags: ["90s", "rock"] },
     { id: "C-u5WLJ9Yk4", title: "...Baby One More Time", artist: "Britney Spears", year: 1998, tags: ["90s", "pop"] },
     { id: "4fndeDfaWCg", title: "I Want It That Way", artist: "Backstreet Boys", year: 1999, tags: ["90s", "pop"] },
-    { id: "6M6samPEMpM", title: "Everybody (Backstreet's Back)", artist: "Backstreet Boys", year: 1997, tags: ["90s", "pop"] },
+    { id: "6M6samPEMpM", title: "Everybody (Backstreet's Back)", artist: "Backstreet Boys", alt: ["Backstreet's Back"], year: 1997, tags: ["90s", "pop"] },
     { id: "gJLIiF15wjQ", title: "Wannabe", artist: "Spice Girls", year: 1996, tags: ["90s", "pop"] },
     { id: "ZyhrYis509A", title: "Barbie Girl", artist: "Aqua", year: 1997, tags: ["90s", "pop", "electro"] },
-    { id: "68ugkg9RePc", title: "Blue (Da Ba Dee)", artist: "Eiffel 65", year: 1999, tags: ["90s", "electro"] },
+    { id: "68ugkg9RePc", title: "Blue (Da Ba Dee)", artist: "Eiffel 65", alt: ["Da Ba Dee", "Blue"], year: 1999, tags: ["90s", "electro"] },
     { id: "nZXRV4MezEw", title: "Believe", artist: "Cher", year: 1998, tags: ["90s", "pop", "electro"] },
     { id: "p47fEXGabaY", title: "Livin' la Vida Loca", artist: "Ricky Martin", year: 1999, tags: ["90s", "pop"] },
     { id: "fPO76Jlnz6c", title: "Gangsta's Paradise", artist: "Coolio feat. L.V.", year: 1995, tags: ["90s", "rap"] },
@@ -191,13 +191,18 @@
   // Comparaison souple : accents, casse, articles, featuring et ponctuation
   // sont ignorés. Les fautes de frappe courantes sont tolérées, mais un mot
   // isolé trop court (« e », « the ») ne peut plus valider un long titre.
+  var NUM_WORDS = {
+    zero: "0", one: "1", two: "2", three: "3", four: "4", five: "5",
+    six: "6", seven: "7", eight: "8", nine: "9", ten: "10",
+    eleven: "11", twelve: "12", thirteen: "13", fourteen: "14", fifteen: "15",
+    sixteen: "16", seventeen: "17", eighteen: "18", nineteen: "19", twenty: "20"
+  };
   function norm(v) {
     var out = String(v == null ? "" : v)
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/['’`]/g, "")
-      .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
       .replace(/\b(feat|featuring|ft)\b\.?/g, " ")
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, " ")
@@ -206,7 +211,24 @@
     // initiales pour que « Notorious BIG » retrouve « Notorious B.I.G. ».
     out = out.replace(/\b([a-z])\s+(?=[a-z]\b)/g, "$1");
     out = out.replace(/\b([a-z])\s+(?=[a-z]\b)/g, "$1");
+    out = out.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\b/g, function (w) {
+      return NUM_WORDS[w];
+    });
     return out.trim();
+  }
+  // Variante sans le contenu entre parenthèses : « Blue (Da Ba Dee) » et
+  // « Blue » sont tous les deux acceptés, sans perdre « Da Ba Dee ».
+  function normBase(v) {
+    return norm(String(v == null ? "" : v).replace(/\([^)]*\)|\[[^\]]*\]/g, " "));
+  }
+  function variants(v) {
+    var a = norm(v), b = normBase(v), out = [];
+    if (a) out.push(a);
+    if (b && b !== a) out.push(b);
+    return out;
+  }
+  function compact(v) {
+    return String(v == null ? "" : v).replace(/\s+/g, "");
   }
   function strip(v) {
     var out = v;
@@ -235,6 +257,15 @@
     }
     return rows[a.length][b.length];
   }
+  // Un suffixe de mot différent n'est pas une faute de frappe :
+  // « believe » ne doit pas valider « Believer ».
+  function derivational(a, b) {
+    var short = a.length <= b.length ? a : b;
+    var long = a.length <= b.length ? b : a;
+    if (long.indexOf(short) !== 0) return false;
+    var extra = long.slice(short.length);
+    return short.length < 10 && /^(s|es|r|er|d|ed|ing)$/.test(extra);
+  }
   function near(a, b) {
     if (a === b) return true;
     if (a.length < 4 || b.length < 4) return false;
@@ -244,6 +275,7 @@
     var max = Math.max(a.length, b.length);
     var allowed = max >= 12 ? 2 : 1;
     if (Math.abs(a.length - b.length) > allowed) return false;
+    if (derivational(a, b)) return false;
     return editDistance(a, b) <= allowed;
   }
   function wordMatch(a, b) {
@@ -253,12 +285,15 @@
     var max = Math.max(a.length, b.length);
     var allowed = max >= 8 ? 2 : 1;
     if (Math.abs(a.length - b.length) > allowed) return false;
+    if (derivational(a, b)) return false;
     return editDistance(a, b) <= allowed;
   }
   function containsWords(haystack, needle) {
     var h = haystack.split(" ").filter(Boolean);
     var n = needle.split(" ").filter(Boolean);
-    if (!n.length || n.length > h.length || needle.length < 4) return false;
+    // Un seul mot ne suffit pas : « queen » ne doit pas valider
+    // « Dancing Queen ». Il faut une expression d'au moins deux mots.
+    if (n.length < 2 || n.length > h.length) return false;
     for (var i = 0; i <= h.length - n.length; i++) {
       var ok = true;
       for (var j = 0; j < n.length; j++) {
@@ -269,31 +304,78 @@
     return false;
   }
   var NOISE_WORDS = /^(and|the|of|a|an|to|in|on|at|by|for|or|de|la|le|les|un|une|des|du|et)$/;
-  function allWordsPresent(guess, answer) {
-    var aw = answer.split(" ").filter(function (w) { return w.length > 2 && !NOISE_WORDS.test(w); });
-    if (aw.length < 2) return false;
-    var gw = guess.split(" ").filter(Boolean);
-    return aw.every(function (w) {
-      return gw.some(function (g) { return wordMatch(g, w); });
+  function contentWords(v) {
+    return v.split(" ").filter(function (w) {
+      return w && !NOISE_WORDS.test(w) && (w.length > 2 || /^\d+$/.test(w));
     });
   }
-  function match(guess, answer) {
-    var g = norm(guess), a = norm(answer);
+  function sameWords(a, b) {
+    if (a.length !== b.length) return false;
+    var used = [], i, j, k, found;
+    for (i = 0; i < b.length; i++) used[i] = false;
+    for (j = 0; j < a.length; j++) {
+      found = false;
+      for (k = 0; k < b.length; k++) {
+        if (!used[k] && wordMatch(a[j], b[k])) { used[k] = true; found = true; break; }
+      }
+      if (!found) return false;
+    }
+    return true;
+  }
+  function matchOne(g, a) {
     if (!g || !a) return false;
     if (g === a) return true;
+    if (compact(g) === compact(a)) return true;
     var gs = strip(g), as = strip(a);
-    if (gs === as) return true;
+    if (gs === as || compact(gs) === compact(as)) return true;
     if (near(gs, as)) return true;
+    var gw = contentWords(gs), aw = contentWords(as);
+    if (gw.length >= 2 && sameWords(gw, aw)) return true;
+    // Le guess doit être contenu dans la réponse, jamais l'inverse :
+    // « love night heart dancing queen » ne valide pas « Dancing Queen ».
     if (containsWords(as, gs)) return true;
-    if (containsWords(gs, as)) return true;
-    if (allWordsPresent(gs, as)) return true;
+    return false;
+  }
+  function match(guess, answer) {
+    var gv = variants(guess), av = variants(answer), i, j;
+    for (i = 0; i < gv.length; i++) {
+      for (j = 0; j < av.length; j++) {
+        if (matchOne(gv[i], av[j])) return true;
+      }
+    }
+    // « Daft Punk - Get Lucky » saisi dans le champ titre : un segment suffit.
+    var gsegs = String(guess == null ? "" : guess).split(/\s+[-–—|•]\s+/);
+    for (i = 0; i < gsegs.length; i++) {
+      var gs = norm(gsegs[i]);
+      if (!gs) continue;
+      for (j = 0; j < av.length; j++) {
+        if (matchOne(gs, av[j])) return true;
+      }
+    }
+    // « Daft Punk - Get Lucky - Daft Punk » : le titre seul ou l'artiste
+    // seul doit pouvoir valider un segment entier.
+    var segs = String(answer == null ? "" : answer).split(/\s+[-–—|•:]\s+|\s*\|\s*/);
+    for (i = 0; i < segs.length; i++) {
+      var s = norm(segs[i]);
+      if (!s) continue;
+      for (j = 0; j < gv.length; j++) {
+        if (matchOne(gv[j], s)) return true;
+      }
+    }
+    return false;
+  }
+  function matchAny(guess, answers) {
+    var list = Array.isArray(answers) ? answers : [answers];
+    for (var i = 0; i < list.length; i++) {
+      if (match(guess, list[i])) return true;
+    }
     return false;
   }
   function cleanTitle(v) {
     var t = String(v || "");
     // Crochets et parenthèses : presque toujours des mentions de version.
     t = t.replace(/\s*[\(\[]([^)\]]*)[\)\]]/g, function (all, inner) {
-      return /\b(official|officiel|officielle|video|vidéo|clip|audio|lyrics?|paroles|letra|legendado|tradu[cç][aã]o|sub|remaster|hd|hq|4k|8k|\d{3,4}p|live|version|visuali[sz]er|performance|m\/?v|explicit|clean|full\s+song|high\s+quality|edit|extended|instrumental|karaoke)\b/i.test(inner) ? " " : all;
+      return /\b(official|officiel|officielle|video|vidéo|clip|audio|lyrics?|paroles|letra|legendado|tradu[cç][aã]o|sub|remaster|hd|hq|4k|8k|\d{3,4}p|live|version|visuali[sz]er|performance|m\/?v|explicit|clean|full\s+song|high\s+quality|edit|extended|instrumental|karaoke)\b/i.test(inner) || /^\s*from\b/i.test(inner) || /^(extrait|bande\s+originale)\b/i.test(inner) ? " " : all;
     });
     // « feat. » / « ft. » : on retire l'invité du titre affiché.
     t = t.replace(/\s*[\(\[]\s*(feat\.?|featuring|ft\.?)\s+[^)\]]*[\)\]]/gi, " ");
@@ -308,9 +390,9 @@
   }
   function cleanArtist(v) {
     var t = String(v || "");
-    t = t.replace(/\s*-\s*topic$/i, "");
-    t = t.replace(/\s*vevo$/i, "");
-    t = t.replace(/\s*official(\s+channel)?$/i, "");
+    t = t.replace(/\s*[-–—]\s*(topic|vevo|youtube)\s*$/i, "");
+    t = t.replace(/\s*(vevo|official(\s+channel)?)\s*$/i, "");
+    t = t.replace(/\s*[\(\[]\s*(official|officiel(?:le)?|topic|vevo|from)\b[^)\]]*[\)\]]\s*$/i, "");
     return t.replace(/\s+/g, " ").trim();
   }
   var GENERIC_ARTIST = /^(various artists?|various|va|unknown|unknown artist|artiste inconnu|official|album(?:s)?(?: fr| français| francais| anglais| us| uk)?|playlist|compilation|best of|hits?|chansons?|songs?|musique|music|topic|french music|chansons françaises|chansons francaises)$/;
@@ -350,6 +432,39 @@
   function isLiveSegment(v) {
     return /^(live|en concert|concert)$/i.test(String(v || "").trim());
   }
+  /* Quelques métadonnées YouTube inversent l'artiste et le titre
+     (« Daft Punk - Get Lucky » avec « Get Lucky » comme chaîne). On s'appuie
+     sur les artistes déjà connus de la banque pour remettre les champs dans le
+     bon ordre, sans jamais l'appliquer quand la chaîne est fiable. */
+  var knownArtists = null;
+  function knownArtistSet() {
+    if (knownArtists) return knownArtists;
+    knownArtists = {};
+    for (var i = 0; i < SONGS.length; i++) {
+      var full = strip(norm(SONGS[i].artist));
+      if (full) knownArtists[full] = 1;
+      String(SONGS[i].artist || "").split(/\s*(?:&|,|\bfeat\.?\b|\bft\.?\b|\band\b|\bx\b)\s*/i).forEach(function (part) {
+        var n = strip(norm(part));
+        if (n) knownArtists[n] = 1;
+      });
+    }
+    return knownArtists;
+  }
+  function isKnownArtist(v) {
+    var n = strip(norm(v));
+    return !!(n && knownArtistSet()[n]);
+  }
+  function escapeRe(v) {
+    return String(v == null ? "" : v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  /* « Daft Punk Get Lucky » sans tiret : on retire l'artiste connu du début
+     pour ne pas afficher « Daft Punk Get Lucky » comme titre. */
+  function stripLeadingArtist(title, artist) {
+    if (!title || !artist) return title;
+    var re = new RegExp("^\\s*" + escapeRe(artist) + "\\s*(?:[-–—|:]\\s*)?", "i");
+    var out = title.replace(re, "");
+    return out && out !== title ? out.trim() : title;
+  }
   /* Sépare un titre YouTube du type « Artiste - Titre - Artiste ».
      L'artiste connu (chaîne YouTube) sert d'ancre ; sans artiste fiable,
      on retombe sur la forme la plus courante « Artiste - Titre ». */
@@ -362,9 +477,27 @@
     if (!title) return { title: "", artist: generic ? "" : artist };
 
     var parts = title.split(/\s+[-–—]\s+|\s*\|\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
-    if (parts.length < 2) return { title: title, artist: generic ? "" : artist };
+    if (parts.length < 2) {
+      if (!generic) title = stripLeadingArtist(title, artist);
+      return { title: title, artist: generic ? "" : artist };
+    }
 
     if (!generic) {
+      // Métadonnées inversées : la chaîne ressemble au titre et un segment
+      // connu de la banque ressemble à l'artiste. On remet dans l'ordre.
+      if (!isKnownArtist(artist)) {
+        var knownPart = null;
+        for (var k = 0; k < parts.length; k++) {
+          if (isKnownArtist(parts[k])) { knownPart = parts[k]; break; }
+        }
+        if (knownPart) {
+          var restSwap = parts.filter(function (p, i) {
+            return parts[i] !== knownPart && !segmentHasArtist(p, knownPart);
+          });
+          var swapped = restSwap.join(" - ") || artist;
+          return { title: swapped, artist: knownPart };
+        }
+      }
       var known = artist, idx = -1;
       for (var i = 0; i < parts.length; i++) {
         if (segmentHasArtist(parts[i], known)) { idx = i; break; }
@@ -393,6 +526,12 @@
       return { title: parts.slice(1, -1).join(" - "), artist: parts[0] };
     }
     if (parts.length >= 3 && isLiveSegment(parts[parts.length - 1])) parts = parts.slice(0, -1);
+    // Chaîne générique en tête (« Album fr - Artiste - Titre ») : on l'écarte.
+    var start = 0;
+    while (start < parts.length - 1 && isGenericArtist(parts[start])) start++;
+    if (parts.length - start >= 2) {
+      return { title: parts.slice(start + 1).join(" - "), artist: parts[start] };
+    }
     return { title: parts.slice(1).join(" - "), artist: parts[0] };
   }
   /* Position de départ d'un extrait : on vise 40-52 % du morceau, sans
@@ -417,11 +556,13 @@
     norm: norm,
     strip: strip,
     match: match,
+    matchAny: matchAny,
     near: near,
     editDistance: editDistance,
     cleanTitle: cleanTitle,
     cleanArtist: cleanArtist,
     isGenericArtist: isGenericArtist,
+    isKnownArtist: isKnownArtist,
     songMeta: songMeta,
     extractBase: extractBase,
     pickPos: pickPos
