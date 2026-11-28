@@ -665,7 +665,7 @@ function loadPlaylist(listId){
 
 /* Élargit la banque du thème avec les sélections YouTube Music officielles.
    En cas de réseau lent, de blocage ou de page illisible, la banque intégrée
-   reste jouable : on ne bloque jamais le lancement plus de quelques secondes. */
+   reste jouable : on ne bloque jamais le lancement plus de 12 s. */
 function loadThemeTracks(theme,done){
   const bank=BT.pick(theme,999);
   let settled=false,timer=0;
@@ -681,7 +681,9 @@ function loadThemeTracks(theme,done){
     done(merged);
   };
   const ctrl=typeof AbortController!=="undefined"?new AbortController():null;
-  timer=setTimeout(()=>{try{ctrl&&ctrl.abort()}catch(e){}finish([])},9000);
+  // Le serveur interroge YouTube Music avec un délai de 10 s : on attend un
+  // peu plus longtemps pour ne pas jeter une réponse sur le point d'arriver.
+  timer=setTimeout(()=>{try{ctrl&&ctrl.abort()}catch(e){}finish([])},12000);
   fetch("/api/youtube/theme?theme="+encodeURIComponent(theme),{cache:"no-store",signal:ctrl?ctrl.signal:undefined})
     .then(r=>r.json())
     .then(j=>finish(j&&j.ok&&Array.isArray(j.items)?j.items:[]))

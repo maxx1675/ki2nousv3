@@ -133,6 +133,12 @@ describe("Blind Test — titres YouTube", () => {
     expect(BT.isKnownArtist("Daft Punk")).toBe(true);
     expect(BT.isKnownArtist("Get Lucky")).toBe(false);
   });
+
+  it("n'utilise pas une chaîne de label comme artiste", () => {
+    expect(BT.songMeta("Daft Punk - Get Lucky", "Official Charts")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.songMeta("Daft Punk - Get Lucky - Daft Punk", "Best Music")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+    expect(BT.songMeta("Daft Punk - Get Lucky - Live", "Some Channel")).toEqual({ title: "Get Lucky", artist: "Daft Punk" });
+  });
 });
 
 describe("Blind Test — fenêtre de l'extrait", () => {

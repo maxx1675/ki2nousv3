@@ -494,8 +494,11 @@
           var restSwap = parts.filter(function (p, i) {
             return parts[i] !== knownPart && !segmentHasArtist(p, knownPart);
           });
-          var swapped = restSwap.join(" - ") || artist;
-          return { title: swapped, artist: knownPart };
+          // « Artiste - Titre - Live » : le suffixe de version ne fait pas
+          // partie du titre, même quand les métadonnées sont inversées.
+          var swapped = restSwap.filter(function (p) { return !isLiveSegment(p); });
+          if (!swapped.length) swapped = restSwap;
+          return { title: swapped.join(" - ") || artist, artist: knownPart };
         }
       }
       var known = artist, idx = -1;
@@ -519,6 +522,15 @@
         if (filtered.length) title = filtered.join(" - ");
         return { title: title, artist: artist };
       }
+      // La chaîne ne correspond à aucun segment : c'est souvent une chaîne de
+      // label ou de compilation (« Official Charts »), pas l'artiste. On
+      // retombe alors sur la convention YouTube « Artiste - Titre ».
+      var tail = parts.slice();
+      if (tail.length >= 3 && isLiveSegment(tail[tail.length - 1])) tail.pop();
+      if (tail.length >= 2 && sameSegment(tail[0], tail[tail.length - 1])) {
+        return { title: tail.slice(1, -1).join(" - ") || tail[0], artist: tail[0] };
+      }
+      if (tail.length >= 2) return { title: tail.slice(1).join(" - "), artist: tail[0] };
       return { title: title, artist: artist };
     }
 
